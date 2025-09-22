@@ -1,8 +1,12 @@
+import Link from 'next/link';
 export default function HomePage() {
   return (
-    <main style={{ fontFamily: 'sans-serif', textAlign: 'center', marginTop: '50px' }}>
-      <h1 style={{ fontSize: '2.5rem', color: '#8A2BE2' }}>Fagulha.ia</h1>
-      <p style={{ fontSize: '1.2rem', color: '#FFFFFF' }}>Nosso projeto está começando!</p>
+    <main className="flex flex-col items-center justify-center min-h-screen text-center p-4">
+      <h1 className="text-5xl font-bold text-purple-400">Fagulha.ia</h1>
+      <p className="text-xl text-gray-300 mt-4">Sua faísca de criatividade, potencializada por IA.</p>
+      <Link href="/login" className="mt-8 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+        Começar a Criar
+      </Link>
     </main>
   );
 }
