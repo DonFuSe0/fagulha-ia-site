@@ -1,41 +1,17 @@
-'use client'; // Importante: indica que este é um componente de cliente
-
+'use client';
 import { createClient } from '@/lib/supabase/client';
-
 export default function LoginPage() {
   const handleLoginWithGoogle = async () => {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${location.origin}/auth/callback`, // Redireciona de volta para o site após o login
-      },
+      options: { redirectTo: `${location.origin}/auth/callback` },
     });
   };
-
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      height: '100vh', 
-      backgroundColor: '#111', 
-      color: 'white' 
-    }}>
-      <h1 style={{ fontSize: '2rem', marginBottom: '2rem', color: '#9333ea' }}>Login - Fagulha.ia</h1>
-      <button 
-        onClick={handleLoginWithGoogle}
-        style={{
-          backgroundColor: '#9333ea',
-          color: 'white',
-          padding: '10px 20px',
-          border: 'none',
-          borderRadius: '5px',
-          fontSize: '1rem',
-          cursor: 'pointer'
-        }}
-      >
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white">
+      <h1 className="text-3xl font-bold mb-8 text-purple-400">Login - Fagulha.ia</h1>
+      <button onClick={handleLoginWithGoogle} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-lg transition-colors">
         Entrar com Google
       </button>
     </div>
