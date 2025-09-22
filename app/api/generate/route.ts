@@ -28,79 +28,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'O prompt é obrigatório' }, { status: 400 });
     }
 
-    // 4. Preparação do Workflow do ComfyUI
+    // 4. Preparação do Workflow do ComfyUI (com o nó de Webhook corrigido)
     const workflow = {
-      "6": {
+      "6": { "inputs": { "text": prompt, "clip": ["11", 0] }, "class_type": "CLIPTextEncode" },
+      "8": { "inputs": { "samples": ["13", 0], "vae": ["10", 0] }, "class_type": "VAEDecode" },
+      "10": { "inputs": { "vae_name": "ae.safetensors" }, "class_type": "VAELoader" },
+      "11": { "inputs": { "clip_name1": "t5xxl_fp16.safetensors", "clip_name2": "clip_l.safetensors", "type": "flux", "device": "default" }, "class_type": "DualCLIPLoader" },
+      "12": { "inputs": { "unet_name": "flux1-dev.sft", "weight_dtype": "default" }, "class_type": "UNETLoader" },
+      "13": { "inputs": { "noise": ["25", 0], "guider": ["22", 0], "sampler": ["16", 0], "sigmas": ["17", 0], "latent_image": ["27", 0] }, "class_type": "SamplerCustomAdvanced" },
+      "16": { "inputs": { "sampler_name": "euler" }, "class_type": "KSamplerSelect" },
+      "17": { "inputs": { "scheduler": "simple", "steps": 5, "denoise": 1, "model": ["30", 0] }, "class_type": "BasicScheduler" },
+      "22": { "inputs": { "model": ["30", 0], "conditioning": ["26", 0] }, "class_type": "BasicGuider" },
+      "25": { "inputs": { "noise_seed": Math.floor(Math.random() * 1e15) }, "class_type": "RandomNoise" },
+      "26": { "inputs": { "guidance": 3.5, "conditioning": ["6", 0] }, "class_type": "FluxGuidance" },
+      "27": { "inputs": { "width": 1024, "height": 1024, "batch_size": 1 }, "class_type": "EmptySD3LatentImage" },
+      "30": { "inputs": { "max_shift": 1.15, "base_shift": 0.5, "width": 1024, "height": 1024, "model": ["12", 0] }, "class_type": "ModelSamplingFlux" },
+      "38": { "inputs": { "images": ["8", 0] }, "class_type": "PreviewImage" },
+      "42": { // NÓ DE WEBHOOK CORRIGIDO
         "inputs": {
-          "text": prompt, // Injeta o prompt do usuário aqui
-          "clip": ["11", 0]
+          "url": `${NEXT_PUBLIC_SITE_URL}/api/webhook`,
+          "passthrough": ["38", 0], // Conectado à saída do PreviewImage para garantir a execução no final
+          "json_data": `{\n  "webhook_secret": "${WEBHOOK_SECRET}",\n  "prompt_id": "{prompt_id}",\n  "status": "{status}",\n  "outputs": {outputs}\n}`
         },
-        "class_type": "CLIPTextEncode"
-      },
-      "8": {
-        "inputs": {
-          "samples": ["13", 0],
-          "vae": ["10", 0]
-        },
-        "class_type": "VAEDecode"
-      },
-      "10": {
-        "inputs": { "vae_name": "ae.safetensors" },
-        "class_type": "VAELoader"
-      },
-      "11": {
-        "inputs": { "clip_name1": "t5xxl_fp16.safetensors", "clip_name2": "clip_l.safetensors", "type": "flux", "device": "default" },
-        "class_type": "DualCLIPLoader"
-      },
-      "12": {
-        "inputs": { "unet_name": "flux1-dev.sft", "weight_dtype": "default" },
-        "class_type": "UNETLoader"
-      },
-      "13": {
-        "inputs": { "noise": ["25", 0], "guider": ["22", 0], "sampler": ["16", 0], "sigmas": ["17", 0], "latent_image": ["27", 0] },
-        "class_type": "SamplerCustomAdvanced"
-      },
-      "16": {
-        "inputs": { "sampler_name": "euler" },
-        "class_type": "KSamplerSelect"
-      },
-      "17": {
-        "inputs": { "scheduler": "simple", "steps": 5, "denoise": 1, "model": ["30", 0] },
-        "class_type": "BasicScheduler"
-      },
-      "22": {
-        "inputs": { "model": ["30", 0], "conditioning": ["26", 0] },
-        "class_type": "BasicGuider"
-      },
-      "25": {
-        "inputs": { "noise_seed": Math.floor(Math.random() * 1e15) }, // Gera uma semente aleatória
-        "class_type": "RandomNoise"
-      },
-      "26": {
-        "inputs": { "guidance": 3.5, "conditioning": ["6", 0] },
-        "class_type": "FluxGuidance"
-      },
-      "27": {
-        "inputs": { "width": 1024, "height": 1024, "batch_size": 1 },
-        "class_type": "EmptySD3LatentImage"
-      },
-      "30": {
-        "inputs": { "max_shift": 1.15, "base_shift": 0.5, "width": 1024, "height": 1024, "model": ["12", 0] },
-        "class_type": "ModelSamplingFlux"
-      },
-      "38": {
-        "inputs": { "images": ["8", 0] },
-        "class_type": "PreviewImage"
+        "class_type": "Webhook" // O nome da classe é simplesmente "Webhook"
       }
     };
 
-    // 5. Construção do Payload Final com Webhook
+    // 5. Construção do Payload Final
     const payload = {
       prompt: workflow,
-      extra_data: {
-        webhook_url: `${NEXT_PUBLIC_SITE_URL}/api/webhook`,
-        webhook_secret: WEBHOOK_SECRET,
-      }
     };
 
     // 6. Envio para a API do ComfyUI
@@ -138,12 +94,7 @@ export async function POST(request: Request) {
     
     // 8. Descontar os tokens do usuário
     const newBalance = profile.token_balance - tokenCost;
-    const { error: updateError } = await supabase.from('profiles').update({ token_balance: newBalance }).eq('id', user.id);
-
-    if (updateError) {
-      // Idealmente, aqui teríamos uma lógica para reverter a cobrança ou marcar o erro
-      console.error(`Falha ao atualizar saldo de tokens: ${updateError.message}`);
-    }
+    await supabase.from('profiles').update({ token_balance: newBalance }).eq('id', user.id);
 
     // 9. Retornar a resposta para o frontend
     return NextResponse.json(comfyResponse);
