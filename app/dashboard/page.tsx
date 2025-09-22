@@ -1,4 +1,5 @@
-import Header from '@/components/Header'; // Agora vamos usar o Header
+import Header from '@/components/Header';
+import GenerationArea from '@/components/GenerationArea'; // Importando nosso novo componente
 
 export default function DashboardPage() {
   return (
@@ -15,11 +16,9 @@ export default function DashboardPage() {
             </p>
           </div>
           
-          <div className="bg-gray-800 p-6 rounded-lg shadow-lg min-h-[400px]">
-            <p className="text-gray-400">
-              A área para gerar imagens, com campo de prompt, seleção de estilos e modelos, aparecerá aqui.
-            </p>
-          </div>
+          {/* Aqui está a grande mudança */}
+          <GenerationArea />
+
         </div>
       </main>
     </div>
