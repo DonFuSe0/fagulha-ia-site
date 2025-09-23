@@ -6,14 +6,12 @@ import { Database } from '@/lib/database.types';
 export async function POST(request: Request) {
   const supabase = createRouteHandlerClient<Database>({ cookies });
 
-  // 1. Validação do Usuário
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
     return NextResponse.json({ error: 'Não autorizado. Faça login para gerar imagens.' }, { status: 401 });
   }
   const userId = session.user.id;
 
-  // 2. Extração e Validação dos Parâmetros
   const {
     modelId,
     styleId,
@@ -27,12 +25,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Parâmetros inválidos. Prompt, modelo e resolução são obrigatórios.' }, { status: 400 });
   }
 
-  // 3. Cálculo do Custo de Tokens
   let tokenCost = 3;
   if (resolution === '512x512') tokenCost = 1;
   if (resolution === '768x768') tokenCost = 2;
 
-  // 4. Verificação de Saldo e Débito de Tokens
   const { error: rpcError } = await supabase.rpc('debit_tokens', {
     user_id_input: userId,
     debit_amount: tokenCost,
@@ -42,7 +38,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: rpcError.message }, { status: 402 });
   }
 
-  // 5. Combinação de Prompts com Estilos
   let finalPrompt = prompt;
   let finalNegativePrompt = negativePrompt || '';
 
@@ -54,25 +49,23 @@ export async function POST(request: Request) {
     }
   }
 
-  // 6. Preparação para o ComfyUI
   const { data: model } = await supabase.from('models').select('comfyui_workflow_name').eq('id', modelId).single();
   if (!model) {
     return NextResponse.json({ error: 'Modelo de IA não encontrado.' }, { status: 404 });
   }
   const promptId = crypto.randomUUID();
 
-  // 7. Registro da Geração no Banco de Dados (com status 'processing')
-  //    *** A MUDANÇA ESTÁ AQUI ***
   const { error: insertError } = await supabase.from('generations').insert({
     id: promptId,
     user_id: userId,
     prompt: finalPrompt,
+    original_prompt: prompt, // Salva o prompt original
     negative_prompt: finalNegativePrompt,
     status: 'processing',
-    model_id: modelId, // Salva o ID do modelo
-    style_id: styleId !== 'none' ? styleId : null, // Salva o ID do estilo (ou null se nenhum)
-    resolution: resolution, // Salva a resolução
-    steps: steps, // Salva os steps
+    model_id: modelId,
+    style_id: styleId !== 'none' ? styleId : null,
+    resolution: resolution,
+    steps: steps,
   });
 
   if (insertError) {
@@ -80,7 +73,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Erro ao registrar a geração: ' + insertError.message }, { status: 500 });
   }
 
-  // 8. Envio da Tarefa para o ComfyUI (simulado)
   console.warn('COMFYUI_API_URL não está definida. Simulando sucesso da API.');
   return NextResponse.json({ message: 'Geração enfileirada com sucesso (simulado).', promptId }, { status: 200 });
 }
