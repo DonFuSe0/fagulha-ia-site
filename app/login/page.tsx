@@ -3,18 +3,17 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError(null);
 
     const supabase = createClient();
     const { error } = await supabase.auth.signUp({
@@ -26,9 +25,9 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(error.message);
+      toast.error(error.message);
     } else {
-      setError('Cadastro realizado! Verifique seu e-mail para confirmar.');
+      toast.success('Cadastro realizado! Verifique seu e-mail para confirmar.');
       setEmail('');
       setPassword('');
     }
@@ -38,7 +37,6 @@ export default function LoginPage() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError(null);
 
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
@@ -47,9 +45,10 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(error.message);
+      toast.error(error.message);
       setIsSubmitting(false);
     } else {
+      toast.success('Login bem-sucedido!');
       router.push('/dashboard');
       router.refresh();
     }
@@ -57,7 +56,6 @@ export default function LoginPage() {
 
   const handleLoginWithGoogle = async () => {
     setIsSubmitting(true);
-    setError(null);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -66,7 +64,7 @@ export default function LoginPage() {
       },
     });
     if (error) {
-      setError(error.message);
+      toast.error(error.message);
       setIsSubmitting(false);
     }
   };
@@ -105,7 +103,6 @@ export default function LoginPage() {
               disabled={isSubmitting}
             />
           </div>
-          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
           <div className="flex flex-col space-y-3 pt-2">
             <button 
               type="submit" 
