@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 const plans = [
   { id: 'cafezinho', name: 'Cafezinho', tokens: 200, price: 9.99, description: 'Ideal para começar a experimentar.' },
@@ -10,12 +12,20 @@ const plans = [
 
 export default function TokensPage() {
   const [isLoading, setIsLoading] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const status = searchParams.get('status');
+    if (status === 'success') {
+      toast.success('Compra aprovada! Seus tokens serão adicionados em breve.');
+    } else if (status === 'failure') {
+      toast.error('A compra falhou ou foi cancelada. Tente novamente.');
+    }
+  }, [searchParams]);
 
   const handlePurchase = async (planId: string) => {
     setIsLoading(planId);
-    setError(null);
-
+    
     try {
       const response = await fetch('/api/purchase-tokens', {
         method: 'POST',
@@ -33,7 +43,7 @@ export default function TokensPage() {
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro desconhecido.';
-      setError(errorMessage);
+      toast.error(errorMessage);
       setIsLoading(null);
     }
   };
@@ -77,7 +87,6 @@ export default function TokensPage() {
           </div>
         ))}
       </div>
-      {error && <p className="text-red-400 text-center mt-8">{error}</p>}
     </main>
   );
 }
