@@ -1,141 +1,135 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
+import { useState } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import Link from 'next/link'
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [fullName, setFullName] = useState('')
+  const [username, setUsername] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
+  const router = useRouter()
+  const supabase = createClientComponentClient()
+  const searchParams = useSearchParams()
+  const redirectMessage = searchParams.get('message')
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const handleAuthAction = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setMessage(null)
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-      toast.error(error.message);
-      setIsSubmitting(false);
+    if (isSignUp) {
+      if (username.length < 3) {
+        setError('O Nick (apelido) deve ter pelo menos 3 caracteres.')
+        return
+      }
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            username: username,
+          },
+        },
+      })
+      if (error) {
+        setError(error.message)
+      } else {
+        setMessage('Cadastro realizado! Verifique seu e-mail para confirmar a conta.')
+        setIsSignUp(false)
+      }
     } else {
-      // Redireciona para a página de confirmação
-      router.push('/confirm');
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) {
+        setError(error.message)
+      } else {
+        router.push('/dashboard')
+        router.refresh()
+      }
     }
-  };
+  }
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      toast.error(error.message);
-      setIsSubmitting(false);
-    } else {
-      toast.success('Login bem-sucedido!');
-      router.push('/dashboard');
-      router.refresh();
-    }
-  };
-
-  const handleLoginWithGoogle = async () => {
-    setIsSubmitting(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOAuth({
+  const handleSignInWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${location.origin}/auth/callback`,
       },
-    });
-    if (error) {
-      toast.error(error.message);
-      setIsSubmitting(false);
-    }
-  };
+    })
+  }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <div className="w-full max-w-md p-8 space-y-6 bg-surface rounded-2xl shadow-2xl shadow-primary/10 border border-primary/20">
-        <h1 className="text-4xl font-bold text-center text-white">
-          Bem-vindo ao <span className="text-primary">Fagulha.ia</span>
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+      <Link href="/" className="text-3xl font-bold text-white mb-8">
+        Fagulha<span className="text-purple-500">.ia</span>
+      </Link>
+      <div className="w-full max-w-md p-8 space-y-6 bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-2xl border border-purple-500/20">
+        <h1 className="text-2xl font-bold text-center text-white">
+          {isSignUp ? 'Crie sua Conta' : 'Acesse sua Conta'}
         </h1>
         
-        <form className="space-y-4" onSubmit={handleSignIn}>
+        {redirectMessage && <p className="text-yellow-400 text-center bg-yellow-900/50 p-2 rounded-md">{redirectMessage}</p>}
+
+        <form onSubmit={handleAuthAction} className="space-y-4">
+          {isSignUp && (
+            <>
+              <div>
+                <Label htmlFor="fullName">Nome Completo</Label>
+                <Input id="fullName" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} required className="bg-gray-700 border-gray-600" />
+              </div>
+              <div>
+                <Label htmlFor="username">Nick (mín. 3 caracteres)</Label>
+                <Input id="username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} required className="bg-gray-700 border-gray-600" />
+              </div>
+            </>
+          )}
           <div>
-            <label htmlFor="email" className="sr-only">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="seu@email.com"
-              className="w-full px-4 py-3 text-text-main bg-background border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-              disabled={isSubmitting}
-            />
+            <Label htmlFor="email">E-mail</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="bg-gray-700 border-gray-600" />
           </div>
           <div>
-            <label htmlFor="password" className="sr-only">Senha</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="Sua senha"
-              className="w-full px-4 py-3 text-text-main bg-background border border-primary/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary transition-all"
-              disabled={isSubmitting}
-            />
+            <Label htmlFor="password">Senha</Label>
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="bg-gray-700 border-gray-600" />
           </div>
-          <div className="flex flex-col space-y-3 pt-2">
-            <button 
-              type="submit" 
-              className="w-full py-3 font-bold text-white bg-primary rounded-lg hover:bg-primary-hover transition-transform transform hover:scale-105 disabled:opacity-50 disabled:scale-100"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Entrando...' : 'Entrar'}
-            </button>
-            <button 
-              onClick={handleSignUp} 
-              type="button" 
-              className="w-full py-3 font-bold text-primary bg-transparent border-2 border-primary rounded-lg hover:bg-primary/10 transition-colors disabled:opacity-50"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Aguarde...' : 'Cadastrar'}
-            </button>
-          </div>
+          <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 font-bold">
+            {isSignUp ? 'Cadastrar' : 'Entrar'}
+          </Button>
         </form>
 
-        <div className="relative flex items-center py-2">
-          <div className="flex-grow border-t border-gray-700"></div>
-          <span className="flex-shrink mx-4 text-text-secondary">ou</span>
-          <div className="flex-grow border-t border-gray-700"></div>
+        {error && <p className="text-red-400 text-center">{error}</p>}
+        {message && <p className="text-green-400 text-center">{message}</p>}
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t border-gray-600" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-gray-800 px-2 text-gray-400">Ou continue com</span>
+          </div>
         </div>
 
-        <button 
-          onClick={handleLoginWithGoogle} 
-          className="w-full flex items-center justify-center gap-3 py-3 font-semibold text-white bg-[#DB4437] rounded-lg hover:bg-[#C33D2E] transition-transform transform hover:scale-105 disabled:opacity-50"
-          disabled={isSubmitting}
-        >
-          <svg className="w-5 h-5" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path></svg>
-          {isSubmitting ? 'Aguarde...' : 'Continuar com Google'}
-        </button>
+        <Button variant="outline" onClick={handleSignInWithGoogle} className="w-full bg-transparent border-gray-600 hover:bg-gray-700">
+          Entrar com Google
+        </Button>
+
+        <div className="text-center">
+          <button onClick={() => { setIsSignUp(!isSignUp); setError(null); setMessage(null); }} className="text-sm text-purple-400 hover:underline">
+            {isSignUp ? 'Já tem uma conta? Faça login' : 'Não tem uma conta? Cadastre-se'}
+          </button>
+        </div>
       </div>
     </div>
-  );
+  )
 }

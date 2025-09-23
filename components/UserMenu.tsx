@@ -1,70 +1,83 @@
 'use client';
 
-import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
-import type { User } from '@supabase/supabase-js';
+import { User } from '@supabase/supabase-js';
 import Image from 'next/image';
+import Link from 'next/link';
+import { Coins, LogOut, User as UserIcon, GalleryHorizontal } from 'lucide-react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { useRouter } from 'next/navigation';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
-export default function UserMenu({ user }: { user: User }) {
+interface ProfileData {
+  token_balance: number | null;
+  avatar_url: string | null;
+  username: string | null;
+}
+
+interface UserMenuProps {
+  user: User;
+  profile: ProfileData;
+}
+
+export default function UserMenu({ user, profile }: UserMenuProps) {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
-  const avatarUrl = user.user_metadata?.avatar_url;
+  const supabase = createClientComponentClient();
 
-  const handleSignOut = async () => {
-    const supabase = createClient();
+  const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh(); // Força a atualização da rota para limpar o estado
+    router.push('/'); // Redireciona para a home após o logout
+    router.refresh();
   };
 
   return (
-    <div className="relative">
-      <button 
-        onClick={() => setIsOpen(!isOpen)} 
-        className="w-12 h-12 rounded-full cursor-pointer overflow-hidden border-2 border-primary/50 hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-      >
-        {avatarUrl ? (
-          <Image src={avatarUrl} alt="Avatar do usuário" width={48} height={48} className="object-cover" />
-        ) : (
-          <div className="w-full h-full bg-surface flex items-center justify-center text-primary font-bold text-xl">
-            {user.email?.[0].toUpperCase()}
-          </div>
-        )}
-      </button>
+    <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 bg-gray-800/50 py-1.5 px-3 rounded-full">
+        <Coins className="w-5 h-5 text-yellow-400" />
+        <span className="font-bold text-white">{profile.token_balance ?? 0}</span>
+      </div>
 
-      {isOpen && (
-        <div 
-          className="absolute right-0 mt-2 w-64 bg-surface rounded-lg shadow-2xl shadow-primary/10 border border-primary/20 py-2 z-50 animate-fade-in-down"
-        >
-          <div className="px-4 py-3 border-b border-primary/10">
-            <p className="text-sm text-text-secondary">Logado como</p>
-            <p className="text-base font-medium text-text-main truncate">{user.email}</p>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <div className="flex items-center gap-3 cursor-pointer">
+            <span className="text-white font-medium hidden sm:inline">{profile.username || user.email?.split('@')[0]}</span>
+            <Image
+              src={profile.avatar_url || `https://api.dicebear.com/8.x/bottts/svg?seed=${user.id}`}
+              alt="Avatar do usuário"
+              width={40}
+              height={40}
+              className="rounded-full border-2 border-purple-500"
+            />
           </div>
-          <div className="py-2">
-            <a href="/dashboard" className="block px-4 py-2 text-text-main hover:bg-primary/20 rounded-md mx-2 transition-colors">
-              Dashboard
-            </a>
-            <a href="/gallery" className="block px-4 py-2 text-text-main hover:bg-primary/20 rounded-md mx-2 transition-colors">
-              Minha Galeria
-            </a>
-            <a href="/profile" className="block px-4 py-2 text-text-main hover:bg-primary/20 rounded-md mx-2 transition-colors">
-              Meu Perfil
-            </a>
-            <a href="/tokens" className="block px-4 py-2 text-text-main hover:bg-primary/20 rounded-md mx-2 transition-colors">
-              Comprar Tokens
-            </a>
-          </div>
-          <div className="border-t border-primary/10 py-2">
-            <button 
-              onClick={handleSignOut} 
-              className="w-full text-left block px-4 py-2 text-red-400 hover:bg-red-500/20 rounded-md mx-2 transition-colors"
-            >
-              Sair
-            </button>
-          </div>
-        </div>
-      )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end">
+          <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/profile">
+              <UserIcon className="mr-2 h-4 w-4" />
+              <span>Perfil</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/gallery">
+              <GalleryHorizontal className="mr-2 h-4 w-4" />
+              <span>Minha Galeria</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 focus:text-red-400">
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Sair</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
-  );
+   );
 }
