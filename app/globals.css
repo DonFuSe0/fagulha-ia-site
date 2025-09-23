@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Nossas animações customizadas vêm depois das diretivas do Tailwind */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
