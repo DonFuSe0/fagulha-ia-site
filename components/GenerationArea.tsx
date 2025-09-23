@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import toast from 'react-hot-toast';
 
 const supabase = createClient();
 
@@ -9,14 +10,11 @@ export default function GenerationArea() {
   const [prompt, setPrompt] = useState('um gato samurai meditando sob uma cerejeira, arte digital');
   const [negativePrompt, setNegativePrompt] = useState('texto, feio, deformado, múltiplas cabeças');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [currentPromptId, setCurrentPromptId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!currentPromptId) return;
-
-    console.log(`Ouvindo atualizações para o prompt_id: ${currentPromptId}`);
 
     const channel = supabase
       .channel(`generation-${currentPromptId}`)
@@ -29,16 +27,16 @@ export default function GenerationArea() {
           filter: `prompt_id=eq.${currentPromptId}`
         },
         (payload) => {
-          console.log('Recebemos uma atualização!', payload);
           const updatedGeneration = payload.new as { status: string; image_url: string };
 
           if (updatedGeneration.status === 'succeeded' && updatedGeneration.image_url) {
+            toast.success('Sua imagem está pronta!');
             setGeneratedImage(updatedGeneration.image_url);
             setIsGenerating(false);
             setCurrentPromptId(null);
             channel.unsubscribe();
           } else if (updatedGeneration.status === 'failed') {
-            setError('A geração da imagem falhou.');
+            toast.error('A geração da imagem falhou.');
             setIsGenerating(false);
             setCurrentPromptId(null);
             channel.unsubscribe();
@@ -54,9 +52,10 @@ export default function GenerationArea() {
 
   const handleGenerate = async () => {
     setIsGenerating(true);
-    setError(null);
     setGeneratedImage(null);
     setCurrentPromptId(null);
+
+    const loadingToast = toast.loading('Enviando para a fila de geração...');
 
     try {
       const response = await fetch('/api/generate', {
@@ -65,19 +64,18 @@ export default function GenerationArea() {
         body: JSON.stringify({ prompt, negativePrompt }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Falha ao iniciar a geração');
-      }
-
       const data = await response.json();
-      console.log('Geração iniciada com sucesso. ID do Prompt:', data.prompt_id);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Falha ao iniciar a geração');
+      }
+      
+      toast.success('Sua ideia foi enviada! Aguardando a mágica acontecer.', { id: loadingToast });
       setCurrentPromptId(data.prompt_id);
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro desconhecido';
-      console.error(errorMessage);
-      setError(`Erro: ${errorMessage}`);
+      toast.error(`Erro: ${errorMessage}`, { id: loadingToast });
       setIsGenerating(false);
     }
   };
@@ -85,7 +83,6 @@ export default function GenerationArea() {
   return (
     <div className="bg-surface/80 p-6 sm:p-8 rounded-2xl shadow-2xl shadow-primary/10 border border-primary/20">
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        {/* Coluna de Controles */}
         <div className="lg:col-span-3 space-y-6">
           <div>
             <label htmlFor="prompt" className="block text-lg font-semibold text-white mb-2">
@@ -122,10 +119,7 @@ export default function GenerationArea() {
           >
             {isGenerating ? 'Criando sua obra-prima...' : 'Gerar Imagem (3 Tokens)'}
           </button>
-          {error && <p className="text-red-400 text-sm text-center pt-2">{error}</p>}
         </div>
-
-        {/* Coluna de Visualização */}
         <div className="lg:col-span-2 flex items-center justify-center bg-background rounded-lg min-h-[300px] lg:min-h-full aspect-square border-2 border-dashed border-primary/20 overflow-hidden">
           {isGenerating && (
             <div className="text-center text-text-secondary animate-pulse">
