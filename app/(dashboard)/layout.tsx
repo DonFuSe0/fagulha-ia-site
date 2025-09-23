@@ -10,7 +10,8 @@ export default function DashboardLayout({
   return (
     <div>
       <Header />
-      <main>{children}</main>
+      {/* A tag <main> agora será responsabilidade de cada página filha */}
+      {children}
     </div>
   );
 }
