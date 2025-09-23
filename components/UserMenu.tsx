@@ -3,7 +3,7 @@
 import { User } from '@supabase/supabase-js';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Coins, LogOut, User as UserIcon, Settings, GalleryHorizontal } from 'lucide-react';
+import { Coins, LogOut, User as UserIcon, GalleryHorizontal } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import {
@@ -13,9 +13,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'; // Supondo que você use ShadCN/UI, ajuste se necessário
+} from '@/components/ui/dropdown-menu';
 
-// Tipos para os dados que o componente recebe
 interface ProfileData {
   token_balance: number | null;
   avatar_url: string | null;
@@ -33,7 +32,8 @@ export default function UserMenu({ user, profile }: UserMenuProps) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.refresh(); // Força a atualização da página e rotas do servidor
+    router.push('/'); // Redireciona para a home após o logout
+    router.refresh();
   };
 
   return (
@@ -46,7 +46,7 @@ export default function UserMenu({ user, profile }: UserMenuProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <div className="flex items-center gap-3 cursor-pointer">
-            <span className="text-white font-medium hidden sm:inline">{profile.username || user.email}</span>
+            <span className="text-white font-medium hidden sm:inline">{profile.username || user.email?.split('@')[0]}</span>
             <Image
               src={profile.avatar_url || `https://api.dicebear.com/8.x/bottts/svg?seed=${user.id}`}
               alt="Avatar do usuário"
@@ -71,15 +71,8 @@ export default function UserMenu({ user, profile }: UserMenuProps) {
               <span>Minha Galeria</span>
             </Link>
           </DropdownMenuItem>
-          {/* Futuramente podemos adicionar um link para configurações aqui */}
-          {/* <DropdownMenuItem asChild>
-            <Link href="/settings">
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Configurações</span>
-            </Link>
-          </DropdownMenuItem> */}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 focus:text-red-400">
             <LogOut className="mr-2 h-4 w-4" />
             <span>Sair</span>
           </DropdownMenuItem>
