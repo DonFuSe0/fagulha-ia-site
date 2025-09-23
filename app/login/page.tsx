@@ -24,12 +24,7 @@ export default function LoginPage() {
     let options: any = { email, password };
 
     if (isSignUp) {
-      options.options = {
-        data: {
-          full_name: fullName,
-          username: username,
-        },
-      };
+      options.options = { data: { full_name: fullName, username: username } };
     }
 
     const { error } = await action(options);
@@ -40,6 +35,8 @@ export default function LoginPage() {
         toast.error('Este nick já está em uso. Por favor, escolha outro.');
       } else if (error.message.includes('User already registered')) {
         toast.error('Este e-mail já está cadastrado. Tente fazer login.');
+      } else if (error.message.includes('Password should be at least 6 characters')) {
+        toast.error('A senha deve ter no mínimo 6 caracteres.');
       } else {
         toast.error(error.message);
       }
@@ -53,9 +50,7 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${location.origin}/auth/callback` },
     });
   };
 
