@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { Button } from '@/components/ui/button';
-import { Globe, Lock } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { Globe, Lock, Loader2 } from 'lucide-react';
+import { toast } from 'react-hot-toast'; // 1. Importar a função toast
 
 interface PublishButtonProps {
   generationId: string;
@@ -15,11 +15,11 @@ export default function PublishButton({ generationId, isPublic }: PublishButtonP
   const [isCurrentlyPublic, setIsCurrentlyPublic] = useState(isPublic);
   const [loading, setLoading] = useState(false);
   const supabase = createClientComponentClient();
-  const router = useRouter();
 
   const handleTogglePublish = async () => {
     setLoading(true);
     const newStatus = !isCurrentlyPublic;
+    const toastId = toast.loading(newStatus ? 'Publicando imagem...' : 'Tornando imagem privada...'); // 2. Iniciar toast de loading
 
     const { error } = await supabase
       .from('generations')
@@ -28,10 +28,11 @@ export default function PublishButton({ generationId, isPublic }: PublishButtonP
 
     if (!error) {
       setIsCurrentlyPublic(newStatus);
-      // Se a página de explorar estiver aberta em outra aba, ela não verá a mudança
-      // até ser recarregada. Isso é aceitável por agora.
+      // 3. Atualizar o toast com sucesso
+      toast.success(newStatus ? 'Imagem publicada na galeria Explorar!' : 'Imagem agora é privada.', { id: toastId });
     } else {
-      // Lidar com o erro, talvez com um toast
+      // 4. Atualizar o toast com erro
+      toast.error('Ocorreu um erro. Tente novamente.', { id: toastId });
       console.error("Erro ao atualizar status de publicação:", error.message);
     }
     setLoading(false);
@@ -43,14 +44,21 @@ export default function PublishButton({ generationId, isPublic }: PublishButtonP
       disabled={loading}
       variant="outline"
       size="sm"
-      className="absolute top-2 right-2 bg-black/50 hover:bg-black/80 border-none"
+      className="absolute top-2 right-2 bg-black/50 hover:bg-black/80 border-none text-white h-8 px-2"
     >
-      {isCurrentlyPublic ? (
-        <Globe className="w-4 h-4 mr-2 text-green-400" />
+      {loading ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : isCurrentlyPublic ? (
+        <>
+          <Globe className="w-4 h-4 mr-1.5 text-green-400" />
+          <span>Público</span>
+        </>
       ) : (
-        <Lock className="w-4 h-4 mr-2 text-gray-400" />
+        <>
+          <Lock className="w-4 h-4 mr-1.5 text-gray-400" />
+          <span>Privado</span>
+        </>
       )}
-      <span className="text-white">{isCurrentlyPublic ? 'Público' : 'Privado'}</span>
     </Button>
   );
 }
