@@ -43,16 +43,17 @@ export default function ImageActions({ generation }: ImageActionsProps) {
   };
 
   const handleReuse = () => {
-    const params = {
-      modelId: generation.model_id,
-      styleId: generation.style_id,
-      prompt: generation.original_prompt || generation.prompt, // Prioriza o prompt original
-      negativePrompt: generation.negative_prompt,
-      resolution: generation.resolution,
-      steps: generation.steps,
-    };
-    localStorage.setItem('reuseParams', JSON.stringify(params));
-    router.push('/dashboard');
+    // *** A MUDANÇA ESTÁ AQUI ***
+    const params = new URLSearchParams();
+    if (generation.model_id) params.set('modelId', generation.model_id);
+    if (generation.style_id) params.set('styleId', generation.style_id);
+    if (generation.original_prompt || generation.prompt) params.set('prompt', generation.original_prompt || generation.prompt);
+    if (generation.negative_prompt) params.set('negativePrompt', generation.negative_prompt);
+    if (generation.resolution) params.set('resolution', generation.resolution);
+    if (generation.steps) params.set('steps', generation.steps.toString());
+
+    // Constrói a URL e navega
+    router.push(`/dashboard?${params.toString()}`);
   };
 
   const handleTogglePublish = async () => {
@@ -76,20 +77,10 @@ export default function ImageActions({ generation }: ImageActionsProps) {
 
   return (
     <div className="absolute bottom-2 right-2 flex items-center gap-2">
-      <Button onClick={handleDownload} size="icon" variant="ghost" className="w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full">
-        <Download size={16} />
-      </Button>
-      <Button onClick={handleReuse} size="icon" variant="ghost" className="w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full">
-        <Repeat size={16} />
-      </Button>
+      <Button onClick={handleDownload} size="icon" variant="ghost" className="w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full"><Download size={16} /></Button>
+      <Button onClick={handleReuse} size="icon" variant="ghost" className="w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full"><Repeat size={16} /></Button>
       <Button onClick={handleTogglePublish} disabled={isPublishing} size="icon" variant="ghost" className="w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full">
-        {isPublishing ? (
-          <Loader2 size={16} className="animate-spin" />
-        ) : isCurrentlyPublic ? (
-          <Eye size={16} className="text-green-400" />
-        ) : (
-          <EyeOff size={16} className="text-gray-400" />
-        )}
+        {isPublishing ? <Loader2 size={16} className="animate-spin" /> : isCurrentlyPublic ? <Eye size={16} className="text-green-400" /> : <EyeOff size={16} className="text-gray-400" />}
       </Button>
     </div>
   );
