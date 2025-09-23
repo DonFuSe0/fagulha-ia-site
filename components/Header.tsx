@@ -14,7 +14,7 @@ export default async function Header() {
     <header className="sticky top-0 z-50 bg-surface/60 backdrop-blur-xl border-b border-primary/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          <a href="/dashboard" className="text-3xl font-bold text-white">
+          <a href="/" className="text-3xl font-bold text-white">
             <span className="text-primary">Fagulha</span>.ia
           </a>
           

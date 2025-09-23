@@ -1,17 +1,11 @@
-import Header from '@/components/Header';
-
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Este layout é um Server Component. Ele pode renderizar o Header (que também é Server Component)
-  // e, abaixo dele, renderizar o {children}, que pode ser um Client Component (como nossa página de tokens).
-  return (
-    <div>
-      <Header />
-      {/* A tag <main> agora será responsabilidade de cada página filha */}
-      {children}
-    </div>
-  );
+  // O Header já é renderizado pelo layout raiz (app/layout.tsx).
+  // Este layout agora apenas serve para agrupar as rotas.
+  // Podemos até remover este arquivo, mas mantê-lo pode ser útil para futuras customizações do dashboard.
+  // Por enquanto, ele apenas passa o conteúdo adiante.
+  return <>{children}</>;
 }
