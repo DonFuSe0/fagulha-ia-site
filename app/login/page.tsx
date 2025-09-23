@@ -26,12 +26,11 @@ export default function LoginPage() {
 
     if (error) {
       toast.error(error.message);
+      setIsSubmitting(false);
     } else {
-      toast.success('Cadastro realizado! Verifique seu e-mail para confirmar.');
-      setEmail('');
-      setPassword('');
+      // Redireciona para a página de confirmação
+      router.push('/confirm');
     }
-    setIsSubmitting(false);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
