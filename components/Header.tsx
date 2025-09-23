@@ -2,7 +2,7 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import UserMenu from './UserMenu';
-import { Database } from '@/lib/database.types'; // Verifique se o caminho para seus tipos está correto
+import { Database } from '@/lib/database.types';
 
 export default async function Header() {
   const supabase = createServerComponentClient<Database>({ cookies });
@@ -13,9 +13,10 @@ export default async function Header() {
 
   let userProfile = null;
   if (session) {
+    // Busca os dados mais recentes do perfil diretamente do banco de dados no servidor.
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('token_balance, avatar_url, username') // Adicionamos o username aqui
+      .select('token_balance, avatar_url, username') // Incluímos o username para exibir no menu
       .eq('id', session.user.id)
       .single();
     userProfile = profileData;
@@ -28,11 +29,13 @@ export default async function Header() {
       </Link>
       <nav>
         {session && userProfile ? (
+          // Se o usuário está logado, renderiza o menu com os dados corretos.
           <UserMenu
             user={session.user}
             profile={userProfile}
           />
         ) : (
+          // Se não está logado, mostra o botão de Login.
           <Link
             href="/login"
             className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
