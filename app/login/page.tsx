@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from '../../components/ui/button'; // CAMINHO RELATIVO
+import { Input } from '../../components/ui/input';   // CAMINHO RELATIVO
+import { Label } from '../../components/ui/label';   // CAMINHO RELATIVO
 import { toast } from 'react-hot-toast';
 import { Chrome } from 'lucide-react';
 
+// ... (resto do código idêntico ao anterior)
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
