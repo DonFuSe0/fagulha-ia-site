@@ -4,12 +4,11 @@ import { Database } from '@/lib/database.types';
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import PublishButton from './PublishButton';
+// import PublishButton from './PublishButton'; // <-- REMOVIDO
 import { Button } from '@/components/ui/button';
 import { Clock, Loader2 } from 'lucide-react';
-import ImageActions from './ImageActions'; // Importando o novo componente de ações
+import ImageActions from './ImageActions';
 
-// Função auxiliar para calcular a diferença de dias
 function getDaysRemaining(expiresAt: string): number {
   const expirationDate = new Date(expiresAt);
   const now = new Date();
@@ -63,10 +62,9 @@ export default async function GalleryPage() {
                       <span>Expira em {daysLeft}d</span>
                     </div>
 
-                    <PublishButton generationId={gen.id} isPublic={gen.is_public} />
+                    {/* <PublishButton ... /> */} {/* <-- REMOVIDO */}
                     
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                      {/* Componente de Ações adicionado aqui */}
                       <ImageActions generation={gen} />
                     </div>
                   </>
