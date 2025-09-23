@@ -7,8 +7,7 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    // A CORREÇÃO ESTÁ AQUI: "extend" em vez de "extends"
-    extend: {
+    extend: { // A chave correta "extend"
       colors: {
         background: '#0a090f',
         surface: '#181622',
