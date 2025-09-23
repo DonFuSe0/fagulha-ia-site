@@ -1,70 +1,41 @@
-'use client';
+'use client'; // Este componente precisa ser do cliente para ter interatividade (menu dropdown)
 
-import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
-import type { User } from '@supabase/supabase-js';
+import { User } from '@supabase/supabase-js';
 import Image from 'next/image';
+import Link from 'next/link';
+// Supondo que você tenha um ícone de moeda/token
+import { Coins } from 'lucide-react'; 
 
-export default function UserMenu({ user }: { user: User }) {
-  const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
-  const avatarUrl = user.user_metadata?.avatar_url;
-
-  const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/login');
-    router.refresh(); // Força a atualização da rota para limpar o estado
+// Definimos os tipos de dados que o componente espera receber
+interface UserMenuProps {
+  user: User;
+  profile: {
+    token_balance: number | null;
+    avatar_url: string | null;
   };
+}
+
+export default function UserMenu({ user, profile }: UserMenuProps) {
+  // Lógica do menu dropdown (abrir/fechar) ficaria aqui
 
   return (
-    <div className="relative">
-      <button 
-        onClick={() => setIsOpen(!isOpen)} 
-        className="w-12 h-12 rounded-full cursor-pointer overflow-hidden border-2 border-primary/50 hover:border-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-      >
-        {avatarUrl ? (
-          <Image src={avatarUrl} alt="Avatar do usuário" width={48} height={48} className="object-cover" />
-        ) : (
-          <div className="w-full h-full bg-surface flex items-center justify-center text-primary font-bold text-xl">
-            {user.email?.[0].toUpperCase()}
-          </div>
-        )}
-      </button>
-
-      {isOpen && (
-        <div 
-          className="absolute right-0 mt-2 w-64 bg-surface rounded-lg shadow-2xl shadow-primary/10 border border-primary/20 py-2 z-50 animate-fade-in-down"
-        >
-          <div className="px-4 py-3 border-b border-primary/10">
-            <p className="text-sm text-text-secondary">Logado como</p>
-            <p className="text-base font-medium text-text-main truncate">{user.email}</p>
-          </div>
-          <div className="py-2">
-            <a href="/dashboard" className="block px-4 py-2 text-text-main hover:bg-primary/20 rounded-md mx-2 transition-colors">
-              Dashboard
-            </a>
-            <a href="/gallery" className="block px-4 py-2 text-text-main hover:bg-primary/20 rounded-md mx-2 transition-colors">
-              Minha Galeria
-            </a>
-            <a href="/profile" className="block px-4 py-2 text-text-main hover:bg-primary/20 rounded-md mx-2 transition-colors">
-              Meu Perfil
-            </a>
-            <a href="/tokens" className="block px-4 py-2 text-text-main hover:bg-primary/20 rounded-md mx-2 transition-colors">
-              Comprar Tokens
-            </a>
-          </div>
-          <div className="border-t border-primary/10 py-2">
-            <button 
-              onClick={handleSignOut} 
-              className="w-full text-left block px-4 py-2 text-red-400 hover:bg-red-500/20 rounded-md mx-2 transition-colors"
-            >
-              Sair
-            </button>
-          </div>
-        </div>
-      )}
+    <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 bg-gray-800/50 py-1.5 px-3 rounded-full">
+        <Coins className="w-5 h-5 text-yellow-400" />
+        <span className="font-bold text-white">{profile.token_balance ?? 0}</span>
+      </div>
+      
+      {/* Lógica do Dropdown aqui */}
+      <div className="relative">
+          <Image
+            src={profile.avatar_url || `https://api.dicebear.com/8.x/bottts/svg?seed=${user.id}`}
+            alt="Avatar do usuário"
+            width={40}
+            height={40}
+            className="rounded-full cursor-pointer"
+          />
+          {/* Aqui entraria o menu dropdown com links para /profile, /gallery e o botão de Logout */}
+      </div>
     </div>
-  );
+   );
 }
