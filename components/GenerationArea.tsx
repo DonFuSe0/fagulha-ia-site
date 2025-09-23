@@ -2,16 +2,17 @@
 
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { Database } from '@/lib/database.types';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
+import { Database } from '../lib/database.types'; // CAMINHO RELATIVO
+import { Button } from './ui/button';             // CAMINHO RELATIVO
+import { Textarea } from './ui/textarea';         // CAMINHO RELATIVO
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'; // CAMINHO RELATIVO
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'; // CAMINHO RELATIVO
+import { Label } from './ui/label';               // CAMINHO RELATIVO
+import { Slider } from './ui/slider';             // CAMINHO RELATIVO
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 
+// ... (resto do código idêntico ao anterior)
 type Model = Database['public']['Tables']['models']['Row'];
 type Style = Database['public']['Tables']['styles']['Row'];
 
