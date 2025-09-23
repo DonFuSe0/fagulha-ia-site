@@ -18,11 +18,9 @@ export default function ImageActions({ generation }: ImageActionsProps) {
   const router = useRouter();
   const supabase = createClientComponentClient();
 
-  // Estado para a lógica de publicação
   const [isCurrentlyPublic, setIsCurrentlyPublic] = useState(generation.is_public);
   const [isPublishing, setIsPublishing] = useState(false);
 
-  // Função para baixar a imagem
   const handleDownload = async () => {
     if (!generation.image_url) return;
     const toastId = toast.loading('Preparando download...');
@@ -44,12 +42,11 @@ export default function ImageActions({ generation }: ImageActionsProps) {
     }
   };
 
-  // Função para reutilizar as configurações
   const handleReuse = () => {
     const params = {
       modelId: generation.model_id,
       styleId: generation.style_id,
-      prompt: generation.prompt,
+      prompt: generation.original_prompt || generation.prompt, // Prioriza o prompt original
       negativePrompt: generation.negative_prompt,
       resolution: generation.resolution,
       steps: generation.steps,
@@ -58,7 +55,6 @@ export default function ImageActions({ generation }: ImageActionsProps) {
     router.push('/dashboard');
   };
 
-  // Função para alternar o status de publicação (movida do PublishButton)
   const handleTogglePublish = async () => {
     setIsPublishing(true);
     const newStatus = !isCurrentlyPublic;
@@ -80,17 +76,12 @@ export default function ImageActions({ generation }: ImageActionsProps) {
 
   return (
     <div className="absolute bottom-2 right-2 flex items-center gap-2">
-      {/* Botão de Download */}
       <Button onClick={handleDownload} size="icon" variant="ghost" className="w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full">
         <Download size={16} />
       </Button>
-      
-      {/* Botão de Reutilizar */}
       <Button onClick={handleReuse} size="icon" variant="ghost" className="w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full">
         <Repeat size={16} />
       </Button>
-
-      {/* Botão de Publicar/Privar com Ícone de Olho */}
       <Button onClick={handleTogglePublish} disabled={isPublishing} size="icon" variant="ghost" className="w-8 h-8 bg-black/50 hover:bg-black/70 text-white rounded-full">
         {isPublishing ? (
           <Loader2 size={16} className="animate-spin" />
