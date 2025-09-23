@@ -30,7 +30,6 @@ export default function LoginPage() {
     const { error } = await action(options);
 
     if (error) {
-      // *** A MUDANÇA ESTÁ AQUI ***
       if (error.message.includes('violates unique constraint "profiles_username_key"')) {
         toast.error('Este nick já está em uso. Por favor, escolha outro.');
       } else if (error.message.includes('User already registered')) {
