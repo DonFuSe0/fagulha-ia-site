@@ -1,8 +1,8 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
-import UserMenu from './UserMenu'; // O componente que mostra o avatar e o menu
-import { Database } from '@/lib/database.types'; // Importe seus tipos de DB
+import UserMenu from './UserMenu';
+import { Database } from '@/lib/database.types'; // Verifique se o caminho para seus tipos está correto
 
 export default async function Header() {
   const supabase = createServerComponentClient<Database>({ cookies });
@@ -13,11 +13,9 @@ export default async function Header() {
 
   let userProfile = null;
   if (session) {
-    // Se o usuário está logado, buscamos o perfil dele diretamente do banco de dados.
-    // Isso garante que o saldo de tokens esteja sempre atualizado.
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('token_balance, avatar_url')
+      .select('token_balance, avatar_url, username') // Adicionamos o username aqui
       .eq('id', session.user.id)
       .single();
     userProfile = profileData;
@@ -30,16 +28,11 @@ export default async function Header() {
       </Link>
       <nav>
         {session && userProfile ? (
-          // Passamos os dados atualizados para o componente do menu
           <UserMenu
             user={session.user}
-            profile={{
-              token_balance: userProfile.token_balance,
-              avatar_url: userProfile.avatar_url,
-            }}
+            profile={userProfile}
           />
         ) : (
-          // Se não há sessão, mostramos o botão de Login
           <Link
             href="/login"
             className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
