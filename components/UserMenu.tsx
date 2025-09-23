@@ -1,11 +1,8 @@
 'use client';
 
-import { User } from '@supabase/supabase-js';
-import Image from 'next/image';
-import Link from 'next/link';
-import { Coins, LogOut, User as UserIcon, GalleryHorizontal } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,70 +11,65 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-
-interface ProfileData {
-  token_balance: number | null;
-  avatar_url: string | null;
-  username: string | null;
-}
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 
 interface UserMenuProps {
-  user: User;
-  profile: ProfileData;
+  user: {
+    id: string;
+    email?: string;
+    user_metadata: {
+      avatar_url?: string;
+      full_name?: string;
+      username?: string;
+    };
+  } | null;
 }
 
-export default function UserMenu({ user, profile }: UserMenuProps) {
+export default function UserMenu({ user }: UserMenuProps) {
   const router = useRouter();
   const supabase = createClientComponentClient();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push('/'); // Redireciona para a home após o logout
+    router.push('/');
     router.refresh();
   };
 
-  return (
-    <div className="flex items-center gap-4">
-      <div className="flex items-center gap-2 bg-gray-800/50 py-1.5 px-3 rounded-full">
-        <Coins className="w-5 h-5 text-yellow-400" />
-        <span className="font-bold text-white">{profile.token_balance ?? 0}</span>
-      </div>
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <div className="flex items-center gap-3 cursor-pointer">
-            <span className="text-white font-medium hidden sm:inline">{profile.username || user.email?.split('@')[0]}</span>
-            <Image
-              src={profile.avatar_url || `https://api.dicebear.com/8.x/bottts/svg?seed=${user.id}`}
-              alt="Avatar do usuário"
-              width={40}
-              height={40}
-              className="rounded-full border-2 border-purple-500"
-            />
+  const displayName = user?.user_metadata.username || user?.user_metadata.full_name || 'Usuário';
+  const avatarUrl = user?.user_metadata.avatar_url;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={avatarUrl} alt={displayName} />
+            <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{user?.user_metadata.full_name || 'Bem-vindo'}</p>
+            <p className="text-xs leading-none text-muted-foreground">@{displayName}</p>
           </div>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end">
-          <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/profile">
-              <UserIcon className="mr-2 h-4 w-4" />
-              <span>Perfil</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/gallery">
-              <GalleryHorizontal className="mr-2 h-4 w-4" />
-              <span>Minha Galeria</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 focus:text-red-400">
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Sair</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-   );
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild><Link href="/dashboard">Dashboard</Link></DropdownMenuItem>
+        <DropdownMenuItem asChild><Link href="/gallery">Minha Galeria</Link></DropdownMenuItem>
+        <DropdownMenuItem asChild><Link href="/tokens">Comprar Tokens</Link></DropdownMenuItem>
+        <DropdownMenuItem asChild><Link href="/profile">Configurações</Link></DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleLogout}>
+          Sair
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
