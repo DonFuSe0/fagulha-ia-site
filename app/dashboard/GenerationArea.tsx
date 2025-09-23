@@ -30,39 +30,49 @@ export default function GenerationArea() {
   const [steps, setSteps] = useState(25);
   
   const [loading, setLoading] = useState(false);
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
 
   useEffect(() => {
     const fetchOptions = async () => {
       const { data: modelsData, error: modelsError } = await supabase.from('models').select('*').eq('is_active', true);
-      if (modelsError) {
-        toast.error('Erro ao carregar os modelos de IA.');
-        return;
-      }
-
+      if (modelsError) toast.error('Erro ao carregar os modelos de IA.');
+      
       const { data: stylesData, error: stylesError } = await supabase.from('styles').select('*').eq('is_active', true);
-      if (stylesError) {
-        toast.error('Erro ao carregar os estilos.');
-        return;
-      }
+      if (stylesError) toast.error('Erro ao carregar os estilos.');
 
       if (modelsData) {
         setModels(modelsData);
-        if (modelsData.length > 0) {
+        if (modelsData.length > 0 && !selectedModelId) {
           setSelectedModelId(modelsData[0].id);
         }
       }
       if (stylesData) setStyles(stylesData);
+      setOptionsLoaded(true); // Marca que as opções foram carregadas
     };
     fetchOptions();
-  }, [supabase]);
+  }, [supabase, selectedModelId]);
 
   useEffect(() => {
+    // Só executa a lógica de reutilização DEPOIS que as opções de modelos/estilos foram carregadas
+    if (!optionsLoaded) return;
+
     const reuseParams = localStorage.getItem('reuseParams');
     if (reuseParams) {
       try {
         const params = JSON.parse(reuseParams);
-        if (params.modelId) setSelectedModelId(params.modelId);
-        if (params.styleId) setSelectedStyleId(params.styleId);
+        
+        // *** A MUDANÇA ESTÁ AQUI ***
+        // Valida se o modelId dos parâmetros existe na lista de modelos carregados
+        if (params.modelId && models.some(m => m.id === params.modelId)) {
+          setSelectedModelId(params.modelId);
+        }
+        // Valida se o styleId dos parâmetros existe na lista de estilos carregados
+        if (params.styleId && styles.some(s => s.id === params.styleId)) {
+          setSelectedStyleId(params.styleId);
+        } else {
+          setSelectedStyleId('none'); // Garante um fallback
+        }
+
         if (params.prompt) setPrompt(params.prompt);
         if (params.negativePrompt) setNegativePrompt(params.negativePrompt);
         if (params.resolution) setResolution(params.resolution);
@@ -75,7 +85,7 @@ export default function GenerationArea() {
         localStorage.removeItem('reuseParams');
       }
     }
-  }, []);
+  }, [optionsLoaded, models, styles]); // Adiciona dependências para re-executar se necessário
 
   const tokenCost = useMemo(() => {
     if (resolution === '512x512') return 1;
