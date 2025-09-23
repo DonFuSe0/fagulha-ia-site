@@ -1,0 +1,31 @@
+name: 'Build de Teste'
+
+on:
+  push:
+    branches:
+      - desenvolvimento # Este workflow só roda em pushes para a branch 'desenvolvimento'
+  pull_request:
+    branches:
+      - main # Também roda quando um Pull Request é aberto para a 'main'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 'Checkout do Código'
+        uses: actions/checkout@v4
+
+      - name: 'Configurar Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Usa a mesma versão do ambiente da Vercel/Netlify
+
+      - name: 'Instalar Dependências'
+        run: npm install
+
+      - name: 'Executar Build'
+        run: npm run build
+
+      - name: 'Verificação de Sucesso'
+        run: echo "✅ Build concluído com sucesso!"
