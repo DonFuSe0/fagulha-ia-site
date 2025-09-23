@@ -6,8 +6,9 @@ import Link from 'next/link';
 import { fetchGenerations } from './actions';
 import { Loader2 } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
-import { Button } from '@/components/ui/button';
+import { Button } from '../../components/ui/button'; // CAMINHO RELATIVO
 
+// ... (resto do código idêntico ao anterior)
 type Generation = Awaited<ReturnType<typeof fetchGenerations>>[0];
 
 export default function ExplorePage() {
