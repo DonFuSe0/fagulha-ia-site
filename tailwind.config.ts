@@ -9,23 +9,36 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Nossa paleta de cores
-        background: '#0a090f', // Um preto quase puro, com um toque de azul/roxo
-        surface: '#181622',    // Cor para "superfícies" como cards e modais
-        primary: '#8A2BE2',    // Roxo principal (BlueViolet)
-        'primary-hover': '#9932CC', // Roxo mais vibrante para hover (MediumOrchid)
-        secondary: '#4A00E0',   // Um roxo/azul mais profundo para gradientes
-        accent: '#C026D3',      // Roxo/fúcsia para acentos e destaques
-        'text-main': '#E0E0E0', // Texto principal (branco suave)
-        'text-secondary': '#A0A0A0', // Texto secundário (cinza claro)
+        background: '#0a090f',
+        surface: '#181622',
+        primary: '#8A2BE2',
+        'primary-hover': '#9932CC',
+        secondary: '#4A00E0',
+        accent: '#C026D3',
+        'text-main': '#E0E0E0',
+        'text-secondary': '#A0A0A0',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-in-out',
+        'fade-in-down': 'fadeInDown 0.3s ease-out',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        fadeInDown: {
+          '0%': { opacity: '0', transform: 'translateY(-10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        }
       }
     },
   },
   plugins: [
-    require('@tailwindcss/forms'), // Plugin para estilizar formulários mais facilmente
+    require('@tailwindcss/forms'),
   ],
 };
 export default config;
