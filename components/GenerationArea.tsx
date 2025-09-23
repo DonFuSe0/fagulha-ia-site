@@ -12,8 +12,6 @@ import { Slider } from '@/components/ui/slider';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 
-// ... (O resto do arquivo está correto e não precisa de alterações, mas para seguir a regra, aqui está ele completo)
-
 type Model = Database['public']['Tables']['models']['Row'];
 type Style = Database['public']['Tables']['styles']['Row'];
 
@@ -55,7 +53,7 @@ function GenerationAreaContent() {
     const promptParam = searchParams.get('prompt');
     const negativePromptParam = searchParams.get('negativePrompt');
     const resolutionParam = searchParams.get('resolution');
-    const stepsParam = search_params.get('steps');
+    const stepsParam = searchParams.get('steps');
 
     if (modelIdParam || styleIdParam || promptParam) {
       if (modelIdParam && models.some(m => m.id === modelIdParam)) setSelectedModelId(modelIdParam);
@@ -137,7 +135,7 @@ function GenerationAreaContent() {
 
 export default function GenerationArea() {
   return (
-    <Suspense fallback={<div>Carregando...</div>}>
+    <Suspense fallback={<div className="w-full max-w-2xl mx-auto text-center">Carregando área de criação...</div>}>
       <GenerationAreaContent />
     </Suspense>
   );

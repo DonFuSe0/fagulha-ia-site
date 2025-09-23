@@ -1,4 +1,4 @@
-import GenerationArea from "@/app/dashboard/GenerationArea"; // Usando o atalho para ser explícito
+import GenerationArea from "@/components/GenerationArea"; // Caminho corrigido
 
 export default function DashboardPage() {
   return (
