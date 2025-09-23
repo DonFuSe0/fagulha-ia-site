@@ -1,37 +1,29 @@
-'use client'; // 1. Transformar em Componente Cliente
+'use client';
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { fetchGenerations } from './actions'; // 2. Importar a Server Action
+import { fetchGenerations } from './actions';
 import { Loader2 } from 'lucide-react';
+import { useInView } from 'react-intersection-observer';
 import { Button } from '@/components/ui/button';
 
-// Definindo o tipo para as gerações, para segurança de tipo.
 type Generation = Awaited<ReturnType<typeof fetchGenerations>>[0];
 
 export default function ExplorePage() {
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [page, setPage] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  // 3. Efeito para carregar as imagens iniciais
-  useEffect(() => {
-    const loadInitialGenerations = async () => {
-      setIsLoading(true);
-      const initialGenerations = await fetchGenerations(0);
-      setGenerations(initialGenerations);
-      if (initialGenerations.length === 0) {
-        setHasMore(false);
-      }
-      setIsLoading(false);
-    };
-    loadInitialGenerations();
-  }, []);
+  const { ref, inView } = useInView({
+    threshold: 0,
+    triggerOnce: false,
+  });
 
-  // 4. Função para carregar mais imagens
   const loadMoreGenerations = async () => {
+    if (isLoading) return;
+    
     setIsLoading(true);
     const nextPage = page + 1;
     const newGenerations = await fetchGenerations(nextPage);
@@ -40,10 +32,29 @@ export default function ExplorePage() {
       setGenerations(prev => [...prev, ...newGenerations]);
       setPage(nextPage);
     } else {
-      setHasMore(false); // Não há mais imagens para carregar
+      setHasMore(false);
     }
     setIsLoading(false);
   };
+
+  useEffect(() => {
+    const loadInitial = async () => {
+      setIsLoading(true);
+      const initialGenerations = await fetchGenerations(0);
+      setGenerations(initialGenerations);
+      if (initialGenerations.length === 0) {
+        setHasMore(false);
+      }
+      setIsLoading(false);
+    };
+    loadInitial();
+  }, []);
+
+  useEffect(() => {
+    if (inView && hasMore && !isLoading) {
+      loadMoreGenerations();
+    }
+  }, [inView, hasMore, isLoading]);
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4">
@@ -52,7 +63,6 @@ export default function ExplorePage() {
         <p className="text-lg text-gray-400 mt-2">Inspire-se com as imagens geradas por outros usuários.</p>
       </div>
 
-      {/* Galeria de Imagens */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {generations.map((gen) => (
           <div key={gen.id} className="group relative aspect-square rounded-lg overflow-hidden bg-gray-900">
@@ -70,29 +80,25 @@ export default function ExplorePage() {
         ))}
       </div>
 
-      {/* Botão "Carregar Mais" e Indicador de Loading */}
-      <div className="text-center mt-12">
-        {isLoading && (
-          <div className="flex justify-center items-center">
+      <div className="text-center mt-12 h-10">
+        {hasMore ? (
+          <div ref={ref} className="flex justify-center items-center">
             <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
           </div>
-        )}
-        {!isLoading && hasMore && generations.length > 0 && (
-          <Button onClick={loadMoreGenerations} variant="outline" className="bg-gray-800 hover:bg-gray-700 border-gray-600">
-            Carregar Mais
-          </Button>
-        )}
-        {!hasMore && generations.length > 0 && (
+        ) : generations.length > 0 ? (
           <p className="text-gray-500">Você chegou ao fim!</p>
-        )}
-        {!isLoading && generations.length === 0 && (
-           <div className="text-center py-16">
-             <h2 className="text-2xl font-bold text-white">Nenhuma Imagem Pública Ainda</h2>
-             <p className="text-gray-500 mt-2">Seja o primeiro a publicar! Gere uma imagem e a torne pública em sua galeria.</p>
-             <Link href="/dashboard" className="mt-4 inline-block bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">
-               Começar a Criar
-             </Link>
-           </div>
+        ) : (
+          !isLoading && (
+            <div className="text-center py-16">
+              <h2 className="text-2xl font-bold text-white">Nenhuma Imagem Pública Ainda</h2>
+              <p className="text-gray-500 mt-2">Seja o primeiro a publicar! Gere uma imagem e a torne pública em sua galeria.</p>
+              <Button asChild className="mt-4 bg-purple-600 hover:bg-purple-700">
+                <Link href="/dashboard">
+                  Começar a Criar
+                </Link>
+              </Button>
+            </div>
+          )
         )}
       </div>
     </div>
