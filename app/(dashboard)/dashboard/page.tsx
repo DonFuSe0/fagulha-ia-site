@@ -1,4 +1,4 @@
-import GenerationArea from "../GenerationArea"; // Importa o NOVO componente do diretório pai
+import GenerationArea from "@/app/dashboard/GenerationArea"; // Usando o atalho para ser explícito
 
 export default function DashboardPage() {
   return (
@@ -7,9 +7,6 @@ export default function DashboardPage() {
         <h1 className="text-4xl font-extrabold text-white tracking-tight">Área de Criação</h1>
         <p className="text-lg text-gray-400 mt-2">Dê vida às suas ideias. Descreva o que você imagina.</p>
       </div>
-
-      {/* A importação agora usa um caminho relativo '../' para sair da pasta (dashboard) 
-          e encontrar o componente na pasta /app. */}
       <GenerationArea />
     </div>
   );
