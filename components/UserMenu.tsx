@@ -42,8 +42,14 @@ export default function UserMenu({ user }: { user: User }) {
             <p className="text-base font-medium text-text-main truncate">{user.email}</p>
           </div>
           <div className="py-2">
+            <a href="/dashboard" className="block px-4 py-2 text-text-main hover:bg-primary/20 rounded-md mx-2 transition-colors">
+              Dashboard
+            </a>
             <a href="/gallery" className="block px-4 py-2 text-text-main hover:bg-primary/20 rounded-md mx-2 transition-colors">
               Minha Galeria
+            </a>
+            <a href="/profile" className="block px-4 py-2 text-text-main hover:bg-primary/20 rounded-md mx-2 transition-colors">
+              Meu Perfil
             </a>
             <a href="/tokens" className="block px-4 py-2 text-text-main hover:bg-primary/20 rounded-md mx-2 transition-colors">
               Comprar Tokens
