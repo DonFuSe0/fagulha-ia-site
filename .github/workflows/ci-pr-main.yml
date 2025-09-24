@@ -34,23 +34,20 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Install deps
-        run: pnpm install --frozen-lockfile
+      # 👇 aqui está a mudança-chave
+      - name: Install deps (no frozen lockfile)
+        run: pnpm install --no-frozen-lockfile
 
-      # Opcional: se você usa lint (recomendo)
       - name: Lint
         run: |
           if pnpm -s run | grep -q "^lint"; then pnpm run lint; else echo "No lint script"; fi
 
-      # Opcional: checagem de tipos
       - name: Typecheck
         run: |
           if pnpm -s run | grep -q "^typecheck"; then pnpm run typecheck; else echo "No typecheck script"; fi
 
-      # Build: garante que compila antes do merge/deploy
       - name: Build
         env:
-          # Se quiser permitir build em PRs sem secrets, comente/ajuste abaixo
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
@@ -58,7 +55,6 @@ jobs:
           COMFYUI_WEBHOOK_SECRET: ${{ vars.COMFYUI_WEBHOOK_SECRET }}
         run: pnpm run build
 
-      # Testes (placeholder): mantenha se tiver testes; caso não tenha, pode remover esta etapa
       - name: Test
         run: |
           if pnpm -s run | grep -q "^test"; then pnpm run test -- --ci --reporters=default; else echo "No test script"; fi
