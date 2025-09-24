@@ -34,17 +34,11 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
-      # 👇 Garante @supabase/ssr no ambiente (sem alterar package.json)
-      - name: Ensure @supabase/ssr available
-        run: pnpm install @supabase/ssr@0.5.1
-
       - name: Install deps (no frozen lockfile)
         run: pnpm install --no-frozen-lockfile
 
-      - name: Verify deps
-        run: |
-          pnpm list @supabase/ssr || true
-          pnpm list @supabase/supabase-js || true
+      - name: Validate package.json (JSON)
+        run: node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json is valid JSON')"
 
       - name: Lint
         run: |
