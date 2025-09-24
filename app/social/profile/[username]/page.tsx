@@ -40,16 +40,12 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     notFound()
   }
 
-  // Get follower/following counts
-  const { count: followersCount } = await supabase
-    .from("follows")
-    .select("*", { count: "exact", head: true })
-    .eq("following_id", profile.id)
-
-  const { count: followingCount } = await supabase
-    .from("follows")
-    .select("*", { count: "exact", head: true })
-    .eq("follower_id", profile.id)
+  // Get user stats
+  const [{ count: postsCount }, { count: followersCount }, { count: followingCount }] = await Promise.all([
+    supabase.from("posts").select("*", { count: "exact", head: true }).eq("author_id", profile.id),
+    supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", profile.id),
+    supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", profile.id),
+  ])
 
   // Check if current user follows this profile
   const { data: isFollowing } = await supabase
@@ -59,7 +55,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     .eq("following_id", profile.id)
     .single()
 
-  // Get user's posts
+  // Get user posts
   const { data: posts } = await supabase
     .from("posts")
     .select(`
@@ -124,14 +120,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   {profile.website && (
                     <div className="flex items-center gap-2">
                       <LinkIcon className="w-4 h-4" />
-                      <a
-                        href={profile.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-fagulha-primary hover:underline"
-                      >
+                      <Link href={profile.website} className="hover:text-foreground transition-colors">
                         {profile.website.replace(/^https?:\/\//, "")}
-                      </a>
+                      </Link>
                     </div>
                   )}
 
@@ -144,14 +135,25 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   </div>
                 </div>
 
+                {/* Stats */}
                 <div className="flex gap-6">
-                  <Link href={`/social/profile/${username}/following`} className="hover:underline">
-                    <span className="font-bold">{followingCount || 0}</span>
-                    <span className="text-muted-foreground ml-1">Following</span>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gradient-fagulha">{postsCount || 0}</div>
+                    <div className="text-sm text-muted-foreground">Posts</div>
+                  </div>
+                  <Link
+                    href={`/social/profile/${username}/followers`}
+                    className="text-center hover:bg-muted/20 rounded-lg p-2 transition-colors"
+                  >
+                    <div className="text-2xl font-bold text-gradient-fagulha">{followersCount || 0}</div>
+                    <div className="text-sm text-muted-foreground">Followers</div>
                   </Link>
-                  <Link href={`/social/profile/${username}/followers`} className="hover:underline">
-                    <span className="font-bold">{followersCount || 0}</span>
-                    <span className="text-muted-foreground ml-1">Followers</span>
+                  <Link
+                    href={`/social/profile/${username}/following`}
+                    className="text-center hover:bg-muted/20 rounded-lg p-2 transition-colors"
+                  >
+                    <div className="text-2xl font-bold text-gradient-fagulha">{followingCount || 0}</div>
+                    <div className="text-sm text-muted-foreground">Following</div>
                   </Link>
                 </div>
               </div>
@@ -159,13 +161,12 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           </CardContent>
         </Card>
 
-        {/* Profile Tabs */}
+        {/* Content Tabs */}
         <Tabs defaultValue="posts" className="w-full">
           <TabsList className="grid w-full grid-cols-3 glass">
             <TabsTrigger value="posts">Posts</TabsTrigger>
             <TabsTrigger value="media">Media</TabsTrigger>
-            {isOwnProfile && <TabsTrigger value="bookmarks">Bookmarks</TabsTrigger>}
-            {!isOwnProfile && <TabsTrigger value="likes">Likes</TabsTrigger>}
+            <TabsTrigger value="likes">Likes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="posts" className="space-y-6 mt-8">
@@ -183,15 +184,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           <TabsContent value="media" className="mt-8">
             <Card className="glass">
               <CardContent className="p-12 text-center">
-                <p className="text-muted-foreground">Media posts will appear here</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="bookmarks" className="mt-8">
-            <Card className="glass">
-              <CardContent className="p-12 text-center">
-                <p className="text-muted-foreground">Bookmarked posts will appear here</p>
+                <p className="text-muted-foreground">Media posts coming soon</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -199,7 +192,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           <TabsContent value="likes" className="mt-8">
             <Card className="glass">
               <CardContent className="p-12 text-center">
-                <p className="text-muted-foreground">Liked posts will appear here</p>
+                <p className="text-muted-foreground">Liked posts coming soon</p>
               </CardContent>
             </Card>
           </TabsContent>

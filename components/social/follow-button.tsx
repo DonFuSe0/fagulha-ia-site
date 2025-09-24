@@ -14,29 +14,29 @@ interface FollowButtonProps {
 export function FollowButton({ targetUserId, isFollowing: initialIsFollowing, className }: FollowButtonProps) {
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing)
   const [isLoading, setIsLoading] = useState(false)
+  const supabase = createClient()
 
   const handleFollow = async () => {
     setIsLoading(true)
-    const supabase = createClient()
 
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return
+
       if (isFollowing) {
         // Unfollow
-        const { error } = await supabase.from("follows").delete().eq("following_id", targetUserId)
-
-        if (!error) {
-          setIsFollowing(false)
-        }
+        await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetUserId)
       } else {
         // Follow
-        const { error } = await supabase.from("follows").insert({
+        await supabase.from("follows").insert({
+          follower_id: user.id,
           following_id: targetUserId,
         })
-
-        if (!error) {
-          setIsFollowing(true)
-        }
       }
+
+      setIsFollowing(!isFollowing)
     } catch (error) {
       console.error("Error following/unfollowing:", error)
     } finally {
@@ -49,11 +49,9 @@ export function FollowButton({ targetUserId, isFollowing: initialIsFollowing, cl
       onClick={handleFollow}
       disabled={isLoading}
       variant={isFollowing ? "outline" : "default"}
-      className={`${isFollowing ? "" : "bg-gradient-fagulha"} ${className}`}
+      className={`${isFollowing ? "" : "bg-gradient-fagulha hover:opacity-90"} ${className}`}
     >
-      {isLoading ? (
-        "Loading..."
-      ) : isFollowing ? (
+      {isFollowing ? (
         <>
           <UserMinus className="w-4 h-4 mr-2" />
           Unfollow

@@ -20,22 +20,21 @@ interface ProfileEditFormProps {
 export function ProfileEditForm({ profile }: ProfileEditFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
-
   const [formData, setFormData] = useState({
-    display_name: profile?.display_name || "",
-    username: profile?.username || "",
-    bio: profile?.bio || "",
-    website: profile?.website || "",
-    location: profile?.location || "",
+    display_name: profile.display_name || "",
+    username: profile.username || "",
+    bio: profile.bio || "",
+    website: profile.website || "",
+    location: profile.location || "",
   })
+
+  const router = useRouter()
+  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
-
-    const supabase = createClient()
 
     try {
       // Update users table
@@ -83,7 +82,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
           {/* Avatar Section */}
           <div className="flex items-center gap-6">
             <Avatar className="w-24 h-24">
-              <AvatarImage src={profile?.avatar_url || profile?.profiles?.avatar_url} />
+              <AvatarImage src={profile.avatar_url || profile.profiles?.avatar_url} />
               <AvatarFallback className="text-xl bg-gradient-fagulha text-white">
                 {formData.display_name?.charAt(0) || formData.username?.charAt(0)}
               </AvatarFallback>
@@ -144,7 +143,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                 id="location"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="Your location"
+                placeholder="City, Country"
               />
             </div>
           </div>
@@ -152,7 +151,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
           {error && <p className="text-sm text-red-500">{error}</p>}
 
           <div className="flex gap-4">
-            <Button type="submit" disabled={isLoading} className="bg-gradient-fagulha">
+            <Button type="submit" disabled={isLoading} className="bg-gradient-fagulha hover:opacity-90">
               {isLoading ? "Saving..." : "Save Changes"}
             </Button>
             <Button type="button" variant="outline" onClick={() => router.back()}>

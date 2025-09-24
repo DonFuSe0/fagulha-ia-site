@@ -16,7 +16,7 @@ BEGIN
   )
   ON CONFLICT (id) DO NOTHING;
 
-  -- Create user entry
+  -- Create users entry
   INSERT INTO public.users (id, username, display_name)
   VALUES (
     new.id,
