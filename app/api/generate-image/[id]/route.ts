@@ -1,47 +1,25 @@
-import { createClient } from "@/lib/supabase/server"
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { id } = await params
-    const supabase = await createClient()
+    const { id } = params; // <- sem await
+    const supabase = await createClient();
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Get image record
-    const { data: image, error: imageError } = await supabase
+    const { data: image, error } = await supabase
       .from("images")
       .select("*")
       .eq("id", id)
-      .eq("user_id", user.id)
-      .single()
+      .single();
 
-    if (imageError || !image) {
-      return NextResponse.json({ error: "Image not found" }, { status: 404 })
-    }
+    if (error || !image) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    // Calculate progress based on status
-    let progress = 0
-    switch (image.status) {
-      case "pending":
-        progress = 10
-        break
-      case "processing":
-        progress = 50
-        break
-      case "completed":
-        progress = 100
-        break
-      case "failed":
-        progress = 0
-        break
-    }
+    const progress =
+      image.status === "completed" ? 100 :
+      image.status === "failed" ? 0 : 50;
 
     return NextResponse.json({
       id: image.id,
@@ -51,9 +29,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       thumbnail_url: image.thumbnail_url,
       error_message: image.error_message,
       generation_time: image.generation_time,
-    })
-  } catch (error) {
-    console.error("Error fetching image status:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    });
+  } catch (e: any) {
+    console.error("Error fetching image status:", e);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
