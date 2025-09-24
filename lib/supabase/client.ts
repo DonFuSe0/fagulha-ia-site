@@ -1,9 +1,10 @@
-// lib/supabase/client.ts
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { env } from "../env";
+"use client";
 
-export const supabaseBrowser = () =>
-  createClientComponentClient({
-    supabaseUrl: env.client.NEXT_PUBLIC_SUPABASE_URL,
-    supabaseKey: env.client.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  });
+import { createBrowserClient } from "@supabase/ssr";
+
+/** Client para o BROWSER com sessão real do usuário (usa cookies do navegador). */
+export function createClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return createBrowserClient(url, anon);
+}
