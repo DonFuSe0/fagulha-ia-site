@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { FagulhaLogo } from "@/components/fagulha-logo"
 import { ArrowLeft, User, Shield, Coins } from "lucide-react"
 import Link from "next/link"
+import { ChangePasswordDialog } from "@/components/change-password-dialog"
+import { DeleteAccountDialog } from "@/components/delete-account-dialog"
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -111,16 +113,8 @@ export default async function ProfilePage() {
                 <CardTitle className="text-sm">Segurança</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full justify-start bg-transparent">
-                  Alterar Senha
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start text-red-500 hover:text-red-600 bg-transparent"
-                >
-                  Excluir Conta
-                </Button>
+                <ChangePasswordDialog />
+                <DeleteAccountDialog />
               </CardContent>
             </Card>
           </div>

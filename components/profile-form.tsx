@@ -84,6 +84,11 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
 
       // Upload new avatar if selected
       if (avatarFile) {
+        const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
+        if (!allowedTypes.includes(avatarFile.type)) {
+          throw new Error("Tipo de arquivo não suportado. Use JPG, PNG, GIF ou WebP.")
+        }
+
         const uploadedUrl = await uploadAvatar(avatarFile)
         if (uploadedUrl) {
           avatarUrl = uploadedUrl
@@ -107,7 +112,9 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
       if (updateError) throw updateError
 
       setSuccess(true)
-      router.refresh()
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Erro ao atualizar perfil")
     } finally {
