@@ -11,16 +11,18 @@ export default function CheckEmailPage() {
             <div className="mx-auto w-16 h-16 bg-gradient-fagulha rounded-full flex items-center justify-center mb-4">
               <Mail className="h-8 w-8 text-white" />
             </div>
-            <CardTitle className="text-2xl font-bold">Check Your Email</CardTitle>
-            <CardDescription className="text-muted-foreground">We've sent you a confirmation link</CardDescription>
+            <CardTitle className="text-2xl font-bold">Verifique seu email</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Enviamos um link de confirmação para você
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Please check your email and click the confirmation link to activate your account.
+              Por favor, verifique seu email e clique no link de confirmação para ativar sua conta.
             </p>
             <div className="pt-4">
               <Link href="/auth/login" className="text-fagulha-primary hover:underline text-sm">
-                Back to sign in
+                Voltar para o login
               </Link>
             </div>
           </CardContent>

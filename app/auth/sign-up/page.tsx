@@ -28,13 +28,13 @@ export default function SignUpPage() {
     setError(null)
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match")
+      setError("As senhas não coincidem")
       setIsLoading(false)
       return
     }
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters")
+      setError("A senha deve ter pelo menos 6 caracteres")
       setIsLoading(false)
       return
     }
@@ -44,7 +44,7 @@ export default function SignUpPage() {
         email,
         password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/feed`,
+          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
           data: {
             username,
             display_name: displayName,
@@ -54,7 +54,7 @@ export default function SignUpPage() {
       if (error) throw error
       router.push("/auth/check-email")
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
+      setError(error instanceof Error ? error.message : "Ocorreu um erro")
     } finally {
       setIsLoading(false)
     }
@@ -65,18 +65,20 @@ export default function SignUpPage() {
       <div className="w-full max-w-md">
         <Card className="glass">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-gradient-fagulha">Join Fagulha</CardTitle>
-            <CardDescription className="text-muted-foreground">Create your account to start sharing</CardDescription>
+            <CardTitle className="text-3xl font-bold text-gradient-fagulha">Junte-se ao Fagulha</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Crie sua conta para começar a compartilhar
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignUp} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
+                  <Label htmlFor="username">Nome de usuário</Label>
                   <Input
                     id="username"
                     type="text"
-                    placeholder="username"
+                    placeholder="usuario"
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
@@ -84,11 +86,11 @@ export default function SignUpPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="displayName">Display Name</Label>
+                  <Label htmlFor="displayName">Nome de exibição</Label>
                   <Input
                     id="displayName"
                     type="text"
-                    placeholder="Your Name"
+                    placeholder="Seu Nome"
                     required
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
@@ -101,7 +103,7 @@ export default function SignUpPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="Digite seu email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -109,11 +111,11 @@ export default function SignUpPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Senha</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Create a password"
+                  placeholder="Crie uma senha"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -121,11 +123,11 @@ export default function SignUpPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">Confirmar senha</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
-                  placeholder="Confirm your password"
+                  placeholder="Confirme sua senha"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -142,13 +144,13 @@ export default function SignUpPage() {
                 className="w-full bg-gradient-fagulha hover:opacity-90 glow-fagulha-sm"
                 disabled={isLoading}
               >
-                {isLoading ? "Creating account..." : "Create Account"}
+                {isLoading ? "Criando conta..." : "Criar Conta"}
               </Button>
             </form>
             <div className="mt-6 text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
+              Já tem uma conta?{" "}
               <Link href="/auth/login" className="text-fagulha-primary hover:underline">
-                Sign in
+                Entre aqui
               </Link>
             </div>
           </CardContent>

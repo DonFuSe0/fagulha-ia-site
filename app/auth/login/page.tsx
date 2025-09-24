@@ -30,9 +30,9 @@ export default function LoginPage() {
         password,
       })
       if (error) throw error
-      router.push("/feed")
+      router.push("/dashboard")
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
+      setError(error instanceof Error ? error.message : "Ocorreu um erro")
     } finally {
       setIsLoading(false)
     }
@@ -43,8 +43,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <Card className="glass">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-gradient-fagulha">Welcome Back</CardTitle>
-            <CardDescription className="text-muted-foreground">Sign in to your Fagulha account</CardDescription>
+            <CardTitle className="text-3xl font-bold text-gradient-fagulha">Bem-vindo de volta</CardTitle>
+            <CardDescription className="text-muted-foreground">Entre na sua conta Fagulha</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-6">
@@ -53,7 +53,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="Digite seu email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -61,11 +61,11 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Senha</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder="Digite sua senha"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -82,13 +82,13 @@ export default function LoginPage() {
                 className="w-full bg-gradient-fagulha hover:opacity-90 glow-fagulha-sm"
                 disabled={isLoading}
               >
-                {isLoading ? "Signing in..." : "Sign In"}
+                {isLoading ? "Entrando..." : "Entrar"}
               </Button>
             </form>
             <div className="mt-6 text-center text-sm text-muted-foreground">
-              {"Don't have an account? "}
+              {"Não tem uma conta? "}
               <Link href="/auth/sign-up" className="text-fagulha-primary hover:underline">
-                Sign up
+                Cadastre-se
               </Link>
             </div>
           </CardContent>
