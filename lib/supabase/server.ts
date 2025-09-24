@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
 
-/** Client para o SERVER (rotas/pages), preservando cookies/sessão do usuário. */
+/** Client SERVER preservando cookies/sessão do usuário. */
 export async function createClient() {
   const cookieStore = cookies();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -18,4 +18,5 @@ export async function createClient() {
   return supabase;
 }
 
+// alias opcional para manter imports antigos, se existirem
 export const createServerClient = createClient;
