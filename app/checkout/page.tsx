@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { createServerClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { CheckoutForm } from "@/components/checkout-form"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -33,13 +33,14 @@ export default async function CheckoutPage({
 }: {
   searchParams: { plan?: string }
 }) {
-  const supabase = await createServerClient()
+  const supabase = await createClient()
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
+
   if (!user) {
-    redirect("/auth/login")
+    redirect("/auth/login?redirect=/checkout" + (searchParams.plan ? `?plan=${searchParams.plan}` : ""))
   }
 
   const planKey = searchParams.plan as keyof typeof plans

@@ -1,238 +1,158 @@
 "use client"
 
 import type React from "react"
+
+import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { FagulhaLogo } from "@/components/fagulha-logo"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 export default function SignUpPage() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    displayName: "",
-    nickname: "",
-    birthDate: "",
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [username, setUsername] = useState("")
+  const [displayName, setDisplayName] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
-
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
+    const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("As senhas não coincidem")
+    if (password !== confirmPassword) {
+      setError("Passwords do not match")
       setIsLoading(false)
       return
     }
 
-    if (formData.password.length < 6) {
-      setError("A senha deve ter pelo menos 6 caracteres")
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters")
       setIsLoading(false)
       return
     }
 
     try {
-      // Simulate signup process
-      console.log("[v0] Signup attempt:", { email: formData.email, displayName: formData.displayName })
-
-      // For now, just redirect to verify email page
-      setTimeout(() => {
-        router.push("/auth/verify-email")
-      }, 1000)
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/feed`,
+          data: {
+            username,
+            display_name: displayName,
+          },
+        },
+      })
+      if (error) throw error
+      router.push("/auth/check-email")
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Erro ao criar conta")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleGoogleSignUp = async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      console.log("[v0] Google signup attempt")
-      // For now, just show a message
-      setError("OAuth com Google será implementado em breve")
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Erro ao criar conta com Google")
+      setError(error instanceof Error ? error.message : "An error occurred")
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-md">
-        <div className="flex flex-col gap-6">
-          {/* Logo */}
-          <div className="text-center">
-            <FagulhaLogo size="lg" className="justify-center mb-2" />
-            <p className="text-muted-foreground">Crie sua conta e ganhe 20 tokens grátis</p>
-          </div>
-
-          <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl">Criar conta</CardTitle>
-              <CardDescription>Preencha os dados abaixo para começar</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="displayName">Nome completo</Label>
-                    <Input
-                      id="displayName"
-                      type="text"
-                      placeholder="Seu nome"
-                      required
-                      value={formData.displayName}
-                      onChange={(e) => handleInputChange("displayName", e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="nickname">Apelido</Label>
-                    <Input
-                      id="nickname"
-                      type="text"
-                      placeholder="@apelido"
-                      required
-                      value={formData.nickname}
-                      onChange={(e) => handleInputChange("nickname", e.target.value)}
-                    />
-                  </div>
-                </div>
-
+        <Card className="glass">
+          <CardHeader className="text-center">
+            <CardTitle className="text-3xl font-bold text-gradient-fagulha">Join Fagulha</CardTitle>
+            <CardDescription className="text-muted-foreground">Create your account to start sharing</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="birthDate">Data de nascimento</Label>
+                  <Label htmlFor="username">Username</Label>
                   <Input
-                    id="birthDate"
-                    type="date"
+                    id="username"
+                    type="text"
+                    placeholder="username"
                     required
-                    value={formData.birthDate}
-                    onChange={(e) => handleInputChange("birthDate", e.target.value)}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                    className="glass"
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="displayName">Display Name</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="seu@email.com"
+                    id="displayName"
+                    type="text"
+                    placeholder="Your Name"
                     required
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="glass"
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">Senha</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Mínimo 6 caracteres"
-                      required
-                      value={formData.password}
-                      onChange={(e) => handleInputChange("password", e.target.value)}
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 text-muted-foreground hover:text-foreground text-sm"
-                    >
-                      {showPassword ? "👁️" : "👁️‍🗨️"}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirmar senha</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Digite a senha novamente"
-                      required
-                      value={formData.confirmPassword}
-                      onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-3 text-muted-foreground hover:text-foreground text-sm"
-                    >
-                      {showConfirmPassword ? "👁️" : "👁️‍🗨️"}
-                    </button>
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="p-3 text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-md">
-                    {error}
-                  </div>
-                )}
-
-                <Button type="submit" className="w-full bg-fagulha hover:bg-fagulha/90" disabled={isLoading}>
-                  {isLoading ? "Criando conta..." : "Criar conta"}
-                </Button>
-              </form>
-
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">ou</span>
                 </div>
               </div>
-
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="glass"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Create a password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="glass"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Confirm your password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="glass"
+                />
+              </div>
+              {error && (
+                <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                  {error}
+                </div>
+              )}
               <Button
-                type="button"
-                variant="outline"
-                className="w-full bg-transparent"
-                onClick={handleGoogleSignUp}
+                type="submit"
+                className="w-full bg-gradient-fagulha hover:opacity-90 glow-fagulha-sm"
                 disabled={isLoading}
               >
-                <span className="mr-2">🔍</span>
-                Continuar com Google
+                {isLoading ? "Creating account..." : "Create Account"}
               </Button>
-
-              <div className="mt-6 text-center text-sm">
-                Já tem uma conta?{" "}
-                <Link href="/auth/login" className="text-fagulha hover:text-fagulha/80 underline underline-offset-4">
-                  Fazer login
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="text-center">
-            <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-              ← Voltar ao início
-            </Link>
-          </div>
-        </div>
+            </form>
+            <div className="mt-6 text-center text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <Link href="/auth/login" className="text-fagulha-primary hover:underline">
+                Sign in
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

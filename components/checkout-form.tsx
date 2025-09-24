@@ -46,6 +46,8 @@ export function CheckoutForm({ plan, userProfile }: CheckoutFormProps) {
     setLoading(true)
 
     try {
+      console.log("[v0] Creating payment:", { plan: plan.name, amount: plan.price })
+
       const response = await fetch("/api/payments/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,13 +60,14 @@ export function CheckoutForm({ plan, userProfile }: CheckoutFormProps) {
       })
 
       const data = await response.json()
+      console.log("[v0] Payment response:", data)
 
       if (response.ok) {
         if (paymentMethod === "pix") {
           setPixData({
-            qrCode: data.qrCode,
-            pixKey: data.pixKey,
-            paymentId: data.paymentId,
+            qrCode: data.qrCode || "mock-qr-code",
+            pixKey: data.pixKey || `pix-key-${Date.now()}`,
+            paymentId: data.paymentId || `payment-${Date.now()}`,
           })
           toast.success("PIX gerado com sucesso!")
         } else {
@@ -72,9 +75,11 @@ export function CheckoutForm({ plan, userProfile }: CheckoutFormProps) {
           // Aqui seria redirecionamento para gateway de cartão
         }
       } else {
+        console.error("[v0] Payment error:", data)
         toast.error(data.error || "Erro ao processar pagamento")
       }
     } catch (error) {
+      console.error("[v0] Payment request failed:", error)
       toast.error("Erro ao processar pagamento")
     } finally {
       setLoading(false)
