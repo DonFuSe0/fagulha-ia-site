@@ -1,210 +1,74 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
-import { Download, RotateCcw, Eye, Clock, Globe, Heart } from "lucide-react"
-import { toast } from "sonner"
-import { useRouter } from "next/navigation"
+import Link from "next/link";
+import { Calendar, Eye } from "lucide-react";
 
-interface ImageData {
-  id: string
-  prompt: string
-  image_url: string
-  model: string
-  style: string
-  resolution: string
-  is_public: boolean
-  created_at: string
-  public_expires_at?: string
-  views_count: number
-  likes_count: number
-  generation_params: any
-}
+type GalleryItem = {
+  id: string;
+  image_url: string;
+  prompt?: string | null;
+  created_at?: string | null;
+  // Campos extras são ignorados com index signature
+  [key: string]: any;
+};
 
-interface GalleryGridProps {
-  images: ImageData[]
-  isPublic: boolean
-}
-
-export function GalleryGrid({ images, isPublic }: GalleryGridProps) {
-  const [loading, setLoading] = useState<string | null>(null)
-  const router = useRouter()
-
-  const handleDownload = async (image: ImageData) => {
-    try {
-      const response = await fetch(image.image_url)
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `fagulha-${image.id}.png`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-      toast.success("Imagem baixada com sucesso!")
-    } catch (error) {
-      toast.error("Erro ao baixar imagem")
-    }
-  }
-
-  const handleMakePublic = async (imageId: string) => {
-    setLoading(imageId)
-    try {
-      const response = await fetch("/api/images/make-public", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageId }),
-      })
-
-      if (response.ok) {
-        toast.success("Imagem tornada pública!")
-        router.refresh()
-      } else {
-        toast.error("Erro ao tornar imagem pública")
-      }
-    } catch (error) {
-      toast.error("Erro ao tornar imagem pública")
-    } finally {
-      setLoading(null)
-    }
-  }
-
-  const handleReuse = (image: ImageData) => {
-    // Redirecionar para página de geração com parâmetros
-    const params = new URLSearchParams({
-      prompt: image.prompt,
-      model: image.model,
-      style: image.style,
-      resolution: image.resolution,
-      ...image.generation_params,
-    })
-    router.push(`/generate?${params.toString()}`)
-  }
-
-  const getTimeRemaining = (createdAt: string, isPublic: boolean, publicExpiresAt?: string) => {
-    const created = new Date(createdAt)
-    const now = new Date()
-
-    if (isPublic && publicExpiresAt) {
-      const expires = new Date(publicExpiresAt)
-      const remaining = expires.getTime() - now.getTime()
-      const hours = Math.floor(remaining / (1000 * 60 * 60))
-      return hours > 0 ? `${hours}h restantes` : "Expirando em breve"
-    } else {
-      const expires = new Date(created.getTime() + 24 * 60 * 60 * 1000)
-      const remaining = expires.getTime() - now.getTime()
-      const hours = Math.floor(remaining / (1000 * 60 * 60))
-      return hours > 0 ? `${hours}h restantes` : "Expirando em breve"
-    }
-  }
-
-  if (images.length === 0) {
+export default function GalleryGrid({ items }: { items: GalleryItem[] }) {
+  if (!items?.length) {
     return (
-      <div className="text-center py-12">
-        <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-          <Eye className="h-12 w-12 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-semibold mb-2">
-          {isPublic ? "Nenhuma imagem pública ainda" : "Sua galeria está vazia"}
-        </h3>
-        <p className="text-muted-foreground mb-4">
-          {isPublic
-            ? "Seja o primeiro a compartilhar uma criação incrível!"
-            : "Comece criando sua primeira imagem com IA"}
-        </p>
-        {!isPublic && <Button onClick={() => router.push("/generate")}>Criar Primeira Imagem</Button>}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            className="aspect-square rounded-2xl bg-[#121222] animate-pulse shadow-[0_0_0_1px_var(--color-border)]"
+          />
+        ))}
       </div>
-    )
+    );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {images.map((image) => (
-        <Card
-          key={image.id}
-          className="group overflow-hidden border-border/40 hover:border-primary/20 transition-all duration-300"
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {items.map((item) => (
+        <article
+          key={item.id}
+          className="group relative overflow-hidden rounded-2xl shadow-[0_0_0_1px_var(--color-border),0_6px_20px_rgba(0,0,0,.25)]"
         >
-          <div className="relative aspect-square overflow-hidden">
-            <Image
-              src={image.image_url || "/placeholder.svg"}
-              alt={image.prompt}
-              fill
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+          <Link href={`/post/${item.id}`} className="block">
+            {/* imagem */}
+            {/* Se preferir next/image, você pode trocar por <Image ... unoptimized /> */}
+            <img
+              src={item.image_url || "https://placehold.co/1024x1024?text=Fagulha"}
+              alt={item.prompt ?? "Imagem gerada"}
+              className="aspect-square w-full object-cover transition duration-200 group-hover:scale-[1.02]"
+              loading="lazy"
             />
 
-            {/* Overlay com informações */}
-            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4">
-              <div className="flex justify-between items-start">
-                <div className="flex flex-col gap-1">
-                  <Badge variant="secondary" className="text-xs w-fit">
-                    {image.model}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs w-fit">
-                    {image.style}
-                  </Badge>
-                </div>
+            {/* overlay */}
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,.55),rgba(0,0,0,0)_35%)] opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
 
-                {isPublic && (
-                  <div className="flex items-center gap-2 text-white text-xs">
-                    <Eye className="h-3 w-3" />
-                    {image.views_count}
-                    <Heart className="h-3 w-3" />
-                    {image.likes_count}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <Button size="sm" variant="secondary" onClick={() => handleDownload(image)} className="flex-1">
-                  <Download className="h-3 w-3" />
-                </Button>
-
-                {!isPublic && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleMakePublic(image.id)}
-                      disabled={loading === image.id}
-                      className="flex-1"
-                    >
-                      <Globe className="h-3 w-3" />
-                    </Button>
-
-                    <Button size="sm" variant="secondary" onClick={() => handleReuse(image)} className="flex-1">
-                      <RotateCcw className="h-3 w-3" />
-                    </Button>
-                  </>
-                )}
+            {/* meta */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 p-3">
+              <div className="flex items-center justify-between gap-2 rounded-xl bg-[rgba(10,10,15,.65)] px-3 py-2 backdrop-blur-md shadow-[0_0_0_1px_var(--color-border)]">
+                <p className="line-clamp-1 text-sm text-[var(--color-foreground)]/95">
+                  {item.prompt ?? "Sem descrição"}
+                </p>
+                <span className="inline-flex items-center gap-1 text-xs text-[var(--color-muted)]">
+                  <Eye className="size-3.5" />
+                  ver
+                </span>
               </div>
             </div>
-          </div>
+          </Link>
 
-          {/* Informações da imagem */}
-          <div className="p-4">
-            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{image.prompt}</p>
-
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{image.resolution}</span>
-              <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {getTimeRemaining(image.created_at, image.is_public, image.public_expires_at)}
-              </div>
+          {/* created_at */}
+          {item.created_at ? (
+            <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[#131325] px-2.5 py-1 text-xs text-[var(--color-muted)] shadow-[inset_0_0_0_1px_var(--color-border)]">
+              <Calendar className="size-3.5 text-[var(--color-primary)]" />
+              {new Date(item.created_at).toLocaleDateString("pt-BR")}
             </div>
-
-            {image.is_public && (
-              <Badge variant="default" className="mt-2 text-xs">
-                <Globe className="h-3 w-3 mr-1" />
-                Público
-              </Badge>
-            )}
-          </div>
-        </Card>
+          ) : null}
+        </article>
       ))}
     </div>
-  )
+  );
 }
