@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { FagulhaLogo } from "@/components/fagulha-logo"
-import { Check, Flame, Zap, Crown, ArrowLeft } from "lucide-react"
+import { Check, Flame, Zap, Crown, ArrowLeft, Sparkles } from "lucide-react"
 import Link from "next/link"
 
 const plans = [
@@ -12,8 +12,7 @@ const plans = [
     tokens: 50,
     icon: Flame,
     color: "text-orange-500",
-    bgColor: "bg-orange-500/10",
-    borderColor: "border-orange-500/20",
+    bgGradient: "from-orange-500/20 to-red-500/20",
     features: [
       "50 tokens para geração",
       "Modelos padrão",
@@ -28,8 +27,7 @@ const plans = [
     tokens: 200,
     icon: Zap,
     color: "text-fagulha",
-    bgColor: "bg-fagulha/10",
-    borderColor: "border-fagulha/20",
+    bgGradient: "from-fagulha-primary/20 to-fagulha-secondary/20",
     popular: true,
     features: [
       "200 tokens para geração",
@@ -46,8 +44,7 @@ const plans = [
     tokens: 600,
     icon: Crown,
     color: "text-yellow-500",
-    bgColor: "bg-yellow-500/10",
-    borderColor: "border-yellow-500/20",
+    bgGradient: "from-yellow-500/20 to-amber-500/20",
     features: [
       "600 tokens para geração",
       "Modelos premium exclusivos",
@@ -63,13 +60,12 @@ const plans = [
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border/50 backdrop-blur-sm sticky top-0 z-50">
+      <header className="glass sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="sm" asChild>
-                <Link href="/dashboard">
+                <Link href="/">
                   <ArrowLeft className="h-4 w-4" />
                 </Link>
               </Button>
@@ -81,85 +77,93 @@ export default function PricingPage() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-12">
-        {/* Header Section */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">
+      <div className="container mx-auto px-4 py-16">
+        <div className="text-center mb-20">
+          <Badge variant="secondary" className="mb-8 glass">
+            <Sparkles className="mr-2 h-4 w-4" />
+            Escolha o plano ideal para você
+          </Badge>
+
+          <h1 className="text-5xl md:text-7xl font-bold mb-6">
             Escolha seu <span className="text-gradient-fagulha">plano</span>
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-12 leading-relaxed">
             Libere todo o potencial da criação com IA. Escolha o plano que melhor se adapta às suas necessidades
             criativas.
           </p>
 
-          {/* Token Calculator Info */}
-          <div className="bg-muted/50 rounded-lg p-6 max-w-4xl mx-auto">
-            <h3 className="text-lg font-semibold mb-4">Como funcionam os tokens?</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="glass p-8 rounded-2xl max-w-5xl mx-auto">
+            <h3 className="text-2xl font-semibold mb-6">Como funcionam os tokens?</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="text-center">
-                <div className="text-2xl font-bold text-fagulha mb-2">1-2</div>
+                <div className="text-3xl font-bold text-gradient-fagulha mb-3">1-2</div>
                 <div className="text-muted-foreground">Tokens por imagem básica (512x512)</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-fagulha mb-2">2-4</div>
+                <div className="text-3xl font-bold text-gradient-fagulha mb-3">2-4</div>
                 <div className="text-muted-foreground">Tokens por imagem HD (1024x1024)</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-fagulha mb-2">3-6</div>
+                <div className="text-3xl font-bold text-gradient-fagulha mb-3">3-6</div>
                 <div className="text-muted-foreground">Tokens por imagem premium com configurações avançadas</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mb-20">
           {plans.map((plan) => {
             const Icon = plan.icon
             return (
               <Card
                 key={plan.name}
-                className={`relative border-border/50 bg-card/50 backdrop-blur-sm hover:border-fagulha/50 transition-all duration-300 ${
-                  plan.popular ? "ring-2 ring-fagulha/20 scale-105" : ""
+                className={`relative glass hover:glow-fagulha-sm transition-all duration-500 ${
+                  plan.popular ? "ring-2 ring-fagulha-primary/30 scale-105" : ""
                 }`}
               >
                 {plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-fagulha text-white">
+                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-fagulha">
                     Mais Popular
                   </Badge>
                 )}
 
-                <CardHeader className="text-center pb-4">
+                <CardHeader className="text-center pb-6">
                   <div
-                    className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${plan.bgColor} ${plan.borderColor} border-2`}
+                    className={`mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br ${plan.bgGradient}`}
                   >
-                    <Icon className={`h-8 w-8 ${plan.color}`} />
+                    <Icon className={`h-10 w-10 ${plan.color}`} />
                   </div>
-                  <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                  <div className="text-4xl font-bold text-fagulha">{plan.price}</div>
-                  <div className="text-muted-foreground">{plan.tokens} tokens</div>
+                  <CardTitle className="text-3xl">{plan.name}</CardTitle>
+                  <div className="text-5xl font-bold text-gradient-fagulha">{plan.price}</div>
+                  <div className="text-muted-foreground text-lg">{plan.tokens} tokens</div>
                 </CardHeader>
 
-                <CardContent className="space-y-6">
-                  <ul className="space-y-3">
+                <CardContent className="space-y-8">
+                  <ul className="space-y-4">
                     {plan.features.map((feature, index) => (
                       <li key={index} className="flex items-center gap-3">
-                        <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        <span className="text-sm">{feature}</span>
+                        <Check className="h-5 w-5 text-green-500 flex-shrink-0" />
+                        <span>{feature}</span>
                       </li>
                     ))}
                   </ul>
 
                   <Button
                     className={`w-full ${
-                      plan.popular ? "bg-fagulha hover:bg-fagulha/90 glow-fagulha" : "bg-fagulha/80 hover:bg-fagulha"
+                      plan.popular
+                        ? "bg-gradient-fagulha hover:opacity-90 glow-fagulha-sm"
+                        : "bg-gradient-fagulha/80 hover:bg-gradient-fagulha"
                     }`}
+                    size="lg"
                     asChild
                   >
-                    <Link href={`/checkout?plan=${plan.name.toLowerCase()}`}>Escolher {plan.name}</Link>
+                    <Link href={`/checkout?plan=${plan.name.toLowerCase()}`}>
+                      Escolher {plan.name}
+                      <ArrowLeft className="ml-2 h-4 w-4" />
+                    </Link>
                   </Button>
 
-                  <div className="text-center text-xs text-muted-foreground">
+                  <div className="text-center text-sm text-muted-foreground">
                     Aproximadamente {Math.floor(plan.tokens / 2)} a {plan.tokens} imagens
                   </div>
                 </CardContent>

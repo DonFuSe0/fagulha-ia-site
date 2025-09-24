@@ -2,6 +2,7 @@ import { createServerClient } from "@/lib/supabase/server"
 import { GalleryGrid } from "@/components/gallery-grid"
 import { FagulhaLogo } from "@/components/fagulha-logo"
 import { Button } from "@/components/ui/button"
+import { ArrowLeft, Sparkles } from "lucide-react"
 import Link from "next/link"
 
 export default async function PublicGalleryPage() {
@@ -20,40 +21,42 @@ export default async function PublicGalleryPage() {
     publicImages = data || []
   } catch (error) {
     console.log("[v0] Gallery page error:", error)
-    // Fallback to empty array if database query fails
     publicImages = []
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="glass sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <FagulhaLogo className="h-8 w-8" />
-              <span className="text-xl font-bold">Fagulha.ia</span>
-            </Link>
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/">
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+              </Button>
+              <FagulhaLogo size="md" />
+            </div>
 
             <div className="flex items-center gap-4">
               <Link href="/generate">
-                <Button variant="outline">Criar Imagem</Button>
+                <Button variant="outline" className="glass bg-transparent">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Criar Imagem
+                </Button>
               </Link>
               <Link href="/dashboard">
-                <Button>Dashboard</Button>
+                <Button className="bg-gradient-fagulha hover:opacity-90">Dashboard</Button>
               </Link>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
-            Galeria Pública
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+      <main className="container mx-auto px-4 py-12">
+        <div className="mb-12 text-center">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 text-gradient-fagulha">Galeria Pública</h1>
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
             Descubra criações incríveis da nossa comunidade. Inspire-se e crie suas próprias obras de arte com IA.
           </p>
         </div>

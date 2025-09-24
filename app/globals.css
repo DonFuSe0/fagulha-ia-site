@@ -4,82 +4,84 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated Fagulha.ia brand colors with more vibrant purple theme */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Modern dark theme inspired by OpenAI/Vercel design */
+  --background: oklch(0.05 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.08 0 0);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.08 0 0);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.98 0 0);
+  --primary-foreground: oklch(0.05 0 0);
+  --secondary: oklch(0.12 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.12 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.12 0 0);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.15 0 0);
+  --input: oklch(0.15 0 0);
+  --ring: oklch(0.65 0 0);
+  --chart-1: oklch(0.7 0.25 280);
+  --chart-2: oklch(0.7 0.25 200);
+  --chart-3: oklch(0.7 0.25 120);
+  --chart-4: oklch(0.7 0.25 40);
+  --chart-5: oklch(0.7 0.25 320);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.08 0 0);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.7 0.25 280);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.12 0 0);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(0.15 0 0);
+  --sidebar-ring: oklch(0.65 0 0);
 
-  /* More vibrant purple colors - less blue, more purple */
-  --fagulha-purple: oklch(0.6 0.35 300);
-  --fagulha-purple-light: oklch(0.7 0.25 300);
-  --fagulha-purple-dark: oklch(0.5 0.4 300);
-  --fagulha-glow: oklch(0.6 0.35 300 / 0.4);
+  /* Fagulha brand colors - modern purple/blue gradient system */
+  --fagulha-primary: oklch(0.7 0.25 280);
+  --fagulha-secondary: oklch(0.65 0.2 260);
+  --fagulha-accent: oklch(0.75 0.3 300);
+  --fagulha-glow: oklch(0.7 0.25 280 / 0.3);
+  --fagulha-gradient-start: oklch(0.7 0.25 280);
+  --fagulha-gradient-end: oklch(0.65 0.2 260);
 }
 
 .dark {
-  /* Dark theme is the default, keeping same values */
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  /* Same values for consistent dark theme */
+  --background: oklch(0.05 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.08 0 0);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.08 0 0);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.98 0 0);
+  --primary-foreground: oklch(0.05 0 0);
+  --secondary: oklch(0.12 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.12 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.12 0 0);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.6 0.22 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.15 0 0);
+  --input: oklch(0.15 0 0);
+  --ring: oklch(0.65 0 0);
+  --chart-1: oklch(0.7 0.25 280);
+  --chart-2: oklch(0.7 0.25 200);
+  --chart-3: oklch(0.7 0.25 120);
+  --chart-4: oklch(0.7 0.25 40);
+  --chart-5: oklch(0.7 0.25 320);
+  --sidebar: oklch(0.08 0 0);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.7 0.25 280);
+  --sidebar-primary-foreground: oklch(0.98 0 0);
+  --sidebar-accent: oklch(0.12 0 0);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(0.15 0 0);
+  --sidebar-ring: oklch(0.65 0 0);
 }
 
 @theme inline {
@@ -114,11 +116,13 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Adding custom Fagulha colors to theme */
-  --color-fagulha-purple: var(--fagulha-purple);
-  --color-fagulha-purple-light: var(--fagulha-purple-light);
-  --color-fagulha-purple-dark: var(--fagulha-purple-dark);
+  /* Fagulha brand colors */
+  --color-fagulha-primary: var(--fagulha-primary);
+  --color-fagulha-secondary: var(--fagulha-secondary);
+  --color-fagulha-accent: var(--fagulha-accent);
   --color-fagulha-glow: var(--fagulha-glow);
+  --color-fagulha-gradient-start: var(--fagulha-gradient-start);
+  --color-fagulha-gradient-end: var(--fagulha-gradient-end);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -134,53 +138,104 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    /* Adding subtle grid pattern background */
-    background-image: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
-    background-size: 20px 20px;
+    /* Subtle grid pattern background */
+    background-image: radial-gradient(circle at 25px 25px, rgba(255, 255, 255, 0.02) 2px, transparent 0),
+      radial-gradient(circle at 75px 75px, rgba(255, 255, 255, 0.01) 1px, transparent 0);
+    background-size: 100px 100px, 50px 50px;
   }
 
-  /* Custom scrollbar styling */
+  /* Modern scrollbar */
   ::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-background;
+    @apply bg-transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted rounded-full;
+    @apply bg-muted-foreground/20 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/50;
+    @apply bg-muted-foreground/40;
   }
 }
 
-/* Custom utility classes for Fagulha branding */
+/* Modern utility classes */
 @layer utilities {
   .text-fagulha {
-    color: var(--color-fagulha-purple);
+    color: var(--color-fagulha-primary);
   }
 
   .bg-fagulha {
-    background-color: var(--color-fagulha-purple);
+    background-color: var(--color-fagulha-primary);
   }
 
   .border-fagulha {
-    border-color: var(--color-fagulha-purple);
+    border-color: var(--color-fagulha-primary);
   }
 
   .glow-fagulha {
-    box-shadow: 0 0 20px var(--color-fagulha-glow);
+    box-shadow: 0 0 30px var(--color-fagulha-glow);
+  }
+
+  .glow-fagulha-sm {
+    box-shadow: 0 0 15px var(--color-fagulha-glow);
   }
 
   .text-gradient-fagulha {
-    background: linear-gradient(135deg, var(--color-fagulha-purple), var(--color-fagulha-purple-light));
+    background: linear-gradient(135deg, var(--color-fagulha-primary), var(--color-fagulha-secondary));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+
+  .bg-gradient-fagulha {
+    background: linear-gradient(135deg, var(--color-fagulha-primary), var(--color-fagulha-secondary));
+  }
+
+  .border-gradient-fagulha {
+    border-image: linear-gradient(135deg, var(--color-fagulha-primary), var(--color-fagulha-secondary)) 1;
+  }
+
+  /* Modern glass effect */
+  .glass {
+    @apply bg-card/50 backdrop-blur-xl border border-border/50;
+  }
+
+  .glass-strong {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+  }
+
+  /* Modern animations */
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes glow {
+    from {
+      box-shadow: 0 0 20px var(--color-fagulha-glow);
+    }
+    to {
+      box-shadow: 0 0 30px var(--color-fagulha-glow), 0 0 40px var(--color-fagulha-glow);
+    }
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
   }
 }

@@ -22,12 +22,41 @@ export function FagulhaLogo({ size = "md", showText = true, className = "" }: Fa
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <div className="relative">
-        <svg className={`${sizeClasses[size]} text-fagulha glow-fagulha`} viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-          <circle cx="12" cy="9" r="1.5" fill="white" />
-          <path d="M8 16c0 2.21 1.79 4 4 4s4-1.79 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" />
+        <svg className={`${sizeClasses[size]} text-fagulha glow-fagulha-sm`} viewBox="0 0 32 32" fill="none">
+          {/* Main flame shape */}
+          <path
+            d="M16 4C12 8 10 12 12 16C14 20 18 22 20 18C22 14 20 10 18 8C20 6 22 4 20 2C18 4 16 4 16 4Z"
+            fill="url(#flameGradient)"
+          />
+          {/* Inner flame */}
+          <path
+            d="M16 8C14 10 13 12 14 14C15 16 17 17 18 15C19 13 18 11 17 10C18 9 19 8 18 7C17 8 16 8 16 8Z"
+            fill="url(#innerFlame)"
+          />
+          {/* Spark particles */}
+          <circle cx="24" cy="8" r="1.5" fill="var(--color-fagulha-accent)" opacity="0.8">
+            <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="8" cy="12" r="1" fill="var(--color-fagulha-secondary)" opacity="0.6">
+            <animate attributeName="opacity" values="0.6;0.2;0.6" dur="1.5s" repeatCount="indefinite" />
+          </circle>
+          <circle cx="26" cy="16" r="0.8" fill="var(--color-fagulha-primary)" opacity="0.7">
+            <animate attributeName="opacity" values="0.7;0.3;0.7" dur="1.8s" repeatCount="indefinite" />
+          </circle>
+
+          {/* Gradient definitions */}
+          <defs>
+            <linearGradient id="flameGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="var(--color-fagulha-primary)" />
+              <stop offset="50%" stopColor="var(--color-fagulha-secondary)" />
+              <stop offset="100%" stopColor="var(--color-fagulha-accent)" />
+            </linearGradient>
+            <linearGradient id="innerFlame" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="var(--color-fagulha-accent)" />
+              <stop offset="100%" stopColor="var(--color-fagulha-primary)" />
+            </linearGradient>
+          </defs>
         </svg>
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-fagulha rounded-full animate-pulse"></div>
       </div>
       {showText && (
         <span className={`font-bold text-gradient-fagulha ${textSizeClasses[size]} tracking-tight`}>Fagulha.ia</span>
