@@ -34,9 +34,17 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
-      # 👇 aqui está a mudança-chave
+      # 👇 Garante @supabase/ssr no ambiente (sem alterar package.json)
+      - name: Ensure @supabase/ssr available
+        run: pnpm add @supabase/ssr@0.5.1 --no-save
+
       - name: Install deps (no frozen lockfile)
         run: pnpm install --no-frozen-lockfile
+
+      - name: Verify deps
+        run: |
+          pnpm list @supabase/ssr || true
+          pnpm list @supabase/supabase-js || true
 
       - name: Lint
         run: |
