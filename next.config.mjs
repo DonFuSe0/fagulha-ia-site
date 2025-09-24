@@ -1,18 +1,16 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  images: {
-    unoptimized: true,
-  },
-  output: 'standalone',
-  experimental: {
-    serverComponentsExternalPackages: ['@supabase/supabase-js']
-  }
-}
+const isProd = process.env.NODE_ENV === "production";
 
-export default nextConfig
+const nextConfig = {
+  // Ver erros no dev/CI; manter “flex” em produção
+  eslint: { ignoreDuringBuilds: isProd },
+  typescript: { ignoreBuildErrors: isProd },
+
+  images: { unoptimized: true },
+  output: "standalone",
+
+  // A opção mudou no Next 15.x:
+  serverExternalPackages: ["@supabase/supabase-js"],
+};
+
+export default nextConfig;
