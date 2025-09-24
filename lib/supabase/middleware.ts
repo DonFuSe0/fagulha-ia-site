@@ -1,36 +1,48 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
+import { createMiddlewareClient } from "@supabase/ssr";
 
+/**
+ * Middleware seguro para Edge:
+ * - Só roda em rotas protegidas (config do matcher no middleware.ts)
+ * - Não quebra em produção: fallback NextResponse.next() em qualquer erro
+ */
 export async function updateSession(request: NextRequest) {
   const response = NextResponse.next();
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const supabase = createSupabaseServerClient(url, anon, {
-    cookies: {
-      get: (name) => request.cookies.get(name)?.value,
-      set: (name, value, options) => response.cookies.set(name, value, options),
-      remove: (name, options) => response.cookies.set(name, "", { ...options, maxAge: 0 }),
-    },
-  });
+    // Se as envs não estiverem configuradas, não tentamos autenticar
+    if (!url || !key) {
+      return response;
+    }
 
-  // força refresh da sessão (evita sessão "morta")
-  await supabase.auth.getUser();
+    const supabase = createMiddlewareClient(
+      { req: request, res: response },
+      { supabaseUrl: url, supabaseKey: key }
+    );
 
-  // Rotas que exigem login — ajuste conforme seu app
-  const protectedPrefixes = ["/dashboard", "/generate", "/my-gallery", "/checkout", "/profile"];
-  const needsAuth = protectedPrefixes.some((p) => request.nextUrl.pathname.startsWith(p));
+    // Mantém sessão atualizada
+    await supabase.auth.getSession();
 
-  if (needsAuth) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user && !request.nextUrl.pathname.startsWith("/auth")) {
+    // Checa login apenas se a rota for realmente protegida (matcher filtra)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    // Se quiser bloquear sem user aqui, você pode redirecionar.
+    // Como o matcher só inclui rotas privadas, bloqueamos:
+    if (!user) {
       const url = request.nextUrl.clone();
       url.pathname = "/auth/login";
       url.searchParams.set("redirectedFrom", request.nextUrl.pathname);
       return NextResponse.redirect(url);
     }
-  }
 
-  return response;
+    return response;
+  } catch {
+    // Nunca quebre o site por erro no middleware
+    return response;
+  }
 }
