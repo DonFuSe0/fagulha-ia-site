@@ -1,10 +1,18 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Geist, Geist_Mono } from "next/font/google"
 import { Suspense } from "react"
 import "./globals.css"
 
-const inter = Inter({ subsets: ["latin"] })
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+})
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+})
 
 export const metadata: Metadata = {
   title: "Fagulha.ia - Geração de Imagens por IA",
@@ -37,8 +45,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="pt-BR" className="dark">
-      <body className={`font-sans ${inter.className}`}>
+    <html lang="pt-BR" className={`dark ${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className="font-sans">
         <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
       </body>
     </html>
