@@ -1,11 +1,21 @@
-// lib/supabase/server.ts
-import { createClient } from "@supabase/supabase-js";
-import { env } from "../env";
+import { cookies } from "next/headers";
+import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
 
-export const supabaseAdmin = createClient(
-  env.client.NEXT_PUBLIC_SUPABASE_URL,
-  env.server.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: { persistSession: false },
-  }
-);
+/** Client para o SERVER (rotas/pages), preservando cookies/sessão do usuário. */
+export async function createClient() {
+  const cookieStore = cookies();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  const supabase = createSupabaseServerClient(url, anon, {
+    cookies: {
+      get: (name) => cookieStore.get(name)?.value,
+      set: (name, value, options) => cookieStore.set({ name, value, ...options }),
+      remove: (name, options) => cookieStore.set({ name, value: "", ...options, maxAge: 0 }),
+    },
+  });
+
+  return supabase;
+}
+
+export const createServerClient = createClient;
