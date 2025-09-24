@@ -1,29 +1,35 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
+import { createMiddlewareClient } from "@supabase/ssr";
 
+/**
+ * Middleware seguro para Edge Runtime.
+ * - Atualiza/renova a sessão (sb- cookies)
+ * - Bloqueia rotas privadas se não logado
+ */
 export async function updateSession(request: NextRequest) {
   const response = NextResponse.next();
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  // Cliente próprio para MIDDLEWARE (Edge), sem Node APIs
+  const supabase = createMiddlewareClient(
+    { req: request, res: response },
+    {
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    }
+  );
 
-  const supabase = createSupabaseServerClient(url, anon, {
-    cookies: {
-      get: (name) => request.cookies.get(name)?.value,
-      set: (name, value, options) => response.cookies.set(name, value, options),
-      remove: (name, options) => response.cookies.set(name, "", { ...options, maxAge: 0 }),
-    },
-  });
+  // Garante refresh da sessão se necessário
+  await supabase.auth.getSession();
 
-  // força refresh da sessão (evita sessão "morta")
-  await supabase.auth.getUser();
-
-  // Rotas que exigem login — ajuste conforme seu app
+  // Liste aqui os prefixos que exigem login
   const protectedPrefixes = ["/dashboard", "/generate", "/my-gallery", "/checkout", "/profile"];
   const needsAuth = protectedPrefixes.some((p) => request.nextUrl.pathname.startsWith(p));
 
   if (needsAuth) {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user && !request.nextUrl.pathname.startsWith("/auth")) {
       const url = request.nextUrl.clone();
       url.pathname = "/auth/login";
