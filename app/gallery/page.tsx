@@ -7,14 +7,22 @@ import Link from "next/link"
 export default async function PublicGalleryPage() {
   const supabase = createServerClient()
 
-  // Buscar imagens públicas
-  const { data: publicImages } = await supabase
-    .from("images")
-    .select("*")
-    .eq("is_public", true)
-    .gt("public_expires_at", new Date().toISOString())
-    .order("created_at", { ascending: false })
-    .limit(50)
+  let publicImages = []
+  try {
+    const { data } = await supabase
+      .from("images")
+      .select("*")
+      .eq("is_public", true)
+      .gt("public_expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(50)
+
+    publicImages = data || []
+  } catch (error) {
+    console.log("[v0] Gallery page error:", error)
+    // Fallback to empty array if database query fails
+    publicImages = []
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -50,7 +58,7 @@ export default async function PublicGalleryPage() {
           </p>
         </div>
 
-        <GalleryGrid images={publicImages || []} isPublic={true} />
+        <GalleryGrid images={publicImages} isPublic={true} />
       </main>
     </div>
   )

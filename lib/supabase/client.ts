@@ -23,9 +23,49 @@ class BasicSupabaseClient implements SupabaseClient {
   from(table: string) {
     return {
       select: (columns = "*") => ({
-        eq: (column: string, value: any) => this.query("GET", table, { [column]: value }),
-        order: (column: string, options?: any) =>
-          this.query("GET", table, {}, { order: `${column}.${options?.ascending ? "asc" : "desc"}` }),
+        eq: (column: string, value: any) => ({
+          gt: (gtColumn: string, gtValue: any) => ({
+            order: (orderColumn: string, options?: any) => ({
+              limit: (count: number) =>
+                this.query(
+                  "GET",
+                  table,
+                  {},
+                  {
+                    [column]: `eq.${value}`,
+                    [gtColumn]: `gt.${gtValue}`,
+                    order: `${orderColumn}.${options?.ascending ? "asc" : "desc"}`,
+                    limit: count,
+                  },
+                ),
+            }),
+          }),
+          order: (orderColumn: string, options?: any) => ({
+            limit: (count: number) =>
+              this.query(
+                "GET",
+                table,
+                {},
+                {
+                  [column]: `eq.${value}`,
+                  order: `${orderColumn}.${options?.ascending ? "asc" : "desc"}`,
+                  limit: count,
+                },
+              ),
+          }),
+        }),
+        order: (column: string, options?: any) => ({
+          limit: (count: number) =>
+            this.query(
+              "GET",
+              table,
+              {},
+              {
+                order: `${column}.${options?.ascending ? "asc" : "desc"}`,
+                limit: count,
+              },
+            ),
+        }),
         limit: (count: number) => this.query("GET", table, {}, { limit: count }),
       }),
       insert: (data: any) => this.query("POST", table, data),
