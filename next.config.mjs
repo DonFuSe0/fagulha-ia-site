@@ -2,14 +2,14 @@
 const isProd = process.env.NODE_ENV === "production";
 
 const nextConfig = {
-  // Ver erros no dev/CI; manter “flex” em produção
+  // vê erros no dev/CI; mantém "flex" na produção
   eslint: { ignoreDuringBuilds: isProd },
   typescript: { ignoreBuildErrors: isProd },
 
   images: { unoptimized: true },
   output: "standalone",
 
-  // A opção mudou no Next 15.x:
+  // Next 15.x: external packages no server
   serverExternalPackages: ["@supabase/supabase-js"],
 };
 
