@@ -202,6 +202,58 @@
     border-image: linear-gradient(135deg, var(--color-fagulha-primary), var(--color-fagulha-secondary)) 1;
   }
 
+  /* Enhanced glass effects inspired by modern AI platforms */
+  .glass {
+    @apply bg-card/30 backdrop-blur-xl border border-border/30;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+  }
+
+  .glass-strong {
+    @apply bg-card/60 backdrop-blur-xl border border-border/40;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+  }
+
+  /* Modern card hover effects */
+  .card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(var(--color-fagulha-primary), 0.1);
+  }
+
+  /* Improved animations */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.6s ease-out;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
   /* Modern glass effect */
   .glass {
     @apply bg-card/50 backdrop-blur-xl border border-border/50;
@@ -221,7 +273,7 @@
       box-shadow: 0 0 20px var(--color-fagulha-glow);
     }
     to {
-      box-shadow: 0 0 30px var(--color-fagulha-glow), 0 0 40px var(--color-fagulha-glow);
+      box-shadow: 0 0 30px var(--color-fagulha-glow), 0 0 0 1px var(--color-fagulha-glow);
     }
   }
 
