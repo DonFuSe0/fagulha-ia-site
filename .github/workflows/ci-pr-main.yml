@@ -36,7 +36,7 @@ jobs:
 
       # 👇 Garante @supabase/ssr no ambiente (sem alterar package.json)
       - name: Ensure @supabase/ssr available
-        run: pnpm add @supabase/ssr@0.5.1 --no-save
+        run: pnpm install @supabase/ssr@0.5.1
 
       - name: Install deps (no frozen lockfile)
         run: pnpm install --no-frozen-lockfile
