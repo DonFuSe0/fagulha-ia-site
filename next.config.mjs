@@ -10,7 +10,9 @@ const nextConfig = {
     unoptimized: true,
   },
   output: 'standalone',
-  serverExternalPackages: ['@supabase/supabase-js']
+  experimental: {
+    serverComponentsExternalPackages: ['@supabase/supabase-js']
+  }
 }
 
 export default nextConfig
