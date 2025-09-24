@@ -6,7 +6,7 @@ import { ArrowLeft, Sparkles } from "lucide-react"
 import Link from "next/link"
 
 export default async function PublicGalleryPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
 
   let publicImages = []
   try {

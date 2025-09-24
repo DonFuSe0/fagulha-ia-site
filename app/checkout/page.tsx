@@ -33,7 +33,7 @@ export default async function CheckoutPage({
 }: {
   searchParams: { plan?: string }
 }) {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
 
   const {
     data: { user },

@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -35,10 +35,10 @@ export async function POST(request: NextRequest) {
     const qrCode = `data:image/svg+xml;base64,${Buffer.from(`
       <svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
         <rect width="200" height="200" fill="white"/>
-        <text x="100" y="100" text-anchor="middle" font-family="Arial" font-size="12">
+        <text x="100" y="100" textAnchor="middle" fontFamily="Arial" fontSize="12">
           QR Code PIX
         </text>
-        <text x="100" y="120" text-anchor="middle" font-family="Arial" font-size="8">
+        <text x="100" y="120" textAnchor="middle" fontFamily="Arial" fontSize="8">
           R$ ${amount.toFixed(2)}
         </text>
       </svg>

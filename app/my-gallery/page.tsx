@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Plus } from "lucide-react"
 
 export default async function MyGalleryPage() {
-  const supabase = createServerClient()
+  const supabase = await createServerClient()
 
   const {
     data: { user },
