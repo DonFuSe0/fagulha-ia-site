@@ -2,7 +2,7 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 
-/** Client para o BROWSER com sessão real do usuário (usa cookies do navegador). */
+/** Client para o BROWSER com sessão real do usuário (cookies). */
 export function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
