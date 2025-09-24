@@ -1,93 +1,63 @@
-import { createClient } from "@/lib/supabase/server"
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
-export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient()
+// GET /api/tokens  -> saldo + últimas transações
+export async function GET() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+  const { data: balanceRow, error: balErr } = await supabase
+    .from("user_balances")
+    .select("tokens")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
-    // Get user's current token balance
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("tokens")
-      .eq("id", user.id)
-      .single()
+  if (balErr) return NextResponse.json({ error: balErr.message }, { status: 400 });
 
-    if (profileError) {
-      return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 })
-    }
+  const { data: txs, error: txErr } = await supabase
+    .from("token_transactions")
+    .select("id, delta, reason, meta, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(20);
 
-    // Get recent transactions
-    const { data: transactions, error: transactionsError } = await supabase
-      .from("token_transactions")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(10)
+  if (txErr) return NextResponse.json({ error: txErr.message }, { status: 400 });
 
-    if (transactionsError) {
-      return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 })
-    }
-
-    return NextResponse.json({
-      balance: profile.tokens,
-      transactions: transactions || [],
-    })
-  } catch (error) {
-    console.error("Error fetching token data:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
+  return NextResponse.json({
+    balance: balanceRow?.tokens ?? 0,
+    transactions: txs ?? [],
+  });
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createClient()
+// POST /api/tokens -> { action: "credit"|"debit", amount: number, reason?, meta? }
+export async function POST(req: Request) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+  let payload: { action?: string; amount?: number; reason?: string; meta?: any };
+  try { payload = await req.json(); }
+  catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
-    const body = await request.json()
-    const { amount, type, description, metadata = {} } = body
-
-    // Validate input
-    if (!amount || !type || !description) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
-    }
-
-    // Call the database function to update tokens
-    const { data, error } = await supabase.rpc("update_user_tokens", {
-      p_user_id: user.id,
-      p_amount: amount,
-      p_type: type,
-      p_description: description,
-      p_metadata: metadata,
-    })
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
-    }
-
-    // Get updated balance
-    const { data: profile } = await supabase.from("profiles").select("tokens").eq("id", user.id).single()
-
-    return NextResponse.json({
-      success: true,
-      balance: profile?.tokens || 0,
-    })
-  } catch (error) {
-    console.error("Error updating tokens:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  const { action, amount, reason, meta } = payload ?? {};
+  if (!action || !["credit", "debit"].includes(action) || !Number.isFinite(amount!) || amount! <= 0) {
+    return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
+
+  const fn = action === "credit" ? "credit_tokens" : "debit_tokens";
+  const { error } = await supabase.rpc(fn, {
+    p_amount: Math.trunc(amount!),
+    p_reason: reason ?? null,
+    p_meta: meta ?? {},
+  });
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  const { data: balanceRow } = await supabase
+    .from("user_balances")
+    .select("tokens")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  return NextResponse.json({ ok: true, balance: balanceRow?.tokens ?? 0 });
 }
