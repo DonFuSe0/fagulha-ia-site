@@ -34,9 +34,11 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
-      # 👇 aqui está a mudança-chave
       - name: Install deps (no frozen lockfile)
         run: pnpm install --no-frozen-lockfile
+
+      - name: Validate package.json (JSON)
+        run: node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json is valid JSON')"
 
       - name: Lint
         run: |

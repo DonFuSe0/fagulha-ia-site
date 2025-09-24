@@ -18,4 +18,5 @@ export async function createClient() {
   return supabase;
 }
 
+// alias opcional para manter imports antigos, se existirem
 export const createServerClient = createClient;
