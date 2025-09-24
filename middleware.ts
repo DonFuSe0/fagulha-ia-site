@@ -5,9 +5,17 @@ export function middleware(request: NextRequest) {
   return updateSession(request);
 }
 
-// Deixe /auth e assets fora do bloqueio
+/**
+ * Protegemos apenas rotas privadas.
+ * (Landing, auth e assets ficam fora do fluxo do middleware)
+ */
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|auth|api/public).*)",
+    "/dashboard/:path*",
+    "/generate/:path*",
+    "/my-gallery/:path*",
+    "/checkout/:path*",
+    "/profile/:path*",
+    "/social/:path*",
   ],
 };
