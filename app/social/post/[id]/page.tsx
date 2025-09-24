@@ -43,9 +43,7 @@ export default async function PostPage({ params }: PostPageProps) {
         <PostCard post={post} currentUserId={user.id} />
 
         {/* Comments */}
-        <div className="mt-8">
-          <CommentSection postId={id} currentUserId={user.id} />
-        </div>
+        <CommentSection postId={id} currentUserId={user.id} />
       </div>
     </div>
   )

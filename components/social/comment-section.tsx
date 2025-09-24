@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { MessageCircle, Heart, Reply } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
-import { Heart, Reply, MoreHorizontal } from "lucide-react"
+import Link from "next/link"
 
 interface CommentSectionProps {
   postId: string
@@ -30,7 +31,7 @@ interface Comment {
   profiles: {
     avatar_url: string | null
   }
-  likes: Array<{ id: string; user_id: string }>
+  likes: { id: string; user_id: string }[]
 }
 
 export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
@@ -39,13 +40,12 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [replyTo, setReplyTo] = useState<string | null>(null)
 
-  const supabase = createClient()
-
   useEffect(() => {
     fetchComments()
   }, [postId])
 
   const fetchComments = async () => {
+    const supabase = createClient()
     const { data } = await supabase
       .from("comments")
       .select(`
@@ -67,6 +67,7 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
     if (!newComment.trim()) return
 
     setIsLoading(true)
+    const supabase = createClient()
 
     try {
       const { error } = await supabase.from("comments").insert({
@@ -89,13 +90,15 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
   }
 
   const handleLikeComment = async (commentId: string, isLiked: boolean) => {
+    const supabase = createClient()
+
     try {
       if (isLiked) {
-        await supabase.from("likes").delete().eq("comment_id", commentId).eq("user_id", currentUserId)
+        await supabase.from("likes").delete().eq("user_id", currentUserId).eq("comment_id", commentId)
       } else {
         await supabase.from("likes").insert({
-          comment_id: commentId,
           user_id: currentUserId,
+          comment_id: commentId,
         })
       }
       fetchComments()
@@ -104,67 +107,87 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
     }
   }
 
-  // Organize comments into threads
   const topLevelComments = comments.filter((comment) => !comment.reply_to)
   const getReplies = (commentId: string) => comments.filter((comment) => comment.reply_to === commentId)
 
   return (
-    <Card className="glass">
+    <Card className="glass mt-6">
       <CardHeader>
-        <CardTitle>Comments ({comments.length})</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <MessageCircle className="w-5 h-5" />
+          Comments ({comments.length})
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Comment Form */}
         <form onSubmit={handleSubmitComment} className="space-y-4">
-          <Textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder={replyTo ? "Write a reply..." : "Write a comment..."}
-            className="min-h-[100px] resize-none"
-            maxLength={500}
-          />
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {replyTo && (
-                <Button type="button" variant="outline" size="sm" onClick={() => setReplyTo(null)}>
-                  Cancel Reply
+          <div className="flex gap-3">
+            <Avatar className="w-10 h-10">
+              <AvatarImage src="/placeholder.svg" />
+              <AvatarFallback className="bg-gradient-fagulha text-white">U</AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <Textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder={replyTo ? "Write a reply..." : "Write a comment..."}
+                className="min-h-[80px] resize-none"
+                maxLength={280}
+              />
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-2">
+                  {replyTo && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setReplyTo(null)}>
+                      Cancel Reply
+                    </Button>
+                  )}
+                  <span className="text-sm text-muted-foreground">{newComment.length}/280</span>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={!newComment.trim() || isLoading}
+                  size="sm"
+                  className="bg-gradient-fagulha"
+                >
+                  {isLoading ? "Posting..." : replyTo ? "Reply" : "Comment"}
                 </Button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">{newComment.length}/500</span>
-              <Button
-                type="submit"
-                disabled={!newComment.trim() || isLoading || newComment.length > 500}
-                className="bg-gradient-fagulha hover:opacity-90"
-              >
-                {isLoading ? "Posting..." : replyTo ? "Reply" : "Comment"}
-              </Button>
+              </div>
             </div>
           </div>
         </form>
 
         {/* Comments List */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {topLevelComments.map((comment) => (
-            <CommentItem
-              key={comment.id}
-              comment={comment}
-              currentUserId={currentUserId}
-              onLike={handleLikeComment}
-              onReply={setReplyTo}
-              replies={getReplies(comment.id)}
-            />
-          ))}
-
-          {comments.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No comments yet. Be the first to comment!</p>
+            <div key={comment.id} className="space-y-3">
+              <CommentItem
+                comment={comment}
+                currentUserId={currentUserId}
+                onLike={handleLikeComment}
+                onReply={setReplyTo}
+              />
+              {/* Replies */}
+              {getReplies(comment.id).map((reply) => (
+                <div key={reply.id} className="ml-12">
+                  <CommentItem
+                    comment={reply}
+                    currentUserId={currentUserId}
+                    onLike={handleLikeComment}
+                    onReply={setReplyTo}
+                    isReply
+                  />
+                </div>
+              ))}
             </div>
-          )}
+          ))}
         </div>
+
+        {comments.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            <MessageCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>No comments yet. Be the first to comment!</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -175,80 +198,63 @@ interface CommentItemProps {
   currentUserId: string
   onLike: (commentId: string, isLiked: boolean) => void
   onReply: (commentId: string) => void
-  replies: Comment[]
+  isReply?: boolean
 }
 
-function CommentItem({ comment, currentUserId, onLike, onReply, replies }: CommentItemProps) {
+function CommentItem({ comment, currentUserId, onLike, onReply, isReply = false }: CommentItemProps) {
   const isLiked = comment.likes?.some((like) => like.user_id === currentUserId) || false
   const likesCount = comment.likes?.length || 0
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-3">
-        <Avatar className="w-10 h-10">
+    <div className={`flex gap-3 ${isReply ? "border-l-2 border-border/50 pl-4" : ""}`}>
+      <Link href={`/social/profile/${comment.users.username}`}>
+        <Avatar className="w-10 h-10 hover:ring-2 hover:ring-fagulha-primary/50 transition-all">
           <AvatarImage src={comment.users.avatar_url || comment.profiles?.avatar_url} />
-          <AvatarFallback className="bg-gradient-fagulha text-white text-sm">
+          <AvatarFallback className="bg-gradient-fagulha text-white">
             {comment.users.display_name?.charAt(0) || comment.users.username?.charAt(0)}
           </AvatarFallback>
         </Avatar>
+      </Link>
 
-        <div className="flex-1 space-y-2">
-          <div className="bg-muted/30 rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="font-semibold text-sm">{comment.users.display_name}</span>
-              <span className="text-xs text-muted-foreground">@{comment.users.username}</span>
-              <span className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
-              </span>
-            </div>
-            <p className="text-sm leading-relaxed">{comment.content}</p>
-          </div>
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-1">
+          <Link
+            href={`/social/profile/${comment.users.username}`}
+            className="font-semibold hover:text-fagulha-primary transition-colors"
+          >
+            {comment.users.display_name}
+          </Link>
+          <span className="text-muted-foreground text-sm">@{comment.users.username}</span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-muted-foreground text-sm">
+            {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+          </span>
+        </div>
 
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onLike(comment.id, isLiked)}
-              className={`flex items-center gap-1 text-xs hover:text-red-500 transition-colors ${
-                isLiked ? "text-red-500" : "text-muted-foreground"
-              }`}
-            >
-              <Heart className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} />
-              {likesCount > 0 && <span>{likesCount}</span>}
-            </Button>
+        <p className="text-foreground mb-2 leading-relaxed">{comment.content}</p>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onReply(comment.id)}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-blue-500 transition-colors"
-            >
-              <Reply className="w-4 h-4" />
-              Reply
-            </Button>
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onLike(comment.id, isLiked)}
+            className={`text-muted-foreground hover:text-red-500 ${isLiked ? "text-red-500" : ""}`}
+          >
+            <Heart className={`w-4 h-4 mr-1 ${isLiked ? "fill-current" : ""}`} />
+            {likesCount}
+          </Button>
 
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-              <MoreHorizontal className="w-4 h-4" />
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onReply(comment.id)}
+            className="text-muted-foreground hover:text-fagulha-primary"
+          >
+            <Reply className="w-4 h-4 mr-1" />
+            Reply
+          </Button>
         </div>
       </div>
-
-      {/* Replies */}
-      {replies.length > 0 && (
-        <div className="ml-12 space-y-4 border-l-2 border-border/30 pl-4">
-          {replies.map((reply) => (
-            <CommentItem
-              key={reply.id}
-              comment={reply}
-              currentUserId={currentUserId}
-              onLike={onLike}
-              onReply={onReply}
-              replies={[]}
-            />
-          ))}
-        </div>
-      )}
     </div>
   )
 }

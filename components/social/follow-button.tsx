@@ -6,18 +6,18 @@ import { Button } from "@/components/ui/button"
 import { UserPlus, UserMinus } from "lucide-react"
 
 interface FollowButtonProps {
-  targetUserId: string
+  userId: string
   isFollowing: boolean
   className?: string
 }
 
-export function FollowButton({ targetUserId, isFollowing: initialIsFollowing, className }: FollowButtonProps) {
+export function FollowButton({ userId, isFollowing: initialIsFollowing, className }: FollowButtonProps) {
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing)
   const [isLoading, setIsLoading] = useState(false)
-  const supabase = createClient()
 
   const handleFollow = async () => {
     setIsLoading(true)
+    const supabase = createClient()
 
     try {
       const {
@@ -27,12 +27,12 @@ export function FollowButton({ targetUserId, isFollowing: initialIsFollowing, cl
 
       if (isFollowing) {
         // Unfollow
-        await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetUserId)
+        await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", userId)
       } else {
         // Follow
         await supabase.from("follows").insert({
           follower_id: user.id,
-          following_id: targetUserId,
+          following_id: userId,
         })
       }
 
@@ -49,7 +49,7 @@ export function FollowButton({ targetUserId, isFollowing: initialIsFollowing, cl
       onClick={handleFollow}
       disabled={isLoading}
       variant={isFollowing ? "outline" : "default"}
-      className={`${isFollowing ? "" : "bg-gradient-fagulha hover:opacity-90"} ${className}`}
+      className={`${isFollowing ? "" : "bg-gradient-fagulha"} ${className}`}
     >
       {isFollowing ? (
         <>

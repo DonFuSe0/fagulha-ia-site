@@ -40,12 +40,16 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     notFound()
   }
 
-  // Get user stats
-  const [{ count: postsCount }, { count: followersCount }, { count: followingCount }] = await Promise.all([
-    supabase.from("posts").select("*", { count: "exact", head: true }).eq("author_id", profile.id),
-    supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", profile.id),
-    supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", profile.id),
-  ])
+  // Get follow counts
+  const { count: followersCount } = await supabase
+    .from("follows")
+    .select("*", { count: "exact", head: true })
+    .eq("following_id", profile.id)
+
+  const { count: followingCount } = await supabase
+    .from("follows")
+    .select("*", { count: "exact", head: true })
+    .eq("follower_id", profile.id)
 
   // Check if current user follows this profile
   const { data: isFollowing } = await supabase
@@ -55,7 +59,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     .eq("following_id", profile.id)
     .single()
 
-  // Get user posts
+  // Get user's posts
   const { data: posts } = await supabase
     .from("posts")
     .select(`
@@ -77,91 +81,88 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         {/* Profile Header */}
         <Card className="glass mb-8">
           <CardContent className="p-8">
-            <div className="flex flex-col md:flex-row gap-8">
-              <div className="flex flex-col items-center md:items-start">
-                <Avatar className="w-32 h-32 mb-4">
-                  <AvatarImage src={profile.avatar_url || profile.profiles?.avatar_url} />
-                  <AvatarFallback className="text-2xl bg-gradient-fagulha text-white">
-                    {profile.display_name?.charAt(0) || profile.username?.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
+            <div className="flex flex-col md:flex-row gap-6">
+              <Avatar className="w-32 h-32 mx-auto md:mx-0">
+                <AvatarImage src={profile.avatar_url || profile.profiles?.avatar_url} />
+                <AvatarFallback className="text-2xl bg-gradient-fagulha text-white">
+                  {profile.display_name?.charAt(0) || profile.username?.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
 
-                {!isOwnProfile && (
-                  <FollowButton targetUserId={profile.id} isFollowing={!!isFollowing} className="w-full md:w-auto" />
-                )}
-
-                {isOwnProfile && (
-                  <Button variant="outline" asChild className="w-full md:w-auto bg-transparent">
-                    <Link href="/social/profile/edit">Edit Profile</Link>
-                  </Button>
-                )}
-              </div>
-
-              <div className="flex-1">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-4">
+              <div className="flex-1 text-center md:text-left">
+                <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
                   <div>
-                    <h1 className="text-3xl font-bold mb-2">{profile.display_name}</h1>
-                    <p className="text-muted-foreground mb-4">@{profile.username}</p>
+                    <h1 className="text-3xl font-bold">{profile.display_name}</h1>
+                    <p className="text-muted-foreground">@{profile.username}</p>
                   </div>
 
-                  {profile.verified && <Badge className="bg-gradient-fagulha text-white">Verified</Badge>}
+                  {!isOwnProfile && (
+                    <FollowButton userId={profile.id} isFollowing={!!isFollowing} className="md:ml-auto" />
+                  )}
+
+                  {isOwnProfile && (
+                    <Button variant="outline" asChild className="md:ml-auto bg-transparent">
+                      <Link href="/social/profile/edit">Edit Profile</Link>
+                    </Button>
+                  )}
                 </div>
 
-                {profile.bio && <p className="text-lg mb-6 leading-relaxed">{profile.bio}</p>}
+                {profile.bio && <p className="text-muted-foreground mb-4 leading-relaxed">{profile.bio}</p>}
 
-                <div className="flex flex-wrap gap-4 mb-6 text-muted-foreground">
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-4">
                   {profile.location && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
-                      <span>{profile.location}</span>
+                      {profile.location}
                     </div>
                   )}
-
                   {profile.website && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <LinkIcon className="w-4 h-4" />
-                      <Link href={profile.website} className="hover:text-foreground transition-colors">
+                      <a
+                        href={profile.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-fagulha-primary hover:underline"
+                      >
                         {profile.website.replace(/^https?:\/\//, "")}
-                      </Link>
+                      </a>
                     </div>
                   )}
-
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <CalendarDays className="w-4 h-4" />
-                    <span>
-                      Joined{" "}
-                      {new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                    </span>
+                    Joined{" "}
+                    {new Date(profile.created_at).toLocaleDateString("en-US", {
+                      month: "long",
+                      year: "numeric",
+                    })}
                   </div>
                 </div>
 
-                {/* Stats */}
-                <div className="flex gap-6">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gradient-fagulha">{postsCount || 0}</div>
-                    <div className="text-sm text-muted-foreground">Posts</div>
-                  </div>
-                  <Link
-                    href={`/social/profile/${username}/followers`}
-                    className="text-center hover:bg-muted/20 rounded-lg p-2 transition-colors"
-                  >
-                    <div className="text-2xl font-bold text-gradient-fagulha">{followersCount || 0}</div>
-                    <div className="text-sm text-muted-foreground">Followers</div>
-                  </Link>
+                <div className="flex gap-6 text-sm">
                   <Link
                     href={`/social/profile/${username}/following`}
-                    className="text-center hover:bg-muted/20 rounded-lg p-2 transition-colors"
+                    className="flex items-center gap-1 hover:text-fagulha-primary transition-colors"
                   >
-                    <div className="text-2xl font-bold text-gradient-fagulha">{followingCount || 0}</div>
-                    <div className="text-sm text-muted-foreground">Following</div>
+                    <span className="font-semibold">{followingCount || 0}</span>
+                    <span className="text-muted-foreground">Following</span>
+                  </Link>
+                  <Link
+                    href={`/social/profile/${username}/followers`}
+                    className="flex items-center gap-1 hover:text-fagulha-primary transition-colors"
+                  >
+                    <span className="font-semibold">{followersCount || 0}</span>
+                    <span className="text-muted-foreground">Followers</span>
                   </Link>
                 </div>
+
+                {profile.verified && <Badge className="mt-4 bg-gradient-fagulha">Verified Artist</Badge>}
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Content Tabs */}
+        {/* Profile Content */}
         <Tabs defaultValue="posts" className="w-full">
           <TabsList className="grid w-full grid-cols-3 glass">
             <TabsTrigger value="posts">Posts</TabsTrigger>
@@ -169,29 +170,29 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             <TabsTrigger value="likes">Likes</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="posts" className="space-y-6 mt-8">
+          <TabsContent value="posts" className="space-y-6 mt-6">
             {posts && posts.length > 0 ? (
               posts.map((post) => <PostCard key={post.id} post={post} currentUserId={currentUser.id} />)
             ) : (
               <Card className="glass">
-                <CardContent className="p-12 text-center">
+                <CardContent className="p-8 text-center">
                   <p className="text-muted-foreground">No posts yet</p>
                 </CardContent>
               </Card>
             )}
           </TabsContent>
 
-          <TabsContent value="media" className="mt-8">
+          <TabsContent value="media" className="mt-6">
             <Card className="glass">
-              <CardContent className="p-12 text-center">
+              <CardContent className="p-8 text-center">
                 <p className="text-muted-foreground">Media posts coming soon</p>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="likes" className="mt-8">
+          <TabsContent value="likes" className="mt-6">
             <Card className="glass">
-              <CardContent className="p-12 text-center">
+              <CardContent className="p-8 text-center">
                 <p className="text-muted-foreground">Liked posts coming soon</p>
               </CardContent>
             </Card>

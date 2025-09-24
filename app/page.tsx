@@ -23,6 +23,9 @@ export default function HomePage() {
               <Link href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
                 Recursos
               </Link>
+              <Link href="/social" className="text-muted-foreground hover:text-foreground transition-colors">
+                Social
+              </Link>
             </nav>
             <div className="flex items-center gap-3">
               <Button variant="ghost" asChild>
