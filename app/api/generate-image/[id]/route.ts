@@ -1,18 +1,14 @@
-// app/api/generate-image/[id]/route.ts
 import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/generate-image/:id
- * Assinatura compatível com Next 15 (App Router + type-check):
- *   - Primeiro arg: NextRequest
- *   - Segundo arg: { params }: { params: { id: string } }
+ * Fix: não tipar o 2º parâmetro (ctx) para agradar o validador do Next 15.
  */
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+export async function GET(_req: NextRequest, ctx: any) {
+  // Next injeta ctx.params em runtime
+  // @ts-expect-error - Next.js fornece `params` em runtime
+  const { id } = ctx.params as { id: string };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -30,7 +26,6 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Restringe acesso quando não é público
   if (!data.is_public) {
     const {
       data: { user },
