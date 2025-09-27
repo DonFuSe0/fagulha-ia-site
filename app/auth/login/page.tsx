@@ -1,99 +1,112 @@
-"use client"
+"use client";
 
-import type React from "react"
+export const dynamic = "force-dynamic";
 
-import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { Suspense, useState } from "react";
+import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  return (
+    <Suspense fallback={<LoginSkeleton />}>
+      <LoginInner />
+    </Suspense>
+  );
+}
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const supabase = createClient()
-    setIsLoading(true)
-    setError(null)
+function LoginInner() {
+  const sp = useSearchParams();
+  const router = useRouter();
+  const next = sp.get("next") || "/dashboard";
 
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-      if (error) throw error
-      router.push("/dashboard")
-    } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Ocorreu um erro")
-    } finally {
-      setIsLoading(false)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+
+    // importa o client **dinamicamente** para não quebrar no build
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setBusy(false);
+
+    if (error) {
+      setErr(error.message);
+      return;
     }
+
+    router.replace(next);
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md">
-        <Card className="glass">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-gradient-fagulha">Bem-vindo de volta</CardTitle>
-            <CardDescription className="text-muted-foreground">Entre na sua conta Fagulha</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Digite seu email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="glass"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Digite sua senha"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="glass"
-                />
-              </div>
-              {error && (
-                <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                  {error}
-                </div>
-              )}
-              <Button
-                type="submit"
-                className="w-full bg-gradient-fagulha hover:opacity-90 glow-fagulha-sm"
-                disabled={isLoading}
-              >
-                {isLoading ? "Entrando..." : "Entrar"}
-              </Button>
-            </form>
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              {"Não tem uma conta? "}
-              <Link href="/auth/sign-up" className="text-fagulha-primary hover:underline">
-                Cadastre-se
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+    <main className="container max-w-md py-10">
+      <h1 className="text-2xl font-bold mb-6">Entrar</h1>
+
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <label className="text-sm">E-mail</label>
+          <input
+            type="email"
+            className="w-full rounded-md border bg-transparent px-3 py-2"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm">Senha</label>
+          <input
+            type="password"
+            className="w-full rounded-md border bg-transparent px-3 py-2"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={busy}
+          className="w-full rounded-md bg-[var(--color-primary)] px-4 py-2 font-medium disabled:opacity-60"
+        >
+          {busy ? "Entrando..." : "Entrar"}
+        </button>
+      </form>
+
+      {err && <p className="mt-4 text-sm text-red-500">{err}</p>}
+
+      <p className="mt-6 text-sm text-[var(--color-muted)]">
+        Não tem conta? <Link href="/auth/sign-up" className="underline">Criar</Link>
+      </p>
+    </main>
+  );
+}
+
+function LoginSkeleton() {
+  return (
+    <main className="container max-w-md py-10 animate-pulse">
+      <div className="h-7 w-40 rounded bg-[var(--color-border)] mb-6" />
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <div className="h-4 w-16 rounded bg-[var(--color-border)]" />
+          <div className="h-10 w-full rounded bg-[var(--color-border)]" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-4 w-16 rounded bg-[var(--color-border)]" />
+          <div className="h-10 w-full rounded bg-[var(--color-border)]" />
+        </div>
+        <div className="h-10 w-full rounded bg-[var(--color-border)]" />
       </div>
-    </div>
-  )
+      <div className="h-4 w-60 rounded bg-[var(--color-border)] mt-6" />
+    </main>
+  );
 }

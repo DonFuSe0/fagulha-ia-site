@@ -1,22 +1,33 @@
+// lib/supabase/server.ts
 import { cookies } from "next/headers";
-import { createServerClient as createSupabaseServerClient } from "@supabase/ssr";
+import {
+  createServerClient as createSupabaseServerClient,
+  type CookieOptions,
+} from "@supabase/ssr";
 
-/** Client para o SERVER (rotas/pages), preservando cookies/sessão do usuário. */
+/**
+ * Cria um client do Supabase no SERVER (RSC/route handlers),
+ * preservando cookies/sessão do usuário.
+ */
 export async function createClient() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  const supabase = createSupabaseServerClient(url, anon, {
+  return createSupabaseServerClient(url, key, {
     cookies: {
-      get: (name) => cookieStore.get(name)?.value,
-      set: (name, value, options) => cookieStore.set({ name, value, ...options }),
-      remove: (name, options) => cookieStore.set({ name, value: "", ...options, maxAge: 0 }),
+      get(name: string) {
+        return cookieStore.get(name)?.value;
+      },
+      set(name: string, value: string, options: CookieOptions) {
+        cookieStore.set({ name, value, ...options });
+      },
+      remove(name: string, options: CookieOptions) {
+        cookieStore.set({ name, value: "", ...options });
+      },
     },
   });
-
-  return supabase;
 }
 
-// alias opcional para manter imports antigos, se existirem
+/** Alias para retrocompatibilidade (outros módulos importam { createServerClient }) */
 export const createServerClient = createClient;
