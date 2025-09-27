@@ -1,14 +1,15 @@
 // app/api/generate-image/[id]/route.ts
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/generate-image/:id
- * Assinatura correta no Next 15 (App Router):
- * export async function GET(request: Request, { params }: { params: { id: string } })
+ * Assinatura compatível com Next 15 (App Router + type-check):
+ *   - Primeiro arg: NextRequest
+ *   - Segundo arg: { params }: { params: { id: string } }
  */
 export async function GET(
-  _request: Request,
+  _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const { id } = params;
@@ -29,7 +30,7 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Protege itens não públicos
+  // Restringe acesso quando não é público
   if (!data.is_public) {
     const {
       data: { user },
