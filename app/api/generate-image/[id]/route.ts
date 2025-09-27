@@ -4,18 +4,14 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/generate-image/:id
- * Retorna os dados da imagem (se existir) para o ID informado.
- *
- * Observação importante:
- * - No Next.js (App Router), a assinatura correta da rota dinâmica é:
- *   export async function GET(request: Request, context: { params: { id: string } })
- * - Evite tipar com NextRequest aqui; use `Request`.
+ * Assinatura correta no Next 15 (App Router):
+ * export async function GET(request: Request, { params }: { params: { id: string } })
  */
 export async function GET(
   _request: Request,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const { id } = context.params;
+  const { id } = params;
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -33,7 +29,7 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Se a imagem não for pública e o usuário não for o dono, retorna 403
+  // Protege itens não públicos
   if (!data.is_public) {
     const {
       data: { user },
