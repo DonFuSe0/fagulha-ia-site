@@ -2,11 +2,19 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginSkeleton />}>
+      <LoginInner />
+    </Suspense>
+  );
+}
+
+function LoginInner() {
   const sp = useSearchParams();
   const router = useRouter();
   const next = sp.get("next") || "/dashboard";
@@ -21,7 +29,7 @@ export default function LoginPage() {
     setBusy(true);
     setErr(null);
 
-    // ⬇️ importa o client só na ação (evita avaliação no build)
+    // importa o client **dinamicamente** para não quebrar no build
     const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
 
@@ -79,6 +87,26 @@ export default function LoginPage() {
       <p className="mt-6 text-sm text-[var(--color-muted)]">
         Não tem conta? <Link href="/auth/sign-up" className="underline">Criar</Link>
       </p>
+    </main>
+  );
+}
+
+function LoginSkeleton() {
+  return (
+    <main className="container max-w-md py-10 animate-pulse">
+      <div className="h-7 w-40 rounded bg-[var(--color-border)] mb-6" />
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <div className="h-4 w-16 rounded bg-[var(--color-border)]" />
+          <div className="h-10 w-full rounded bg-[var(--color-border)]" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-4 w-16 rounded bg-[var(--color-border)]" />
+          <div className="h-10 w-full rounded bg-[var(--color-border)]" />
+        </div>
+        <div className="h-10 w-full rounded bg-[var(--color-border)]" />
+      </div>
+      <div className="h-4 w-60 rounded bg-[var(--color-border)] mt-6" />
     </main>
   );
 }
