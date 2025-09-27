@@ -6,7 +6,7 @@ import {
 } from "@supabase/ssr";
 
 /**
- * Cria um client do Supabase no SERVER (Server Components, Route Handlers etc.)
+ * Cria um client do Supabase no SERVER (RSC/route handlers),
  * preservando cookies/sessão do usuário.
  */
 export async function createClient() {
@@ -29,8 +29,5 @@ export async function createClient() {
   });
 }
 
-/**
- * Alias para retrocompatibilidade.
- * Alguns arquivos importam { createServerClient } de "@/lib/supabase/server".
- */
+/** Alias para retrocompatibilidade (outros módulos importam { createServerClient }) */
 export const createServerClient = createClient;
