@@ -1,7 +1,8 @@
+// app/api/tokens/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-// GET /api/tokens  -> saldo + últimas transações
+// GET /api/tokens -> saldo + últimas transações
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -12,7 +13,6 @@ export async function GET() {
     .select("tokens")
     .eq("user_id", user.id)
     .maybeSingle();
-
   if (balErr) return NextResponse.json({ error: balErr.message }, { status: 400 });
 
   const { data: txs, error: txErr } = await supabase
@@ -21,7 +21,6 @@ export async function GET() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(20);
-
   if (txErr) return NextResponse.json({ error: txErr.message }, { status: 400 });
 
   return NextResponse.json({
