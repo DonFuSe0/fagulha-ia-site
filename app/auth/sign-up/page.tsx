@@ -1,11 +1,11 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 export default function SignUpPage() {
-  const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -17,6 +17,10 @@ export default function SignUpPage() {
     setBusy(true);
     setErr(null);
     setMsg(null);
+
+    // ⬇️ importa o client só na ação (evita avaliação no build)
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
 
     const redirectTo =
       `${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "")}/auth/callback`;
