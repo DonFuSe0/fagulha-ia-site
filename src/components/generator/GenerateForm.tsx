@@ -28,7 +28,7 @@ export default function GenerateForm() {
   const [loading, setLoading] = useState(false);
   const [cost, setCost] = useState(1);
 
-  // Update cost whenever width/height change
+  // Atualiza o custo quando largura/altura mudam
   const recalcCost = (w: number, h: number) => {
     const base = 512 * 512;
     const area = w * h;
@@ -40,12 +40,16 @@ export default function GenerateForm() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (name === 'width' || name === 'height') {
-      const newW = name === 'width' ? Number(value) : Number(prev.width);
-      const newH = name === 'height' ? Number(value) : Number(prev.height);
-      recalcCost(newW, newH);
-    }
+    // Atualiza o estado e recalcula o custo dentro do callback
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+      if (name === 'width' || name === 'height') {
+        const newW = name === 'width' ? Number(value) : Number(updated.width);
+        const newH = name === 'height' ? Number(value) : Number(updated.height);
+        recalcCost(newW, newH);
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,6 +81,7 @@ export default function GenerateForm() {
       setLoading(false);
     }
   };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-xl mx-auto">
       <div>
@@ -175,7 +180,9 @@ export default function GenerateForm() {
           />
         </div>
       </div>
-      <div className="mt-2 text-sm text-muted">Custo estimado: <span className="font-semibold text-primary">{cost}</span> tokens</div>
+      <div className="mt-2 text-sm text-muted">
+        Custo estimado: <span className="font-semibold text-primary">{cost}</span> tokens
+      </div>
       {error && <p className="text-danger text-sm">{error}</p>}
       <button
         type="submit"
