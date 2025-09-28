@@ -20,19 +20,19 @@ export default async function Header() {
           <span className="font-semibold text-xl">Fagulha</span>
         </Link>
         <nav className="flex space-x-4 text-sm">
-          <Link href="/explore" className="hover:text-primary">Explore</Link>
+          <Link href="/explore" className="hover:text-primary">Explorar</Link>
           {user && (
             <>
-              <Link href="/dashboard" className="hover:text-primary">Dashboard</Link>
-              <Link href="/generate" className="hover:text-primary">Generate</Link>
-              <Link href="/my-gallery" className="hover:text-primary">My Gallery</Link>
+              <Link href="/dashboard" className="hover:text-primary">Painel</Link>
+              <Link href="/generate" className="hover:text-primary">Gerar</Link>
+              <Link href="/my-gallery" className="hover:text-primary">Minha galeria</Link>
             </>
           )}
-          <Link href="/pricing" className="hover:text-primary">Pricing</Link>
+          <Link href="/pricing" className="hover:text-primary">Planos</Link>
           {user ? (
-            <Link href="/profile" className="hover:text-primary">Profile</Link>
+            <Link href="/profile" className="hover:text-primary">Perfil</Link>
           ) : (
-            <Link href="/auth/login" className="hover:text-primary">Login</Link>
+            <Link href="/auth/login" className="hover:text-primary">Entrar</Link>
           )}
         </nav>
       </div>
