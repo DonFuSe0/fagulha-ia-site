@@ -37,10 +37,19 @@ export function supabaseServer() {
         const store = await cookies();
         store.set(name, value, options);
       },
-      // Remove a cookie by name.
+      // Remove a cookie by name. The Next.js cookie API does not
+      // support passing options to `delete()`.  If options such as
+      // `path` or `domain` are provided, we instead overwrite the
+      // cookie with an empty value and a maxAge of 0 to expire it
+      // immediately.  Otherwise, we call `.delete(name)`.
       async remove(name: string, options?: any) {
         const store = await cookies();
-        store.delete(name, options);
+        if (options && Object.keys(options).length > 0) {
+          // Set the cookie with an empty value and maxAge 0 to delete it.
+          store.set(name, '', { ...options, maxAge: 0 });
+        } else {
+          store.delete(name);
+        }
       },
     },
   });
