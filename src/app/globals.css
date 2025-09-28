@@ -43,7 +43,7 @@ body {
   @apply btn bg-surface text-text border border-border hover:bg-border;
 }
 .btn-ghost {
-  @apply btn text-text hover:bg-surface/50;
+  @apply btn text-text hover:bg-surface;
 }
 .btn-destructive {
   @apply btn bg-danger text-white hover:bg-red-700;
