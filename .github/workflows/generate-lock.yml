@@ -1,0 +1,20 @@
+name: Generate package-lock
+
+on:
+  workflow_dispatch: {}  # você pode dispará-lo manualmente pelo GitHub
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - run: npm install --package-lock-only
+      - uses: EndBug/add-and-commit@v9
+        with:
+          message: 'feat: gerar package-lock.json'
+          add: 'package-lock.json'
+          branch: desenvolvimento
+          push: true
