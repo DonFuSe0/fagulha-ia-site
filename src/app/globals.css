@@ -4,10 +4,9 @@
 
 /*
   Global CSS variables defining the Fagulha colour palette.  These
-  variables follow the project spec: dark background with purple
-  primary tones and orange accent (matching the logo).  You can
-  override these values via CSS or via a user toggle to implement
-  light mode if desired.
+  variables follow the project spec: dark background with primary
+  orange tones (matching the logo). You can override these values via
+  CSS or via a user toggle to implement light mode if desired.
 */
 
 :root {
@@ -31,7 +30,7 @@ body {
   @apply bg-bg text-text min-h-screen font-sans antialiased;
 }
 
-/* Example utility classes for buttons.  These mirror common shadcn
+/* Example utility classes for buttons. These mirror common shadcn
    variants but are simple Tailwind compositions. */
 .btn {
   @apply px-4 py-2 rounded-md font-medium transition-colors duration-150;
@@ -43,6 +42,7 @@ body {
   @apply btn bg-surface text-text border border-border hover:bg-border;
 }
 .btn-ghost {
+  /* Removido /50 para evitar erro de classe inexistente */
   @apply btn text-text hover:bg-surface;
 }
 .btn-destructive {
