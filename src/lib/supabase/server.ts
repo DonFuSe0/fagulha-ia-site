@@ -15,31 +15,32 @@ import { createServerClient } from '@supabase/ssr';
 export function supabaseServer() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
-  // Obtain the cookie store for the current request.  Each invocation of
-  // `cookies()` returns a new instance bound to the request context.
-  const cookieStore = cookies();
+  /*
+   * Next.js 15 makes `cookies()` asynchronous, returning a Promise.  We
+   * therefore avoid capturing the cookie store synchronously.  Instead,
+   * each cookie method retrieves the current cookie store on demand
+   * and awaits it.  The returned functions are async but `createServerClient`
+   * will handle their Promises.  This keeps `supabaseServer` itself
+   * synchronous, so call sites don't need to `await` it.
+   */
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      /**
-       * Retrieve a cookie value by name.  Returns undefined if the
-       * cookie is not set.
-       */
-      get(name: string) {
-        const cookie = cookieStore.get(name);
+      // Get a cookie value.  Returns a Promise that resolves to the
+      // cookie's value or undefined.
+      async get(name: string) {
+        const store = await cookies();
+        const cookie = store.get(name);
         return cookie?.value;
       },
-      /**
-       * Set a cookie using Next.js's ResponseCookies API.  Accepts
-       * optional serialization options such as `maxAge`, `expires`, etc.
-       */
-      set(name: string, value: string, options?: any) {
-        cookieStore.set(name, value, options);
+      // Set a cookie.  Accepts optional options like `maxAge`, `expires`, etc.
+      async set(name: string, value: string, options?: any) {
+        const store = await cookies();
+        store.set(name, value, options);
       },
-      /**
-       * Remove a cookie by name.  Accepts optional options (e.g. path).
-       */
-      remove(name: string, options?: any) {
-        cookieStore.delete(name, options);
+      // Remove a cookie by name.
+      async remove(name: string, options?: any) {
+        const store = await cookies();
+        store.delete(name, options);
       },
     },
   });
