@@ -1,49 +1,53 @@
+// Caminho: src/components/auth/SignUpForm.tsx
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabaseClient } from '@/lib/supabase/client';
+import supabaseClient from '@/lib/supabase/client';
 
 export default function SignUpForm() {
-  const supabase = supabaseClient();
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [errorMsg, setError] = useState<string | undefined>();
+  const router = useRouter();
+  const supabase = supabaseClient();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setError(undefined);
     setLoading(true);
-    setErrorMsg(null);
+
+    const form = new FormData(e.currentTarget);
+    const email = String(form.get('email') || '').trim();
+    const password = String(form.get('password') || '');
 
     try {
-      // 1) Checagem de e-mail e IP no backend
-      const checkRes = await fetch('/api/check-signup', {
+      // Checagem de pré-cadastro (e-mail/IP)
+      const pre = await fetch('/api/check-signup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email }),
       });
-      if (!checkRes.ok) {
-        const payload = await checkRes.json().catch(() => ({}));
-        throw new Error(payload?.message || 'Cadastro bloqueado');
+
+      if (!pre.ok) {
+        const j = await pre.json().catch(() => ({}));
+        throw new Error(j?.message || 'Não foi possível validar seu cadastro.');
       }
 
-      // 2) Cria a conta com verificação de e-mail
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL as string;
+      // Cria usuário por e-mail/senha
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${siteUrl}/auth/callback`
-        }
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`,
+        },
       });
+
       if (error) throw error;
 
-      // 3) Redireciona para a tela de login com aviso de confirmação
-      router.push('/auth/login?success=1');
+      // Redireciona para tela informando confirmação por e-mail
+      router.replace('/auth/check-email');
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Erro ao validar dados. Tente novamente.');
+      setError(err?.message || 'Erro ao criar sua conta. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -51,35 +55,26 @@ export default function SignUpForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {errorMsg && <p className="text-danger text-sm">{errorMsg}</p>}
-      <div className="space-y-1">
-        <label className="block text-sm">E-mail</label>
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-xl bg-surface border border-border px-3 py-2"
-          placeholder="seu@email.com"
-        />
-      </div>
-      <div className="space-y-1">
-        <label className="block text-sm">Senha</label>
-        <input
-          type="password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-xl bg-surface border border-border px-3 py-2"
-          placeholder="••••••••"
-        />
-      </div>
+      <input
+        name="email"
+        type="email"
+        placeholder="Seu e-mail"
+        className="w-full rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-[var(--text)]"
+        required
+      />
+      <input
+        name="password"
+        type="password"
+        placeholder="Crie uma senha"
+        className="w-full rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-[var(--text)]"
+        required
+      />
+      {errorMsg && <p className="text-[var(--danger)] text-sm">{errorMsg}</p>}
       <button
-        type="submit"
         disabled={loading}
-        className="btn-primary w-full"
+        className="rounded bg-[var(--primary)] px-4 py-2 text-white disabled:opacity-50"
       >
-        {loading ? 'Criando...' : 'Criar conta'}
+        {loading ? 'Enviando...' : 'Criar conta'}
       </button>
     </form>
   );
