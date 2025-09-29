@@ -14,8 +14,27 @@ export default function SignUpForm() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    // First check if the email or IP is allowed to create a new account.
+    try {
+      const checkRes = await fetch('/api/check-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const checkJson = await checkRes.json();
+      if (!checkRes.ok) {
+        setLoading(false);
+        setError(checkJson.error || 'Não foi possível criar conta.');
+        return;
+      }
+    } catch (err) {
+      console.error('Erro ao verificar cadastro', err);
+      setLoading(false);
+      setError('Erro ao validar dados. Tente novamente.');
+      return;
+    }
     const supabase = supabaseBrowser();
-    const { error } = await supabase.auth.signUp({
+    const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -25,19 +44,46 @@ export default function SignUpForm() {
       }
     });
     setLoading(false);
-    if (error) {
-      setError(error.message);
+    if (signUpError) {
+      // Se o Supabase retornar que o usuário já existe, traduzimos a mensagem.
+      const errMsg =
+        signUpError.message?.toLowerCase().includes('registered')
+          ? 'Este e‑mail já está cadastrado.'
+          : signUpError.message;
+      setError(errMsg);
     } else {
-      // Supabase envia um email de confirmação. Redireciona para tela de login com aviso.
+      // Tenta capturar o endereço IP e associá-lo ao perfil
+      try {
+        const ipRes = await fetch('https://api.ipify.org?format=json');
+        const { ip } = await ipRes.json();
+        const {
+          data: { user }
+        } = await supabase.auth.getUser();
+        if (user && ip) {
+          await fetch('/api/set-ip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, ip })
+          });
+        }
+      } catch (err) {
+        // Falha silenciosa ao obter ou salvar IP
+        console.warn('Não foi possível registrar o IP', err);
+      }
+      // Redireciona para tela de login com aviso de verificação
       router.push('/auth/login?verify=1');
     }
   };
   const handleGoogleSignIn = async () => {
     const supabase = supabaseBrowser();
+    const redirectTo =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/auth/callback`
+        : `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+        redirectTo
       }
     });
   };
