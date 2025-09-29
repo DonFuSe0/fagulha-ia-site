@@ -1,35 +1,45 @@
-import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 
-// Rotas que exigem login
-const PROTECTED_PATHS = ['/dashboard', '/generate', '/my-gallery', '/profile'];
+// Rotas que exigem login:
+const PROTECTED_PREFIXES = ['/dashboard', '/generate', '/my-gallery', '/profile'];
 
 export function middleware(req: NextRequest) {
-  const { pathname, search } = req.nextUrl;
-  const isProtected = PROTECTED_PATHS.some((p) => pathname.startsWith(p));
-  if (!isProtected) return NextResponse.next();
+  const { pathname, searchParams } = req.nextUrl;
 
-  // No Edge, verifique se o cookie de sessão Supabase existe:
-  // @supabase/ssr usa, por padrão:
-  //  - sb-access-token
-  //  - sb-refresh-token
-  const hasAccess = !!req.cookies.get('sb-access-token')?.value;
-  const hasRefresh = !!req.cookies.get('sb-refresh-token')?.value;
+  // Deixa passar estáticos e o callback
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/auth/callback') ||
+    pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webp|txt|xml)$/)
+  ) {
+    return NextResponse.next();
+  }
 
-  if (!hasAccess && !hasRefresh) {
-    const loginURL = new URL('/auth/login', req.url);
-    loginURL.searchParams.set('next', `${pathname}${search || ''}`);
-    return NextResponse.redirect(loginURL);
+  // Detecta cookie de sessão do Supabase (sb-xxxx-auth-token)
+  const hasAuthCookie = req.cookies.getAll().some((c) => c.name.endsWith('-auth-token'));
+
+  // Exige sessão nas páginas protegidas
+  if (PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) {
+    if (!hasAuthCookie) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/auth/login';
+      url.searchParams.set('redirect', pathname + (searchParams.toString() ? `?${searchParams.toString()}` : ''));
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // Evita acessar login/cadastro quando já está logado
+  if ((pathname === '/auth/login' || pathname.startsWith('/auth/sign-up')) && hasAuthCookie) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: [
-    '/dashboard/:path*',
-    '/generate/:path*',
-    '/my-gallery/:path*',
-    '/profile/:path*',
-  ],
+  matcher: ['/((?!favicon.ico|robots.txt|sitemap.xml).*)'],
 };
