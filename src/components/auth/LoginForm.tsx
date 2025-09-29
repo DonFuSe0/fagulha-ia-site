@@ -12,27 +12,18 @@ export default function LoginForm() {
   const [loadingEmail, setLoadingEmail] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [errorMsg, setError] = useState<string | null>(sp.get('error'));
+  const [infoMsg, setInfo] = useState<string | null>(sp.get('msg'));
 
   async function handleEmailLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
+    const form = new FormData(e.currentTarget);
+    const email = String(form.get('email') || '').trim();
+    const password = String(form.get('password') || '');
     setLoadingEmail(true);
     try {
-      const form = new FormData(e.currentTarget);
-      const email = String(form.get('email') || '').trim();
-      const password = String(form.get('password') || '');
-
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        // Mensagens mais amigáveis
-        if (error.message.toLowerCase().includes('invalid')) {
-          throw new Error('E-mail ou senha inválidos.');
-        }
-        if (error.message.toLowerCase().includes('email not confirmed')) {
-          throw new Error('Confirme seu e-mail antes de entrar.');
-        }
-        throw error;
-      }
+      if (error) throw new Error(error.message || 'Falha ao entrar.');
       router.replace('/dashboard');
     } catch (err: any) {
       setError(err?.message || 'Não foi possível entrar. Tente novamente.');
@@ -43,19 +34,18 @@ export default function LoginForm() {
 
   async function handleGoogle() {
     setError(null);
+    setInfo(null);
     setLoadingGoogle(true);
     try {
+      const base = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`,
-          queryParams: {
-            // força prompt de conta quando necessário
-            prompt: 'select_account',
-          },
+          redirectTo: `${base}/auth/callback?redirect=/dashboard`,
+          queryParams: { prompt: 'select_account' },
         },
       });
-      // redireciona para o Google; sem return aqui
+      // Redireciona ao Google
     } catch (err: any) {
       setError(err?.message || 'Falha ao iniciar login com Google.');
       setLoadingGoogle(false);
@@ -67,6 +57,11 @@ export default function LoginForm() {
       <h1 className="mb-1 text-2xl font-semibold text-[var(--text)]">Bem-vindo</h1>
       <p className="mb-6 text-sm text-[var(--muted)]">Entre para acessar seu painel e gerar imagens.</p>
 
+      {infoMsg && (
+        <div className="mb-4 rounded-lg border border-[var(--primary)]/40 bg-[var(--primary)]/10 p-3 text-sm text-[var(--primary)]">
+          {infoMsg}
+        </div>
+      )}
       {errorMsg && (
         <div className="mb-4 rounded-lg border border-[var(--danger)]/40 bg-[var(--danger)]/10 p-3 text-sm text-[var(--danger)]">
           {errorMsg}
@@ -78,9 +73,8 @@ export default function LoginForm() {
         disabled={loadingGoogle}
         className="mb-5 flex w-full items-center justify-center gap-2 rounded-lg bg-white/90 px-4 py-2 font-medium text-[#1f1f1f] hover:bg-white disabled:opacity-60"
       >
-        {/* simples “ícone” G */}
         <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-[#4285F4] text-white text-xs">G</span>
-        {loadingGoogle ? 'Conectando...' : 'Entrar com Google'}
+        {loadingGoogle ? 'Conectando…' : 'Entrar com Google'}
       </button>
 
       <div className="mb-5 flex items-center gap-3">
@@ -100,7 +94,6 @@ export default function LoginForm() {
             placeholder="voce@exemplo.com"
           />
         </label>
-
         <label className="block">
           <span className="mb-1 block text-sm text-[var(--muted)]">Senha</span>
           <input
@@ -111,21 +104,18 @@ export default function LoginForm() {
             placeholder="Sua senha"
           />
         </label>
-
         <button
           type="submit"
           disabled={loadingEmail}
           className="mt-1 w-full rounded-lg bg-[var(--primary)] px-4 py-2 font-medium text-white hover:bg-[var(--primary-600)] disabled:opacity-60"
         >
-          {loadingEmail ? 'Entrando...' : 'Entrar'}
+          {loadingEmail ? 'Entrando…' : 'Entrar'}
         </button>
       </form>
 
       <p className="mt-5 text-center text-sm text-[var(--muted)]">
         Não tem conta?{' '}
-        <a href="/auth/sign-up" className="text-[var(--primary)] hover:underline">
-          Cadastrar
-        </a>
+        <a href="/auth/sign-up" className="text-[var(--primary)] hover:underline">Cadastrar</a>
       </p>
     </div>
   );
