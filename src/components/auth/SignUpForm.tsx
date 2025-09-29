@@ -34,7 +34,10 @@ export default function SignUpForm() {
       return;
     }
     const supabase = supabaseBrowser();
-    const { error: signUpError } = await supabase.auth.signUp({
+    // O signUp retorna um objeto `data` contendo `user` mesmo quando a sessão
+    // não está criada (no fluxo de confirmação por e‑mail). Usamos esse
+    // `user` para atualizar o IP do perfil.
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -56,9 +59,8 @@ export default function SignUpForm() {
       try {
         const ipRes = await fetch('https://api.ipify.org?format=json');
         const { ip } = await ipRes.json();
-        const {
-          data: { user }
-        } = await supabase.auth.getUser();
+        // Usa o user retornado no signUp (não depende de getUser())
+        const user = signUpData?.user;
         if (user && ip) {
           await fetch('/api/set-ip', {
             method: 'POST',
