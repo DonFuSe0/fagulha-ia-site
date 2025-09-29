@@ -1,82 +1,94 @@
-"use client";
+'use client';
+
 import { useState } from 'react';
-import { supabaseBrowser } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { supabaseClient } from '@/lib/supabase/client';
 
 export default function LoginForm() {
+  const supabase = supabaseClient();
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const qs = useSearchParams();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const handleSubmit = async (e: React.FormEvent) => {
+  const [errorMsg, setError] = useState<string | null>(null);
+
+  const next = qs.get('next') || '/dashboard';
+
+  async function handleEmail(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
     setLoading(true);
-    const supabase = supabaseBrowser();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-    } else {
-      router.push('/dashboard');
+    setError(null);
+    const form = new FormData(e.currentTarget);
+    const email = String(form.get('email') || '').trim();
+    const password = String(form.get('password') || '').trim();
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      router.replace(next);
+    } catch (err: any) {
+      setError(err.message || 'Falha no login');
+    } finally {
+      setLoading(false);
     }
-  };
-  const handleGoogleSignIn = async () => {
-    const supabase = supabaseBrowser();
-    const redirectTo =
-      typeof window !== 'undefined'
-        ? `${window.location.origin}/auth/callback`
-        : `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo
-      }
-    });
-  };
+  }
+
+  async function handleGoogle() {
+    setLoading(true);
+    setError(null);
+    try {
+      const site = process.env.NEXT_PUBLIC_SITE_URL!;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${site}/auth/callback?next=${encodeURIComponent(next)}`,
+          queryParams: {
+            prompt: 'consent',
+            access_type: 'offline'
+          }
+        }
+      });
+      if (error) throw error;
+      // o redirect acontece fora — nada a fazer aqui
+    } catch (err: any) {
+      setError(err.message || 'Falha ao iniciar login com Google');
+      setLoading(false);
+    }
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block mb-1 text-sm" htmlFor="email">Email</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full bg-surface border border-border rounded-md p-2 text-text"
-          required
-        />
-      </div>
-      <div>
-        <label className="block mb-1 text-sm" htmlFor="password">Senha</label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-surface border border-border rounded-md p-2 text-text"
-          required
-        />
-      </div>
-      {error && <p className="text-danger text-sm">{error}</p>}
-      <button
-        type="submit"
-        className="btn-primary w-full"
-        disabled={loading}
-      >
-        {loading ? 'Entrando...' : 'Entrar'}
-      </button>
+    <div className="space-y-4">
+      {errorMsg && <p className="text-[var(--danger)] text-sm">{errorMsg}</p>}
+
       <button
         type="button"
-        onClick={handleGoogleSignIn}
-        className="btn-ghost w-full mt-2"
+        onClick={handleGoogle}
+        disabled={loading}
+        className="w-full rounded bg-[#1f6feb] px-4 py-2 text-white hover:opacity-90"
       >
-        Entrar com Google
+        {loading ? 'Redirecionando…' : 'Entrar com Google'}
       </button>
-    </form>
+
+      <div className="text-center text-sm text-[var(--muted)]">ou</div>
+
+      <form onSubmit={handleEmail} className="space-y-3">
+        <input
+          name="email"
+          type="email"
+          placeholder="Seu e-mail"
+          className="w-full rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-[var(--text)]"
+          required
+        />
+        <input
+          name="password"
+          type="password"
+          placeholder="Sua senha"
+          className="w-full rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-[var(--text)]"
+          required
+        />
+        <button disabled={loading} className="w-full rounded bg-[var(--primary)] px-4 py-2 text-white">
+          {loading ? 'Entrando…' : 'Entrar'}
+        </button>
+      </form>
+    </div>
   );
 }
