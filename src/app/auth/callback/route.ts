@@ -8,25 +8,28 @@ import { supabaseServer } from '@/lib/supabase/server';
 export async function GET(request: Request) {
   const supabase = supabaseServer();
   // Supabase OAuth provider redirects back with a `code` parameter.
-  // We must exchange this code for a session before using getSession().
+  // We must exchange this code for a session before checking user
+  // information.  If no code is provided, we skip exchange.
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
   if (code) {
     try {
-      // exchangeCodeForSession will set the `supabase-auth-token` cookie
-      // which supabaseServer() will pick up automatically on subsequent requests.
+      // This call sets an HTTP‑only cookie containing the session
+      // token.  With our updated cookie implementation, it is
+      // written at the root path so that subsequent requests can
+      // access it.
       await supabase.auth.exchangeCodeForSession(code);
     } catch (err) {
       console.error('Erro ao trocar código por sessão', err);
     }
   }
-  // Now attempt to load the session from cookies
-  const {
-    data: { session }
-  } = await supabase.auth.getSession();
+  // Always read the origin before asynchronous operations, since
+  // `request.url` may be garbage collected after awaiting supabase.
   const origin = url.origin;
-  // If the user is authenticated, redirect to dashboard
-  if (session) {
+  // We use getUser instead of getSession because getUser triggers
+  // a token refresh and revalidates the Auth token with Supabase.
+  const { data, error } = await supabase.auth.getUser();
+  if (!error && data?.user) {
     return NextResponse.redirect(new URL('/dashboard', origin));
   }
   // Otherwise, go to login
