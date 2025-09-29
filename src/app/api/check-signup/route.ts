@@ -32,14 +32,25 @@ export async function POST(req: NextRequest) {
   // Use the forwarded IP header from Vercel/Next.js or fall back to remoteAddress.
   // The x-forwarded-for header may contain multiple comma separated values;
   // take the first one.
-  const forwarded = req.headers.get('x-forwarded-for') ?? '';
-  // Extract the first IP from the forwarded header.  Some proxies
-  // include multiple comma‑separated IPs.  If no forwarded IP is
-  // present, fall back to the `ip` property on the request (if any),
-  // and finally use an empty string.  Avoid mixing `??` and `||`
-  // without parentheses; use `||` exclusively here.
-  const firstForwardedIp = forwarded.split(',')[0]?.trim();
-  const ip = firstForwardedIp || (req as any).ip || '';
+  // Determine the client IP address.  We prefer the first entry in
+  // the X-Forwarded-For header, which may contain multiple comma
+  // separated values.  If there is no forwarded header or it's
+  // empty, fall back to the `ip` property on the request.  Avoid
+  // mixing nullish coalescing with logical OR to prevent syntax
+  // errors in the Next.js compiler.
+  const forwardedHeader = req.headers.get('x-forwarded-for');
+  let ip = '';
+  if (forwardedHeader) {
+    const first = forwardedHeader.split(',')[0]?.trim();
+    if (first) {
+      ip = first;
+    }
+  }
+  // If still no IP from the header, use the request's IP if available
+  const reqIp = (req as any).ip;
+  if (!ip && reqIp) {
+    ip = reqIp;
+  }
 
   // Check if the email already exists in profiles (case insensitive).
   const { data: existingEmail, error: emailErr } = await supabase
