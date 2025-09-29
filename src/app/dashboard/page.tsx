@@ -6,13 +6,26 @@ import Image from 'next/image';
 
 export default async function Dashboard() {
   const supabase = supabaseServer();
-  // Fetch balance via RPC
+  // First validate that the user is logged in.  We use getUser
+  // rather than getSession to ensure the token is refreshed.
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData?.user) {
+    return (
+      <div className="text-center">
+        <p className="mb-4">Você precisa estar logado para acessar o painel.</p>
+        <Link href="/auth/login" className="btn-primary">Entrar</Link>
+      </div>
+    );
+  }
+  // Fetch balance via RPC; this RPC uses auth.uid() so we don't
+  // need to pass userId explicitly.
   const { data: balanceData, error: balanceError } = await supabase.rpc('get_my_balance');
   const balance = balanceData ?? 0;
-  // Fetch last 5 generations
+  // Fetch last 5 generations for this user
   const { data: gens, error } = await supabase
     .from('generations')
     .select('*')
+    .eq('user_id', userData.user.id)
     .order('created_at', { ascending: false })
     .limit(5);
   return (
