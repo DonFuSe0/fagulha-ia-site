@@ -1,141 +1,151 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { supabaseServer } from '@/lib/supabase/server';
 
-/**
- * POST /api/generate
- * Consome tokens do usuário e cria um registro em `generations` com status `queued`.
- * Depois, enfileira a geração na sua API do ComfyUI.
- */
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-type Body = {
-  prompt: string;
-  negative_prompt?: string;
-  model: string;
-  style?: string | null;
-  width: number;
-  height: number;
-  steps: number;
-  cfg_scale?: number | null;
-  seed?: number | null;
-  is_public?: boolean;
-};
-
-function calcCost(w: number, h: number) {
-  // 1 token por imagem base 512x512; proporcionalmente para tamanhos maiores
-  const base = 512 * 512;
-  const area = Math.max(1, (w || 512) * (h || 512));
-  return Math.max(1, Math.ceil(area / base));
-}
+const BodySchema = z.object({
+  prompt: z.string().min(1),
+  negative_prompt: z.string().optional(),
+  model: z.string().min(1),
+  style: z.string().optional(),
+  width: z.coerce.number().int().min(64).max(2048),
+  height: z.coerce.number().int().min(64).max(2048),
+  steps: z.coerce.number().int().min(1).max(150),
+  cfg_scale: z.coerce.number().optional(),
+  seed: z.coerce.number().optional(),
+  is_public: z.coerce.boolean().optional()
+});
 
 export async function POST(req: NextRequest) {
-  try {
-    const body = (await req.json()) as Partial<Body>;
+  const supabase = supabaseServer();
+  const admin = supabaseAdmin();
 
-    if (!body.prompt || !body.model || !body.width || !body.height || !body.steps) {
-      return NextResponse.json(
-        { error: 'Parâmetros inválidos.' },
-        { status: 400 }
-      );
-    }
-
-    const supabase = supabaseServer();
-    const { data: { user }, error: uErr } = await supabase.auth.getUser();
-    if (uErr || !user) {
-      return NextResponse.json({ error: 'Não autenticado.' }, { status: 401 });
-    }
-
-    const cost = calcCost(body.width!, body.height!);
-
-    // Debita tokens
-    const { error: spendErr } = await supabase.rpc('spend_tokens', {
-      p_user: user.id,
-      p_cost: cost,
-      p_reason: 'GENERATION',
-      p_ref: null,
-    });
-    if (spendErr) {
-      return NextResponse.json(
-        { error: 'Tokens insuficientes.' },
-        { status: 402 }
-      );
-    }
-
-    // Define expiração: 24h privada, 48h pública
-    const now = new Date();
-    const ttlHours = body.is_public ? 48 : 24;
-    const expiresAt = new Date(now.getTime() + ttlHours * 60 * 60 * 1000);
-
-    // Cria registro da geração
-    const { data: gen, error: genErr } = await supabase
-      .from('generations')
-      .insert({
-        user_id: user.id,
-        prompt: body.prompt,
-        negative_prompt: body.negative_prompt ?? null,
-        model: body.model,
-        style: body.style ?? null,
-        width: body.width,
-        height: body.height,
-        steps: body.steps,
-        cfg_scale: body.cfg_scale ?? null,
-        seed: body.seed ?? null,
-        tokens_used: cost,
-        is_public: !!body.is_public,
-        status: 'queued',
-        expires_at: expiresAt.toISOString(),
-      })
-      .select()
-      .single();
-
-    if (genErr || !gen) {
-      // Estorna tokens em caso de falha ao criar registro
-      await supabase.rpc('credit_tokens', {
-        p_user: user.id, p_delta: cost, p_reason: 'REFUND', p_ref: null
-      });
-      return NextResponse.json(
-        { error: 'Não foi possível criar a geração.' },
-        { status: 500 }
-      );
-    }
-
-    // Enfileira no ComfyUI (melhore conforme sua API)
-    try {
-      const base = process.env.COMFYUI_API_URL || '';
-      const payload = {
-        id: gen.id,
-        prompt: gen.prompt,
-        model: gen.model,
-        width: gen.width,
-        height: gen.height,
-        steps: gen.steps,
-        webhook_url: `${process.env.NEXT_PUBLIC_SITE_URL}/api/webhooks/comfyui`
-      };
-      await fetch(`${base.replace(/\/$/, '')}/jobs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-    } catch (e) {
-      // Se falhar o enfileiramento, marca como failed e estorna tokens
-      await supabase
-        .from('generations')
-        .update({ status: 'failed', error_message: 'Falha ao enfileirar job' })
-        .eq('id', gen.id);
-      await supabase.rpc('credit_tokens', {
-        p_user: user.id, p_delta: cost, p_reason: 'REFUND', p_ref: gen.id
-      });
-      return NextResponse.json(
-        { error: 'Falha ao enfileirar geração.' },
-        { status: 502 }
-      );
-    }
-
-    return NextResponse.json({ id: gen.id });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err?.message || 'Erro inesperado.' },
-      { status: 500 }
-    );
+  // Auth
+  const { data: userRes, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userRes?.user) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
   }
+  const user = userRes.user;
+
+  // Validate
+  let bodyJson: unknown;
+  try {
+    bodyJson = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
+  }
+  const parsed = BodySchema.safeParse(bodyJson);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 });
+  }
+  const body = parsed.data;
+
+  // Custo (512x512 = 1 token)
+  const base = 512 * 512;
+  const cost = Math.max(1, Math.ceil((body.width * body.height) / base));
+
+  // Debitar tokens (RPC SECURITY DEFINER)
+  const { error: spendErr } = await admin.rpc('spend_tokens', {
+    p_user: user.id,
+    p_cost: cost,
+    p_reason: 'GENERATION',
+    p_ref: null
+  });
+  if (spendErr) {
+    return NextResponse.json({ error: 'Saldo insuficiente' }, { status: 402 });
+  }
+
+  // Inserir geração
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ((body.is_public ? 48 : 24) * 60 * 60 * 1000));
+
+  const insertPayload = {
+    user_id: user.id,
+    prompt: body.prompt,
+    negative_prompt: body.negative_prompt ?? null,
+    model: body.model,
+    style: body.style ?? null,
+    width: body.width,
+    height: body.height,
+    steps: body.steps,
+    seed: body.seed ?? null,
+    cfg_scale: body.cfg_scale ?? null,
+    status: 'queued' as const,
+    is_public: !!body.is_public,
+    image_path: null as string | null,
+    thumb_path: null as string | null,
+    tokens_used: cost,
+    duration_ms: null as number | null,
+    error_message: null as string | null,
+    metadata: null as any,
+    expires_at: expiresAt.toISOString()
+  };
+
+  const { data: gen, error: genErr } = await admin
+    .from('generations')
+    .insert(insertPayload)
+    .select()
+    .single();
+
+  if (genErr || !gen) {
+    // refund
+    await admin.rpc('credit_tokens', {
+      p_user: user.id,
+      p_delta: cost,
+      p_reason: 'REFUND',
+      p_ref: null
+    });
+    return NextResponse.json({ error: 'Erro ao criar geração' }, { status: 500 });
+  }
+
+  // Enfileirar no ComfyUI
+  try {
+    const apiUrl = process.env.COMFYUI_API_URL!;
+    const webhookSecret = process.env.COMFYUI_WEBHOOK_SECRET!;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!;
+    const callback = `${siteUrl}/api/webhooks/comfyui`;
+
+    // Ajuste o payload conforme sua API do ComfyUI
+    const enqueueBody = {
+      id: gen.id,
+      prompt: body.prompt,
+      negative_prompt: body.negative_prompt ?? undefined,
+      model: body.model,
+      width: body.width,
+      height: body.height,
+      steps: body.steps,
+      seed: body.seed,
+      cfg_scale: body.cfg_scale,
+      callback_url: callback
+    };
+
+    await fetch(`${apiUrl}/jobs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Webhook-Secret': webhookSecret
+      },
+      body: JSON.stringify(enqueueBody)
+    });
+  } catch (e: any) {
+    // marcar como falha + refund
+    await admin.from('generations').update({
+      status: 'failed',
+      error_message: e?.message ?? 'Erro ao enfileirar'
+    }).eq('id', gen.id);
+
+    await admin.rpc('credit_tokens', {
+      p_user: user.id,
+      p_delta: cost,
+      p_reason: 'REFUND',
+      p_ref: gen.id
+    });
+
+    return NextResponse.json({ id: gen.id, status: 'failed' }, { status: 202 });
+  }
+
+  return NextResponse.json({ id: gen.id }, { status: 200 });
 }
