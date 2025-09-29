@@ -1,83 +1,94 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabaseServer } from '@/lib/supabase/server';
-import SignOutButton from '@/components/auth/SignOutButton';
 
 export default async function Header() {
-  // Determine whether the user is logged in.  Because this is a
-  // server component we can query Supabase directly.  The presence of
-  // a session indicates an authenticated user.
   const supabase = supabaseServer();
   const {
-    data: { session }
-  } = await supabase.auth.getSession();
-  const user = session?.user;
-  // When the user is logged in, fetch additional profile data to display
-  // their display name and avatar.  We request only the fields we need.
-  let displayName: string | null = null;
-  let avatarUrl: string | null = null;
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let displayName: string | undefined;
+  let avatarUrl: string | undefined;
+  let nickname: string | undefined;
+
   if (user) {
-    const { data: profile } = await supabase
+    const { data } = await supabase
       .from('profiles')
-      .select('display_name, avatar_url')
+      .select('display_name, avatar_url, nickname')
       .eq('id', user.id)
       .maybeSingle();
-    displayName = profile?.display_name ?? null;
-    avatarUrl = profile?.avatar_url ?? null;
+
+    displayName = data?.display_name || undefined;
+    avatarUrl = data?.avatar_url || undefined;
+    nickname = data?.nickname || undefined;
   }
+
   return (
-    <header className="w-full border-b border-border bg-surface text-text shadow-sm">
-      <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2">
-          {/* Logo image */}
-          <Image src="/logo.png" alt="Fagulha logo" width={32} height={32} />
-          <span className="font-semibold text-xl">Fagulha</span>
+    <header className="sticky top-0 z-50 w-full border-b border-[var(--border)] bg-[var(--surface)]/80 backdrop-blur">
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4">
+        <Link href="/" className="flex items-center gap-2">
+          <Image src="/logo.svg" width={28} height={28} alt="Fagulha" />
+          <span className="font-semibold text-[var(--text)]">Fagulha</span>
         </Link>
-        {/* Left side navigation links */}
-        <nav className="flex space-x-4 text-sm items-center">
-          <Link href="/explore" className="hover:text-primary">Explorar</Link>
-          {user && (
-            <>
-              <Link href="/dashboard" className="hover:text-primary">Painel</Link>
-              <Link href="/generate" className="hover:text-primary">Gerar</Link>
-              <Link href="/my-gallery" className="hover:text-primary">Minha galeria</Link>
-            </>
-          )}
-          <Link href="/pricing" className="hover:text-primary">Planos</Link>
-        </nav>
-        {/* Right side: auth actions */}
-        <div className="flex items-center space-x-3 text-sm">
+
+        <nav className="flex items-center gap-4 text-[var(--text)]">
+          <Link href="/explore" className="hover:opacity-80">
+            Explorar
+          </Link>
+
           {user ? (
             <>
-              {/* Avatar or initial */}
-              {avatarUrl ? (
-                <Image
-                  src={avatarUrl}
-                  alt="Avatar"
-                  width={24}
-                  height={24}
-                  className="rounded-full"
-                />
-              ) : (
-                <span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center uppercase">
-                  {displayName ? displayName.charAt(0) : user.email?.charAt(0) || 'U'}
-                </span>
-              )}
-              {/* Display name fallback to email if not provided */}
-              <span className="font-medium">
-                {displayName || user.email || 'Usuário'}
-              </span>
-              <Link href="/profile" className="hover:text-primary">
+              <Link href="/dashboard" className="hover:opacity-80">
+                Painel
+              </Link>
+              <Link href="/generate" className="hover:opacity-80">
+                Gerar
+              </Link>
+              <Link href="/my-gallery" className="hover:opacity-80">
+                Minha galeria
+              </Link>
+              <Link href="/pricing" className="hover:opacity-80">
+                Planos
+              </Link>
+              <Link href="/profile" className="hover:opacity-80">
                 Perfil
               </Link>
-              <SignOutButton />
+              <form action="/auth/signout" method="post">
+                <button className="hover:opacity-80" type="submit">
+                  Sair
+                </button>
+              </form>
+
+              <div className="ml-2 flex items-center gap-2">
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="h-8 w-8 rounded-full border border-[var(--border)] object-cover"
+                  />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] text-xs">
+                    {nickname?.[0]?.toUpperCase() || 'U'}
+                  </div>
+                )}
+                <span className="text-sm opacity-80">
+                  {nickname || displayName || user.email}
+                </span>
+              </div>
             </>
           ) : (
-            <Link href="/auth/login" className="hover:text-primary">
-              Entrar
-            </Link>
+            <>
+              <Link href="/pricing" className="hover:opacity-80">
+                Planos
+              </Link>
+              <Link href="/auth/login" className="hover:opacity-80">
+                Entrar
+              </Link>
+            </>
           )}
-        </div>
+        </nav>
       </div>
     </header>
   );

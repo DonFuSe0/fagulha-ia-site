@@ -1,37 +1,50 @@
-import { NextResponse } from 'next/server';
-import { supabaseServer } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 
-// This route is invoked by the Supabase OAuth redirect.  After
-// Supabase processes the OAuth callback, it will redirect the user
-// here.  We capture the session (which Supabase stores in cookies)
-// then redirect to the dashboard.
-export async function GET(request: Request) {
-  const supabase = supabaseServer();
-  // Supabase OAuth provider redirects back with a `code` parameter.
-  // We must exchange this code for a session before checking user
-  // information.  If no code is provided, we skip exchange.
+/**
+ * Callback do OAuth (Google).
+ * Troca o `code` por sessão e grava os cookies na própria resposta de redirect.
+ */
+export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const code = url.searchParams.get('code');
-  if (code) {
-    try {
-      // This call sets an HTTP‑only cookie containing the session
-      // token.  With our updated cookie implementation, it is
-      // written at the root path so that subsequent requests can
-      // access it.
-      await supabase.auth.exchangeCodeForSession(code);
-    } catch (err) {
-      console.error('Erro ao trocar código por sessão', err);
-    }
-  }
-  // Always read the origin before asynchronous operations, since
-  // `request.url` may be garbage collected after awaiting supabase.
   const origin = url.origin;
-  // We use getUser instead of getSession because getUser triggers
-  // a token refresh and revalidates the Auth token with Supabase.
-  const { data, error } = await supabase.auth.getUser();
-  if (!error && data?.user) {
-    return NextResponse.redirect(new URL('/dashboard', origin));
+
+  // Para onde vamos após o login
+  const destination = url.searchParams.get('redirect') || '/dashboard';
+
+  // Cria a resposta de REDIRECT (302). Vamos escrever os cookies nela.
+  const redirect = NextResponse.redirect(new URL(destination, origin), 302);
+
+  // Cliente Supabase que:
+  // - Lê cookies da request
+  // - Escreve cookies na *resposta de redirect* (sempre com path '/')
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set(name: string, value: string, options?: any) {
+          redirect.cookies.set(name, value, { path: '/', ...options });
+        },
+        remove(name: string, options?: any) {
+          redirect.cookies.set(name, '', { path: '/', maxAge: 0, ...options });
+        },
+      },
+    }
+  );
+
+  // Troca o código pelo token de sessão (se existir na URL)
+  const code = url.searchParams.get('code') ?? undefined;
+  if (code) {
+    await supabase.auth.exchangeCodeForSession(code);
   }
-  // Otherwise, go to login
-  return NextResponse.redirect(new URL('/auth/login', origin));
+
+  // Força revalidação para garantir que o cookie foi setado
+  await supabase.auth.getUser();
+
+  // Retorna o redirect já contendo os cookies gravados
+  return redirect;
 }
