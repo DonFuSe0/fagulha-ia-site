@@ -33,7 +33,13 @@ export async function POST(req: NextRequest) {
   // The x-forwarded-for header may contain multiple comma separated values;
   // take the first one.
   const forwarded = req.headers.get('x-forwarded-for') ?? '';
-  const ip = forwarded.split(',')[0]?.trim() || (req as any).ip ?? '';
+  // Extract the first IP from the forwarded header.  Some proxies
+  // include multiple comma‑separated IPs.  If no forwarded IP is
+  // present, fall back to the `ip` property on the request (if any),
+  // and finally use an empty string.  Avoid mixing `??` and `||`
+  // without parentheses; use `||` exclusively here.
+  const firstForwardedIp = forwarded.split(',')[0]?.trim();
+  const ip = firstForwardedIp || (req as any).ip || '';
 
   // Check if the email already exists in profiles (case insensitive).
   const { data: existingEmail, error: emailErr } = await supabase
