@@ -1,9 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr';
 
-/**
- * Retorna um client do Supabase configurado para o browser.
- * Use em Client Components e handlers de eventos.
- */
 export function supabaseBrowser() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
@@ -13,8 +9,5 @@ export function supabaseBrowser() {
   return createBrowserClient(supabaseUrl, supabaseAnonKey);
 }
 
-/**
- * Alias mantido para compatibilidade com imports existentes:
- *   import { supabaseClient } from '@/lib/supabase/client';
- */
+// Alias de compatibilidade
 export const supabaseClient = supabaseBrowser;
