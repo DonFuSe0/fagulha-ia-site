@@ -1,15 +1,27 @@
 import LoginForm from '@/components/auth/LoginForm';
 import { unstable_noStore as noStore } from 'next/cache';
 
+export const runtime = 'nodejs';       // garante Node, evita Edge para esta page
 export const dynamic = 'force-dynamic';
 
-export default function LoginPage({
+type SP = Record<string, string | string[] | undefined>;
+
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined };
+  // Next 15 pode fornecer searchParams como Promise
+  searchParams?: Promise<SP> | SP;
 }) {
   noStore();
-  const sp = searchParams || {};
+
+  let sp: SP = {};
+  if (typeof (searchParams as any)?.then === 'function') {
+    // é Promise
+    sp = (await (searchParams as Promise<SP>)) ?? {};
+  } else {
+    sp = (searchParams as SP) ?? {};
+  }
+
   const success = sp.success === '1';
   const errorMsg = typeof sp.error === 'string' ? sp.error : null;
 
