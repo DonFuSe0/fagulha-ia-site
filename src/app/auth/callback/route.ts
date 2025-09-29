@@ -10,10 +10,15 @@ import { createServerClient } from '@supabase/ssr';
  * the user to the dashboard if logged in, or back to the login page.
  */
 export async function GET(request: NextRequest) {
-  // Prepare a response object to attach cookies and headers.
-  const response = new NextResponse();
-  // Create a Supabase client that reads cookies from the incoming
-  // request and writes cookies to our response with a root path.
+  // We collect cookies to set after the session exchange completes.  We
+  // cannot assign to `response.status` directly because it is a read‑only
+  // property on NextResponse.  Instead, we gather the cookies in an
+  // array and apply them to a new redirect response at the end.
+  const cookiesToSet: Array<{ name: string; value: string; options?: any }> = [];
+
+  // Construct a Supabase client that reads cookies from the request
+  // and stores new cookies in our temporary array.  All cookies are
+  // written with `path: '/'` to ensure they apply to every route.
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -23,10 +28,10 @@ export async function GET(request: NextRequest) {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options?: any) {
-          response.cookies.set(name, value, { path: '/', ...options });
+          cookiesToSet.push({ name, value, options });
         },
         remove(name: string, options?: any) {
-          response.cookies.set(name, '', { path: '/', maxAge: 0, ...options });
+          cookiesToSet.push({ name, value: '', options: { maxAge: 0, ...options } });
         },
       },
     },
@@ -37,25 +42,36 @@ export async function GET(request: NextRequest) {
   if (code) {
     try {
       // Exchange the authorization code for a session.  Supabase will
-      // write the session cookies via our cookie handler.
+      // invoke our cookie handler to record any cookies that need to be
+      // set.  We do not await the response of exchangeCodeForSession to
+      // avoid unhandled promise warnings.
       await supabase.auth.exchangeCodeForSession(code);
     } catch (err) {
       console.error('Erro ao trocar código por sessão', err);
     }
   }
 
-  // Always read the origin before any asynchronous calls that might
-  // mutate the URL object; this prevents `origin` from being
-  // undefined after awaiting Supabase functions.
+  // Capture the origin early, before further async operations mutate
+  // the URL object.  This prevents `origin` from becoming undefined.
   const origin = url.origin;
   // Validate the user session.  getUser() will revalidate the token.
   const { data, error } = await supabase.auth.getUser();
-  // Determine where to redirect: to the dashboard if logged in, or
-  // back to the login page if not.
   const destination = !error && data?.user ? '/dashboard' : '/auth/login';
-  // Set the Location header for a 302 redirect.  We return the
-  // response object with the updated status and headers.
-  response.headers.set('Location', new URL(destination, origin).toString());
-  response.status = 302;
-  return response;
+
+  // Create a redirect response with the appropriate status code.  We
+  // copy any cookies collected during the session exchange onto this
+  // response.  NextResponse.redirect accepts a URL object and an
+  // optional status code (defaults to 307).  We explicitly set 302.
+  const redirectResponse = NextResponse.redirect(
+    new URL(destination, origin),
+    { status: 302 },
+  );
+  cookiesToSet.forEach(({ name, value, options }) => {
+    redirectResponse.cookies.set(
+      name,
+      value,
+      { path: '/', ...options },
+    );
+  });
+  return redirectResponse;
 }
