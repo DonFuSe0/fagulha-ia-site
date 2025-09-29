@@ -18,7 +18,7 @@ export default async function Dashboard() {
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">Painel</h1>
         <Link href="/generate" className="btn-primary">Nova geração</Link>
       </div>
       <div className="bg-surface border border-border rounded-lg p-6">

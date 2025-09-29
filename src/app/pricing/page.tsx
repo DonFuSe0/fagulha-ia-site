@@ -3,17 +3,20 @@ export const dynamic = 'force-dynamic';
 export default function Pricing() {
   const plans = [
     {
-      name: 'Starter',
+      // Plano básico com poucos tokens
+      name: 'Faísca',
       tokens: 50,
       price: 'R$9,90'
     },
     {
-      name: 'Creator',
+      // Plano intermediário para criadores
+      name: 'Chama Criativa',
       tokens: 200,
       price: 'R$29,90'
     },
     {
-      name: 'Pro',
+      // Plano avançado para usuários intensivos
+      name: 'Labareda Pro',
       tokens: 500,
       price: 'R$59,90'
     }

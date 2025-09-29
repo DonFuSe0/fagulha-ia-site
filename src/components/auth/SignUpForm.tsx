@@ -28,13 +28,18 @@ export default function SignUpForm() {
     if (error) {
       setError(error.message);
     } else {
-      // Supabase sends a confirmation email.  Redirect to login.
-      router.push('/auth/login');
+      // Supabase envia um email de confirmação. Redireciona para tela de login com aviso.
+      router.push('/auth/login?verify=1');
     }
   };
   const handleGoogleSignIn = async () => {
     const supabase = supabaseBrowser();
-    await supabase.auth.signInWithOAuth({ provider: 'google' });
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+      }
+    });
   };
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
