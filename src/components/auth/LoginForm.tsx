@@ -27,10 +27,14 @@ export default function LoginForm() {
   };
   const handleGoogleSignIn = async () => {
     const supabase = supabaseBrowser();
+    const redirectTo =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/auth/callback`
+        : `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
+        redirectTo
       }
     });
   };
