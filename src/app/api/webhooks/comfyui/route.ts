@@ -2,57 +2,114 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
-function verifySignature(req: NextRequest) {
-  const secret = process.env.COMFYUI_WEBHOOK_SECRET!;
-  const sig = req.headers.get('x-comfy-signature') || '';
-  const body = (req as any).__body || ''; // ver nota abaixo
-  const expected = crypto.createHmac('sha256', secret).update(body).digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
-}
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 /**
- * OBS: para ler o corpo bruto e validar a assinatura, marque esta rota com:
- * export const config = { api: { bodyParser: false } } (em pages) — no App Router,
- * você pode capturar o body via request.clone().text() antes de json().
+ * Espera POST do seu orquestrador (ComfyUI API própria).
+ * Cabeçalhos:
+ *   - X-Webhook-Secret: deve coincidir com COMFYUI_WEBHOOK_SECRET
+ * Corpo esperado (exemplo):
+ * {
+ *   "id": "uuid-da-generation",
+ *   "status": "completed" | "failed",
+ *   "duration_ms": 12345,
+ *   "image_url": "https://.../final.png",   // quando completed
+ *   "thumb_url": "https://.../thumb.png",   // opcional
+ *   "error": "motivo da falha"              // quando failed
+ * }
  */
 export async function POST(req: NextRequest) {
-  const supabase = supabaseAdmin();
-  // pegue o payload
-  const payload = await req.json(); // { id, status, image_path?, thumb_path?, duration_ms?, error? }
-  const genId: string = payload.id;
+  const admin = supabaseAdmin();
 
-  // carrega a geração
-  const { data: gen } = await supabase.from('generations').select('id,user_id,tokens_used,status').eq('id', genId).maybeSingle();
-  if (!gen) return NextResponse.json({ ok: true });
+  // 1) Validar assinatura simples por header (mantém compat. com seu MVP)
+  const secret = process.env.COMFYUI_WEBHOOK_SECRET!;
+  const header = req.headers.get('x-webhook-secret');
+  if (!secret || !header || header !== secret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-  if (payload.status === 'completed') {
-    await supabase.from('generations').update({
+  let payload: any;
+  try {
+    payload = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const id = payload?.id as string | undefined;
+  const status = payload?.status as 'completed' | 'failed' | undefined;
+  const duration_ms = Number(payload?.duration_ms ?? 0) || null;
+  const image_url = payload?.image_url as string | undefined;
+  const thumb_url = payload?.thumb_url as string | undefined;
+  const error_message = payload?.error as string | undefined;
+
+  if (!id || !status) {
+    return NextResponse.json({ error: 'Missing id/status' }, { status: 400 });
+  }
+
+  // 2) Buscar a generation para saber tokens e user
+  const { data: gen, error: genErr } = await admin
+    .from('generations')
+    .select('id, user_id, tokens_used, is_public')
+    .eq('id', id)
+    .single();
+
+  if (genErr || !gen) {
+    return NextResponse.json({ error: 'Generation not found' }, { status: 404 });
+  }
+
+  // 3) Atualizar conforme status
+  if (status === 'completed') {
+    // Se sua orquestração já salvou em Storage e envia paths prontos, use-os.
+    // Caso esteja recebendo apenas URLs temporárias, você pode baixar e re-subir
+    // pro bucket 'generations' aqui (omiti para manter o webhook enxuto).
+
+    const updateObj: any = {
       status: 'completed',
-      image_path: payload.image_path,
-      thumb_path: payload.thumb_path ?? null,
-      duration_ms: payload.duration_ms ?? null,
-      updated_at: new Date().toISOString()
-    }).eq('id', genId);
+      duration_ms,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (image_url) updateObj.image_path = image_url;
+    if (thumb_url) updateObj.thumb_path = thumb_url;
+
+    const { error: upErr } = await admin
+      .from('generations')
+      .update(updateObj)
+      .eq('id', id);
+
+    if (upErr) {
+      return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+    }
+
     return NextResponse.json({ ok: true });
   }
 
-  if (payload.status === 'failed') {
-    // marca como falha
-    await supabase.from('generations').update({
+  // Se falhou → marca failed + REFUND
+  const { error: failErr } = await admin
+    .from('generations')
+    .update({
       status: 'failed',
-      error_message: payload.error ?? 'Falha na geração',
-      updated_at: new Date().toISOString()
-    }).eq('id', genId);
+      error_message: error_message || 'Falha na geração',
+      duration_ms,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id);
 
-    // reembolsa tokens
-    await supabase.rpc('credit_tokens', {
-      p_user: gen.user_id,
-      p_delta: gen.tokens_used,
-      p_reason: 'REFUND',
-      p_ref: gen.id
-    });
+  if (failErr) {
+    return NextResponse.json({ error: 'Fail update error' }, { status: 500 });
+  }
 
-    return NextResponse.json({ ok: true });
+  // refund total de tokens_used
+  const { error: refundErr } = await admin.rpc('credit_tokens', {
+    p_user: gen.user_id,
+    p_delta: gen.tokens_used,
+    p_reason: 'REFUND',
+    p_ref: id,
+  });
+
+  if (refundErr) {
+    return NextResponse.json({ error: 'Refund error' }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
