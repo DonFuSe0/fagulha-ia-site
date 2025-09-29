@@ -1,21 +1,16 @@
-// Caminho: src/lib/supabase/client.ts
 'use client';
 
 import { createBrowserClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-export function supabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+let _client: SupabaseClient | null = null;
 
-  if (!url || !anon) {
-    throw new Error('Ambiente inválido: defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY');
-  }
+export default function supabaseClient(): SupabaseClient {
+  if (_client) return _client;
 
-  return createBrowserClient(url, anon);
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+
+  _client = createBrowserClient(supabaseUrl, supabaseAnonKey);
+  return _client;
 }
-
-// Alias para quem estiver importando "supabaseBrowser"
-export const supabaseBrowser = supabaseClient;
-
-// Default export opcional (facilita import default)
-export default supabaseClient;
