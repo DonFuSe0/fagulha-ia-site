@@ -43,9 +43,25 @@ export default async function MyGallery() {
                 <p className="font-semibold truncate">{gen.prompt}</p>
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-xs text-muted">{new Date(gen.created_at).toLocaleDateString()}</span>
-                  <span className="text-xs {gen.status === 'completed' ? 'text-success' : gen.status === 'failed' ? 'text-danger' : 'text-muted'}">
-                    {gen.status}
-                  </span>
+                 <span
+                   className={`text-xs ${
+                     gen.status === 'completed'
+                       ? 'text-success'
+                       : gen.status === 'failed'
+                       ? 'text-danger'
+                       : gen.status === 'processing'
+                       ? 'text-accent'
+                       : 'text-muted'
+                   }`}
+                 >
+                   {gen.status === 'completed'
+                     ? 'completa'
+                     : gen.status === 'failed'
+                     ? 'falha'
+                     : gen.status === 'processing'
+                     ? 'processando'
+                     : 'na fila'}
+                 </span>
                 </div>
               </div>
             </div>
