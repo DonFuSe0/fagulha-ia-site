@@ -1,140 +1,149 @@
+// Caminho: src/app/profile/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabaseClient } from '@/lib/supabase/client';
+import supabaseClient from '@/lib/supabase/client';
 
 type Profile = {
-  nickname: string | null;
   display_name: string | null;
+  nickname: string | null;
   avatar_url: string | null;
 };
 
 export default function ProfilePage() {
   const supabase = supabaseClient();
-  const router = useRouter();
+
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [profile, setProfile] = useState<Profile>({
-    nickname: '',
-    display_name: '',
-    avatar_url: null
-  });
+  const [errorMsg, setError] = useState<string>();
+  const [okMsg, setOk] = useState<string>();
+  const [displayName, setDisplayName] = useState('');
+  const [nickname, setNickname] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
 
   useEffect(() => {
     (async () => {
+      setError(undefined);
+      setOk(undefined);
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.replace('/auth/login');
+        setError('Você precisa estar logado.');
+        setLoading(false);
         return;
       }
-      const { data } = await supabase
+
+      const { data, error } = await supabase
         .from('profiles')
-        .select('nickname, display_name, avatar_url')
+        .select('display_name,nickname,avatar_url')
         .eq('id', user.id)
-        .single();
-      setProfile({
-        nickname: data?.nickname ?? '',
-        display_name: data?.display_name ?? '',
-        avatar_url: data?.avatar_url ?? null
-      });
+        .maybeSingle<Profile>();
+
+      if (error) {
+        setError(error.message);
+      } else if (data) {
+        setDisplayName(data.display_name || '');
+        setNickname(data.nickname || '');
+        setAvatarUrl(data.avatar_url || undefined);
+      }
       setLoading(false);
     })();
-  }, [router, supabase]);
+  }, [supabase]);
 
-  async function handleAvatar(file: File) {
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    setError(undefined);
+    setOk(undefined);
+
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const ext = file.name.split('.').pop();
-    const path = `${user.id}/${Date.now()}.${ext || 'png'}`;
-
-    const { error: upErr } = await supabase.storage
-      .from('avatars')
-      .upload(path, file, { upsert: true });
-    if (upErr) {
-      alert('Falha no upload do avatar');
-      return;
-    }
-
-    const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
-
-    const { error: updErr } = await supabase
-      .from('profiles')
-      .update({ avatar_url: pub.publicUrl })
-      .eq('id', user.id);
-    if (updErr) {
-      alert('Falha ao atualizar avatar');
-      return;
-    }
-    setProfile((p) => ({ ...p, avatar_url: pub.publicUrl }));
-  }
-
-  async function saveProfile() {
-    setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) return setError('Sessão expirada.');
 
     const { error } = await supabase
       .from('profiles')
-      .update({
-        nickname: profile.nickname,
-        display_name: profile.display_name
-      })
+      .update({ display_name: displayName, nickname })
       .eq('id', user.id);
-    setSaving(false);
-    if (error) {
-      alert('Erro ao salvar perfil');
-    } else {
-      alert('Perfil atualizado!');
+
+    if (error) setError(error.message);
+    else setOk('Perfil atualizado!');
+  }
+
+  async function onAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setError(undefined);
+    setOk(undefined);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return setError('Sessão expirada.');
+
+    const path = `avatars/${user.id}/${Date.now()}_${file.name}`;
+
+    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, {
+      cacheControl: '3600',
+      upsert: true,
+    });
+    if (upErr) return setError(upErr.message);
+
+    const { data: publicUrl } = supabase.storage.from('avatars').getPublicUrl(path);
+    const newUrl = publicUrl.publicUrl;
+
+    const { error: updErr } = await supabase
+      .from('profiles')
+      .update({ avatar_url: newUrl })
+      .eq('id', user.id);
+
+    if (updErr) setError(updErr.message);
+    else {
+      setAvatarUrl(newUrl);
+      setOk('Avatar atualizado!');
     }
   }
 
-  if (loading) return <p>Carregando...</p>;
+  if (loading) return <p className="p-4 text-[var(--text)]">Carregando...</p>;
 
   return (
-    <div className="max-w-xl mx-auto space-y-4">
-      <h1 className="text-2xl font-semibold">Perfil</h1>
-      <div className="flex items-center gap-4">
-        <img
-          src={profile.avatar_url ?? '/avatar-placeholder.png'}
-          alt="Avatar"
-          className="h-16 w-16 rounded-full object-cover border border-border"
-        />
-        <label className="btn-secondary cursor-pointer">
-          Enviar avatar
+    <div className="mx-auto max-w-xl p-4 text-[var(--text)]">
+      <h1 className="mb-4 text-xl font-semibold">Perfil</h1>
+
+      {errorMsg && <p className="mb-3 text-[var(--danger)]">{errorMsg}</p>}
+      {okMsg && <p className="mb-3 text-[var(--success)]">{okMsg}</p>}
+
+      <form onSubmit={saveProfile} className="space-y-3">
+        <label className="block">
+          <span className="mb-1 block text-sm">Nome de exibição</span>
           <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleAvatar(f);
-            }}
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            className="w-full rounded border border-[var(--border)] bg-[var(--surface)] p-2"
           />
         </label>
-      </div>
 
-      <div className="space-y-2">
-        <label className="block text-sm">Apelido</label>
-        <input
-          className="w-full rounded-xl bg-surface border border-border px-3 py-2"
-          value={profile.nickname ?? ''}
-          onChange={(e) => setProfile((p) => ({ ...p, nickname: e.target.value }))}
-        />
-      </div>
-      <div className="space-y-2">
-        <label className="block text-sm">Nome de exibição</label>
-        <input
-          className="w-full rounded-xl bg-surface border border-border px-3 py-2"
-          value={profile.display_name ?? ''}
-          onChange={(e) => setProfile((p) => ({ ...p, display_name: e.target.value }))}
-        />
-      </div>
+        <label className="block">
+          <span className="mb-1 block text-sm">Apelido</span>
+          <input
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            className="w-full rounded border border-[var(--border)] bg-[var(--surface)] p-2"
+          />
+        </label>
 
-      <button onClick={saveProfile} disabled={saving} className="btn-primary">
-        {saving ? 'Salvando...' : 'Salvar'}
-      </button>
+        <label className="block">
+          <span className="mb-1 block text-sm">Avatar</span>
+          <input type="file" accept="image/*" onChange={onAvatarChange} />
+        </label>
+
+        <button className="rounded bg-[var(--primary)] px-4 py-2 text-white">
+          Salvar
+        </button>
+      </form>
+
+      {avatarUrl && (
+        <div className="mt-6">
+          <p className="mb-2 text-sm">Prévia do avatar</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={avatarUrl} alt="Avatar" className="h-20 w-20 rounded-full object-cover" />
+        </div>
+      )}
     </div>
   );
 }
