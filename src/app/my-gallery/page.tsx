@@ -5,16 +5,16 @@ import Image from 'next/image';
 
 export default async function MyGallery() {
   const supabase = supabaseServer();
-  const {
-    data: { session }
-  } = await supabase.auth.getSession();
-  if (!session) {
+  // Use getUser to validate the session and refresh tokens if needed.
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData?.user) {
     return <p>Você precisa estar logado para ver sua galeria.</p>;
   }
+  const userId = userData.user.id;
   const { data: gens, error } = await supabase
     .from('generations')
     .select('*')
-    .eq('user_id', session.user.id)
+    .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) {
     return <p className="text-danger">Erro ao carregar galeria: {error.message}</p>;
