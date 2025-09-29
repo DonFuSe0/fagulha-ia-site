@@ -1,91 +1,48 @@
-'use client';
-
 import Link from 'next/link';
-import Image from 'next/image';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { cookies } from 'next/headers';
+import { supabaseServer } from '@/lib/supabase/server';
 
-const links = [
-  { href: '/explore', label: 'Explorar' },
-  { href: '/dashboard', label: 'Painel' },
-  { href: '/generate', label: 'Gerar' },
-  { href: '/my-gallery', label: 'Minha galeria' },
-  { href: '/pricing', label: 'Planos' },
-  { href: '/profile', label: 'Perfil' },
-  // Quando não logado, “Entrar”; se você já tem lógica condicional, pode remover esta linha.
-  { href: '/auth/login', label: 'Entrar' },
-];
+export const dynamic = 'force-dynamic';
 
-export default function Header() {
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+export default async function Header() {
+  // ler cookies() torna o componente dinâmico por requisição
+  cookies();
 
-  const isActive = (href: string) =>
-    pathname === href ? 'text-[var(--primary)]' : 'text-[var(--text)] hover:text-[var(--primary)]';
+  const supabase = supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[var(--border)] bg-[var(--surface)]/80 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-6">
-        {/* Brand */}
-        <Link href="/" className="group flex items-center gap-3">
-          <div className="relative h-8 w-8">
-            {/* Logo local em /public */}
-            <Image
-              src="/logo-fagulha.png"
-              alt="Fagulha"
-              fill
-              sizes="32px"
-              className="object-contain"
-              priority
-            />
-          </div>
-          <span className="text-lg font-semibold tracking-wide text-[var(--text)] group-hover:text-[var(--primary)]">
-            FAGULHA
-          </span>
+    <header className="sticky top-0 z-40 w-full border-b border-[var(--border)] bg-[var(--surface)]/80 backdrop-blur">
+      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4">
+        <Link href="/" className="flex items-center gap-2">
+          <img src="/logo.svg" alt="Fagulha" className="h-6 w-auto" />
+          <span className="font-semibold text-[var(--text)]">Fagulha</span>
         </Link>
 
-        {/* Navegação desktop */}
-        <nav className="hidden gap-6 md:flex">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              className={`text-sm transition-colors ${isActive(l.href)}`}
-            >
-              {l.label}
-            </Link>
-          ))}
-        </nav>
-
-        {/* Botão mobile */}
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text)] hover:bg-[var(--bg)] md:hidden"
-          aria-label="Abrir menu"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3 6h18M3 12h18M3 18h18" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Drawer mobile */}
-      {open && (
-        <div className="border-t border-[var(--border)] bg-[var(--surface)] md:hidden">
-          <nav className="mx-auto flex max-w-7xl flex-col px-4 py-3 md:px-6">
-            {links.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                onClick={() => setOpen(false)}
-                className={`rounded-lg px-2 py-2 text-[var(--text)] transition-colors hover:bg-[var(--bg)] ${pathname === l.href ? 'text-[var(--primary)]' : ''}`}
-              >
-                {l.label}
-              </Link>
-            ))}
+        {!user ? (
+          <nav className="flex items-center gap-4 text-sm">
+            <Link href="/explore" className="text-[var(--muted)] hover:text-[var(--text)]">Explorar</Link>
+            <Link href="/pricing" className="text-[var(--muted)] hover:text-[var(--text)]">Planos</Link>
+            <Link href="/auth/login" className="rounded-lg bg-[var(--primary)] px-3 py-1.5 text-white hover:bg-[var(--primary-600)]">Entrar</Link>
           </nav>
-        </div>
-      )}
+        ) : (
+          <nav className="flex items-center gap-4 text-sm">
+            <Link href="/explore" className="text-[var(--muted)] hover:text-[var(--text)]">Explorar</Link>
+            <Link href="/dashboard" className="text-[var(--muted)] hover:text-[var(--text)]">Painel</Link>
+            <Link href="/generate" className="text-[var(--muted)] hover:text-[var(--text)]">Gerar</Link>
+            <Link href="/my-gallery" className="text-[var(--muted)] hover:text-[var(--text)]">Minha galeria</Link>
+            <Link href="/pricing" className="text-[var(--muted)] hover:text-[var(--text)]">Planos</Link>
+            <Link href="/profile" className="text-[var(--muted)] hover:text-[var(--text)]">Perfil</Link>
+            <form action="/auth/logout" method="post">
+              <button className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-[var(--muted)] hover:text-[var(--text)]">
+                Sair
+              </button>
+            </form>
+          </nav>
+        )}
+      </div>
     </header>
   );
 }
