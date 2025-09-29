@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabaseServer } from '@/lib/supabase/server';
+import SignOutButton from '@/components/auth/SignOutButton';
 
 export default async function Header() {
   // Determine whether the user is logged in.  Because this is a
@@ -11,6 +12,19 @@ export default async function Header() {
     data: { session }
   } = await supabase.auth.getSession();
   const user = session?.user;
+  // When the user is logged in, fetch additional profile data to display
+  // their display name and avatar.  We request only the fields we need.
+  let displayName: string | null = null;
+  let avatarUrl: string | null = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name, avatar_url')
+      .eq('id', user.id)
+      .maybeSingle();
+    displayName = profile?.display_name ?? null;
+    avatarUrl = profile?.avatar_url ?? null;
+  }
   return (
     <header className="w-full border-b border-border bg-surface text-text shadow-sm">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -19,7 +33,8 @@ export default async function Header() {
           <Image src="/logo.png" alt="Fagulha logo" width={32} height={32} />
           <span className="font-semibold text-xl">Fagulha</span>
         </Link>
-        <nav className="flex space-x-4 text-sm">
+        {/* Left side navigation links */}
+        <nav className="flex space-x-4 text-sm items-center">
           <Link href="/explore" className="hover:text-primary">Explorar</Link>
           {user && (
             <>
@@ -29,12 +44,40 @@ export default async function Header() {
             </>
           )}
           <Link href="/pricing" className="hover:text-primary">Planos</Link>
-          {user ? (
-            <Link href="/profile" className="hover:text-primary">Perfil</Link>
-          ) : (
-            <Link href="/auth/login" className="hover:text-primary">Entrar</Link>
-          )}
         </nav>
+        {/* Right side: auth actions */}
+        <div className="flex items-center space-x-3 text-sm">
+          {user ? (
+            <>
+              {/* Avatar or initial */}
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  alt="Avatar"
+                  width={24}
+                  height={24}
+                  className="rounded-full"
+                />
+              ) : (
+                <span className="bg-primary text-white rounded-full w-6 h-6 flex items-center justify-center uppercase">
+                  {displayName ? displayName.charAt(0) : user.email?.charAt(0) || 'U'}
+                </span>
+              )}
+              {/* Display name fallback to email if not provided */}
+              <span className="font-medium">
+                {displayName || user.email || 'Usuário'}
+              </span>
+              <Link href="/profile" className="hover:text-primary">
+                Perfil
+              </Link>
+              <SignOutButton />
+            </>
+          ) : (
+            <Link href="/auth/login" className="hover:text-primary">
+              Entrar
+            </Link>
+          )}
+        </div>
       </div>
     </header>
   );
