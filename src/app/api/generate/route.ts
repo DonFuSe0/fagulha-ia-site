@@ -1,74 +1,151 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 import { supabaseServer } from '@/lib/supabase/server';
 
-const requestSchema = z.object({
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const BodySchema = z.object({
   prompt: z.string().min(1),
   negative_prompt: z.string().optional(),
-  model: z.string(),
+  model: z.string().min(1),
   style: z.string().optional(),
-  width: z.number(),
-  height: z.number(),
-  steps: z.number()
+  width: z.coerce.number().int().min(64).max(2048),
+  height: z.coerce.number().int().min(64).max(2048),
+  steps: z.coerce.number().int().min(1).max(150),
+  cfg_scale: z.coerce.number().optional(),
+  seed: z.coerce.number().optional(),
+  is_public: z.coerce.boolean().optional()
 });
 
 export async function POST(req: NextRequest) {
   const supabase = supabaseServer();
-  // Ensure user is authenticated
-  const {
-    data: { session }
-  } = await supabase.auth.getSession();
-  if (!session) {
-    return NextResponse.json({ message: 'Não autenticado' }, { status: 401 });
+  const admin = supabaseAdmin();
+
+  // Auth
+  const { data: userRes, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userRes?.user) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
   }
-  let payload: any;
+  const user = userRes.user;
+
+  // Validate
+  let bodyJson: unknown;
   try {
-    payload = await req.json();
+    bodyJson = await req.json();
   } catch {
-    return NextResponse.json({ message: 'JSON inválido' }, { status: 400 });
+    return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
   }
-  const parsed = requestSchema.safeParse(payload);
+  const parsed = BodySchema.safeParse(bodyJson);
   if (!parsed.success) {
-    return NextResponse.json({ message: parsed.error.errors[0].message }, { status: 400 });
+    return NextResponse.json({ error: 'Dados inválidos', details: parsed.error.flatten() }, { status: 400 });
   }
-  const data = parsed.data;
-  // Calculate token cost: 1 token per 512x512 area
+  const body = parsed.data;
+
+  // Custo (512x512 = 1 token)
   const base = 512 * 512;
-  const area = data.width * data.height;
-  const cost = Math.ceil(area / base);
-  // Check balance and spend tokens
-  try {
-    await supabase.rpc('spend_tokens', {
-      p_user: session.user.id,
-      p_cost: cost,
-      p_reason: 'GENERATION',
+  const cost = Math.max(1, Math.ceil((body.width * body.height) / base));
+
+  // Debitar tokens (RPC SECURITY DEFINER)
+  const { error: spendErr } = await admin.rpc('spend_tokens', {
+    p_user: user.id,
+    p_cost: cost,
+    p_reason: 'GENERATION',
+    p_ref: null
+  });
+  if (spendErr) {
+    return NextResponse.json({ error: 'Saldo insuficiente' }, { status: 402 });
+  }
+
+  // Inserir geração
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ((body.is_public ? 48 : 24) * 60 * 60 * 1000));
+
+  const insertPayload = {
+    user_id: user.id,
+    prompt: body.prompt,
+    negative_prompt: body.negative_prompt ?? null,
+    model: body.model,
+    style: body.style ?? null,
+    width: body.width,
+    height: body.height,
+    steps: body.steps,
+    seed: body.seed ?? null,
+    cfg_scale: body.cfg_scale ?? null,
+    status: 'queued' as const,
+    is_public: !!body.is_public,
+    image_path: null as string | null,
+    thumb_path: null as string | null,
+    tokens_used: cost,
+    duration_ms: null as number | null,
+    error_message: null as string | null,
+    metadata: null as any,
+    expires_at: expiresAt.toISOString()
+  };
+
+  const { data: gen, error: genErr } = await admin
+    .from('generations')
+    .insert(insertPayload)
+    .select()
+    .single();
+
+  if (genErr || !gen) {
+    // refund
+    await admin.rpc('credit_tokens', {
+      p_user: user.id,
+      p_delta: cost,
+      p_reason: 'REFUND',
       p_ref: null
     });
+    return NextResponse.json({ error: 'Erro ao criar geração' }, { status: 500 });
+  }
+
+  // Enfileirar no ComfyUI
+  try {
+    const apiUrl = process.env.COMFYUI_API_URL!;
+    const webhookSecret = process.env.COMFYUI_WEBHOOK_SECRET!;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!;
+    const callback = `${siteUrl}/api/webhooks/comfyui`;
+
+    // Ajuste o payload conforme sua API do ComfyUI
+    const enqueueBody = {
+      id: gen.id,
+      prompt: body.prompt,
+      negative_prompt: body.negative_prompt ?? undefined,
+      model: body.model,
+      width: body.width,
+      height: body.height,
+      steps: body.steps,
+      seed: body.seed,
+      cfg_scale: body.cfg_scale,
+      callback_url: callback
+    };
+
+    await fetch(`${apiUrl}/jobs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Webhook-Secret': webhookSecret
+      },
+      body: JSON.stringify(enqueueBody)
+    });
   } catch (e: any) {
-    return NextResponse.json({ message: 'Saldo insuficiente' }, { status: 402 });
+    // marcar como falha + refund
+    await admin.from('generations').update({
+      status: 'failed',
+      error_message: e?.message ?? 'Erro ao enfileirar'
+    }).eq('id', gen.id);
+
+    await admin.rpc('credit_tokens', {
+      p_user: user.id,
+      p_delta: cost,
+      p_reason: 'REFUND',
+      p_ref: gen.id
+    });
+
+    return NextResponse.json({ id: gen.id, status: 'failed' }, { status: 202 });
   }
-  // Insert generation row with status queued
-  const { data: gen, error } = await supabase
-    .from('generations')
-    .insert({
-      user_id: session.user.id,
-      prompt: data.prompt,
-      negative_prompt: data.negative_prompt,
-      model: data.model,
-      style: data.style,
-      width: data.width,
-      height: data.height,
-      steps: data.steps,
-      tokens_used: cost,
-      status: 'queued',
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-    })
-    .select('*')
-    .single();
-  if (error || !gen) {
-    return NextResponse.json({ message: error?.message || 'Erro ao registrar geração' }, { status: 500 });
-  }
-  // TODO: enqueue job in ComfyUI via COMFYUI_API_URL
-  // For now we just return the generation id
-  return NextResponse.json({ id: gen.id });
+
+  return NextResponse.json({ id: gen.id }, { status: 200 });
 }

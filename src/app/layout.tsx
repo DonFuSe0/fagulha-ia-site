@@ -1,29 +1,21 @@
-import '../app/globals.css';
-import Header from '@/components/header';
-import Footer from '@/components/footer';
+import './globals.css';
 import type { Metadata } from 'next';
+import Header from '@/components/header';
 
 export const metadata: Metadata = {
-  title: 'Fagulha – Geração de Imagens via IA',
-  description: 'Gere imagens incríveis com inteligência artificial usando Fagulha',
+  title: 'Fagulha',
+  description: 'Gere imagens com UX premium.',
 };
 
-export default function RootLayout({
-  children
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className="dark">
-      <body className="flex flex-col min-h-screen">
-        {/* Header is a server component which fetches session */}
-        {/* so it must be imported only from server side */}
-        {/* We wrap header in a Suspense to avoid streaming issues */}
+    <html lang="pt-BR">
+      <body className="bg-[var(--bg)] text-[var(--text)]">
+        {/* Header sempre visível */}
+        {/* Server Component: lê sessão via cookies e mostra menu correto */}
+        {/* Se você já tinha um Header, troque a importação para este componente */}
         <Header />
-        <main className="flex-1 container mx-auto px-4 py-6">
-          {children}
-        </main>
-        <Footer />
+        <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
       </body>
     </html>
   );

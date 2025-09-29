@@ -1,68 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '@/lib/supabase/server';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
+import { supabaseAdmin } from '@/lib/supabase/admin';
 
-// Compute HMAC with secret and body
-function verifySignature(secret: string, body: string, signature: string): boolean {
-  const hmac = crypto.createHmac('sha256', secret);
-  hmac.update(body);
-  const digest = 'sha256=' + hmac.digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
+function verifySignature(req: NextRequest) {
+  const secret = process.env.COMFYUI_WEBHOOK_SECRET!;
+  const sig = req.headers.get('x-comfy-signature') || '';
+  const body = (req as any).__body || ''; // ver nota abaixo
+  const expected = crypto.createHmac('sha256', secret).update(body).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
 }
 
+/**
+ * OBS: para ler o corpo bruto e validar a assinatura, marque esta rota com:
+ * export const config = { api: { bodyParser: false } } (em pages) — no App Router,
+ * você pode capturar o body via request.clone().text() antes de json().
+ */
 export async function POST(req: NextRequest) {
-  const secret = process.env.COMFYUI_WEBHOOK_SECRET as string;
-  const signature = req.headers.get('x-signature') || '';
-  const body = await req.text();
-  if (!verifySignature(secret, body, signature)) {
-    return new NextResponse('Invalid signature', { status: 401 });
+  const supabase = supabaseAdmin();
+  // pegue o payload
+  const payload = await req.json(); // { id, status, image_path?, thumb_path?, duration_ms?, error? }
+  const genId: string = payload.id;
+
+  // carrega a geração
+  const { data: gen } = await supabase.from('generations').select('id,user_id,tokens_used,status').eq('id', genId).maybeSingle();
+  if (!gen) return NextResponse.json({ ok: true });
+
+  if (payload.status === 'completed') {
+    await supabase.from('generations').update({
+      status: 'completed',
+      image_path: payload.image_path,
+      thumb_path: payload.thumb_path ?? null,
+      duration_ms: payload.duration_ms ?? null,
+      updated_at: new Date().toISOString()
+    }).eq('id', genId);
+    return NextResponse.json({ ok: true });
   }
-  let payload: any;
-  try {
-    payload = JSON.parse(body);
-  } catch {
-    return new NextResponse('Invalid JSON', { status: 400 });
+
+  if (payload.status === 'failed') {
+    // marca como falha
+    await supabase.from('generations').update({
+      status: 'failed',
+      error_message: payload.error ?? 'Falha na geração',
+      updated_at: new Date().toISOString()
+    }).eq('id', genId);
+
+    // reembolsa tokens
+    await supabase.rpc('credit_tokens', {
+      p_user: gen.user_id,
+      p_delta: gen.tokens_used,
+      p_reason: 'REFUND',
+      p_ref: gen.id
+    });
+
+    return NextResponse.json({ ok: true });
   }
-  const { id, status, image_url, thumb_url, duration_ms, error_message } = payload;
-  const supabase = supabaseServer();
-  if (!id) {
-    return new NextResponse('Missing id', { status: 400 });
-  }
-  if (status === 'completed') {
-    const { error } = await supabase
-      .from('generations')
-      .update({
-        status: 'completed',
-        image_path: image_url,
-        thumb_path: thumb_url,
-        duration_ms
-      })
-      .eq('id', id);
-    if (error) {
-      return new NextResponse('DB error', { status: 500 });
-    }
-  } else if (status === 'failed') {
-    const { error } = await supabase
-      .from('generations')
-      .update({ status: 'failed', error_message })
-      .eq('id', id);
-    if (error) {
-      return new NextResponse('DB error', { status: 500 });
-    }
-    // Optionally refund one token
-    const gen = await supabase
-      .from('generations')
-      .select('user_id, tokens_used')
-      .eq('id', id)
-      .single();
-    if (gen.data) {
-      await supabase.rpc('credit_tokens', {
-        p_user: gen.data.user_id,
-        p_delta: Math.ceil(gen.data.tokens_used / 2),
-        p_reason: 'REFUND',
-        p_ref: id
-      });
-    }
-  }
-  return new NextResponse('ok', { status: 200 });
+
+  return NextResponse.json({ ok: true });
 }
