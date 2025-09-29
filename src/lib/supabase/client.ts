@@ -1,22 +1,20 @@
 import { createBrowserClient } from '@supabase/ssr';
 
 /**
- * Supabase client para o BROWSER.
- * Usa as variáveis públicas e deve ser chamado somente em componentes client.
+ * Retorna um client do Supabase configurado para o browser.
+ * Use em Client Components e handlers de eventos.
  */
 export function supabaseBrowser() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Variáveis NEXT_PUBLIC_SUPABASE_URL/ANON_KEY ausentes');
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
   }
   return createBrowserClient(supabaseUrl, supabaseAnonKey);
 }
 
 /**
- * Alias de compatibilidade — algumas partes do código importam { supabaseClient }.
- * Mantemos esse nome apontando para o mesmo helper acima.
+ * Alias mantido para compatibilidade com imports existentes:
+ *   import { supabaseClient } from '@/lib/supabase/client';
  */
-export function supabaseClient() {
-  return supabaseBrowser();
-}
+export const supabaseClient = supabaseBrowser;
