@@ -2,56 +2,48 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabaseBrowser } from '@/lib/supabase/client';
+import { supabaseClient } from '@/lib/supabase/client';
 
-/**
- * Formulário de cadastro por e-mail.
- * Fluxo:
- * 1) chama /api/check-signup para validar e-mail + IP
- * 2) supabase.auth.signUp
- * 3) redireciona para /auth/login com aviso para confirmar o e-mail
- */
 export default function SignUpForm() {
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setError] = useState<string | undefined>();
+  const supabase = supabaseClient();
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(undefined);
     setLoading(true);
-
-    const form = new FormData(e.currentTarget);
-    const email = String(form.get('email') || '').trim();
-    const password = String(form.get('password') || '').trim();
+    setErrorMsg(null);
 
     try {
-      // 1) Validação server-side (e-mail duplicado + limite por IP)
-      const check = await fetch('/api/check-signup', {
+      // 1) Checagem de e-mail e IP no backend
+      const checkRes = await fetch('/api/check-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email })
       });
-      if (!check.ok) {
-        const j = await check.json().catch(() => ({}));
-        throw new Error(j.error || 'Cadastro não permitido.');
+      if (!checkRes.ok) {
+        const payload = await checkRes.json().catch(() => ({}));
+        throw new Error(payload?.message || 'Cadastro bloqueado');
       }
 
-      // 2) Criação de conta no Supabase
-      const supabase = supabaseBrowser();
+      // 2) Cria a conta com verificação de e-mail
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL as string;
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-        },
+          emailRedirectTo: `${siteUrl}/auth/callback`
+        }
       });
       if (error) throw error;
 
-      // 3) Sucesso — leva o usuário para a tela de login com aviso
-      router.push('/auth/login?signup=success');
+      // 3) Redireciona para a tela de login com aviso de confirmação
+      router.push('/auth/login?success=1');
     } catch (err: any) {
-      setError(err?.message || 'Erro ao cadastrar. Tente novamente.');
+      setErrorMsg(err?.message || 'Erro ao validar dados. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -59,28 +51,35 @@ export default function SignUpForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <input
-        name="email"
-        type="email"
-        placeholder="Seu e-mail"
-        className="w-full rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-[var(--text)]"
-        required
-      />
-      <input
-        name="password"
-        type="password"
-        placeholder="Crie uma senha"
-        className="w-full rounded border border-[var(--border)] bg-[var(--surface)] p-2 text-[var(--text)]"
-        required
-      />
-      {errorMsg && (
-        <p className="text-[var(--danger)] text-sm">{errorMsg}</p>
-      )}
+      {errorMsg && <p className="text-danger text-sm">{errorMsg}</p>}
+      <div className="space-y-1">
+        <label className="block text-sm">E-mail</label>
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full rounded-xl bg-surface border border-border px-3 py-2"
+          placeholder="seu@email.com"
+        />
+      </div>
+      <div className="space-y-1">
+        <label className="block text-sm">Senha</label>
+        <input
+          type="password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full rounded-xl bg-surface border border-border px-3 py-2"
+          placeholder="••••••••"
+        />
+      </div>
       <button
+        type="submit"
         disabled={loading}
-        className="rounded bg-[var(--primary)] px-4 py-2 text-white"
+        className="btn-primary w-full"
       >
-        {loading ? 'Enviando...' : 'Criar conta'}
+        {loading ? 'Criando...' : 'Criar conta'}
       </button>
     </form>
   );
