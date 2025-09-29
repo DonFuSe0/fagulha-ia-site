@@ -1,13 +1,12 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
-// Rotas que exigem login:
 const PROTECTED_PREFIXES = ['/dashboard', '/generate', '/my-gallery', '/profile'];
 
 export function middleware(req: NextRequest) {
   const { pathname, searchParams } = req.nextUrl;
 
-  // Deixa passar estáticos e o callback
+  // Deixa passar estáticos e o callback de auth
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
@@ -17,10 +16,12 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Detecta cookie de sessão do Supabase (sb-xxxx-auth-token)
-  const hasAuthCookie = req.cookies.getAll().some((c) => c.name.endsWith('-auth-token'));
+  // 🔧 NOVO: detecção robusta do cookie de sessão do Supabase
+  const hasAuthCookie = req.cookies.getAll().some((c) =>
+    /sb-[a-z0-9]+-auth-token(\.\d+)?$/i.test(c.name) || c.name === 'supabase-auth-token'
+  );
 
-  // Exige sessão nas páginas protegidas
+  // Exigir login nas rotas protegidas
   if (PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) {
     if (!hasAuthCookie) {
       const url = req.nextUrl.clone();
@@ -30,7 +31,7 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  // Evita acessar login/cadastro quando já está logado
+  // Evitar acessar login/cadastro estando logado
   if ((pathname === '/auth/login' || pathname.startsWith('/auth/sign-up')) && hasAuthCookie) {
     const url = req.nextUrl.clone();
     url.pathname = '/dashboard';
