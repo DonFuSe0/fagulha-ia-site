@@ -5,13 +5,12 @@ import SignOutButton from '@/components/auth/SignOutButton';
 
 export default async function Header() {
   // Determine whether the user is logged in.  Because this is a
-  // server component we can query Supabase directly.  The presence of
-  // a session indicates an authenticated user.
+  // server component we can query Supabase directly.  We always
+  // call `getUser()` instead of `getSession()` here because `getUser()`
+  // revalidates the token with Supabase on every request【902179082906728†L254-L280】.
   const supabase = supabaseServer();
-  const {
-    data: { session }
-  } = await supabase.auth.getSession();
-  const user = session?.user;
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const user = !userError ? userData?.user : null;
   // When the user is logged in, fetch additional profile data to display
   // their display name and avatar.  We request only the fields we need.
   let displayName: string | null = null;
