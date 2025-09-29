@@ -1,33 +1,29 @@
+export const runtime = 'nodejs';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase/server';
 
-// Garante execução no Node
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
-/**
- * Rota de retorno (Google / links de e-mail).
- * Troca o "code" por sessão, grava cookies httpOnly e redireciona.
- *
- * Ex.: /auth/callback?code=...&next=/dashboard
- */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
+  const origin = url.origin;
   const code = url.searchParams.get('code');
-  const next = url.searchParams.get('next') || '/dashboard';
+  const error = url.searchParams.get('error');
+  const redirect = url.searchParams.get('redirect') || '/dashboard';
 
-  const supabase = supabaseServer();
-
-  if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) {
-      // se falhar, manda para login com erro
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_SITE_URL}/auth/login?error=${encodeURIComponent(error.message)}`
-      );
-    }
+  if (error) {
+    return NextResponse.redirect(new URL(`/auth/login?error=${encodeURIComponent(error)}`, origin));
+  }
+  if (!code) {
+    return NextResponse.redirect(new URL(`/auth/login?error=${encodeURIComponent('missing_code')}`, origin));
   }
 
-  // redireciona para o destino (dashboard por padrão)
-  return NextResponse.redirect(new URL(next, process.env.NEXT_PUBLIC_SITE_URL));
+  const supabase = supabaseServer();
+  const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (exErr) {
+    return NextResponse.redirect(new URL(`/auth/login?error=${encodeURIComponent(exErr.message)}`, origin));
+  }
+
+  // Sessão gravada em cookie via supabaseServer() (cookies.set)
+  return NextResponse.redirect(new URL(redirect, origin));
 }
