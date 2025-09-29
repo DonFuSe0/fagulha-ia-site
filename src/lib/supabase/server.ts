@@ -25,31 +25,40 @@ export function supabaseServer() {
    */
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      // Get a cookie value.  Returns a Promise that resolves to the
-      // cookie's value or undefined.
+      /**
+       * Read a cookie value from the current request.  The Supabase
+       * client will call this method to access the `supabase-auth-token`
+       * cookie on the server.  We return the cookie's string value or
+       * undefined if it doesn't exist.
+       */
       async get(name: string) {
         const store = await cookies();
         const cookie = store.get(name);
         return cookie?.value;
       },
-      // Set a cookie.  Accepts optional options like `maxAge`, `expires`, etc.
+      /**
+       * Write a cookie.  To ensure that the session cookie is
+       * available on all routes (and not just the current path), we
+       * explicitly set `path: '/'` on every cookie we write.  Any
+       * options passed in will override the defaults (except for
+       * `path`).
+       */
       async set(name: string, value: string, options?: any) {
         const store = await cookies();
-        store.set(name, value, options);
+        const opts = { path: '/', ...options };
+        store.set(name, value, opts);
       },
-      // Remove a cookie by name. The Next.js cookie API does not
-      // support passing options to `delete()`.  If options such as
-      // `path` or `domain` are provided, we instead overwrite the
-      // cookie with an empty value and a maxAge of 0 to expire it
-      // immediately.  Otherwise, we call `.delete(name)`.
+      /**
+       * Remove a cookie.  The Next.js cookie API does not allow
+       * passing options to `delete()`.  Therefore we always
+       * overwrite the cookie at the root path with an empty value and
+       * `maxAge: 0` to effectively expire it.  Additional options
+       * (e.g. domain) can be passed in to override the defaults.
+       */
       async remove(name: string, options?: any) {
         const store = await cookies();
-        if (options && Object.keys(options).length > 0) {
-          // Set the cookie with an empty value and maxAge 0 to delete it.
-          store.set(name, '', { ...options, maxAge: 0 });
-        } else {
-          store.delete(name);
-        }
+        const opts = { path: '/', ...options, maxAge: 0 };
+        store.set(name, '', opts);
       },
     },
   });
