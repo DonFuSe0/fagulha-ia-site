@@ -1,68 +1,34 @@
 import Link from 'next/link';
 import { supabaseServer } from '@/lib/supabase/serverClient';
 
-/**
- * Header component. This is a Server Component so it can access the current
- * session via the Supabase server client. Depending on whether a user is
- * logged in or not, it shows different navigation items.
- */
 export default async function Header() {
   const supabase = supabaseServer();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
   const user = session?.user;
 
   return (
-    <header className="bg-background border-b border-gray-800">
+    <header className="border-b border-gray-800 bg-[#0a0c10]/80 backdrop-blur">
       <nav className="container mx-auto flex items-center justify-between px-4 py-4">
-        <Link href="/">
-          <span className="text-2xl font-semibold text-white">Fagulha&nbsp;IA</span>
-        </Link>
-        <div className="flex items-center space-x-4">
-          {/* Public link always shown */}
-          <Link
-            href="/explore"
-            className="text-gray-300 transition-colors hover:text-white"
-          >
-            Explorar
-          </Link>
+        <div className="flex items-center gap-6">
+          <Link href="/" className="text-lg font-semibold text-brand">Fagulha IA</Link>
+          <Link href="/explore" className="text-sm text-gray-300 hover:text-white">Explorar</Link>
+          <Link href="/generate" className="text-sm text-gray-300 hover:text-white">Gerar</Link>
+        </div>
+        <div className="flex items-center gap-3">
           {user ? (
             <>
-              <Link
-                href="/dashboard"
-                className="text-gray-300 transition-colors hover:text-white"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/generate"
-                className="text-gray-300 transition-colors hover:text-white"
-              >
-                Gerar
-              </Link>
-              {/* Logout form posts to a route that invalidates the session */}
-              <form action="/auth/logout" method="post">
-                <button
-                  type="submit"
-                  className="text-gray-300 transition-colors hover:text-white"
-                >
+              <span className="hidden text-sm text-gray-400 sm:inline">{user.email}</span>
+              <Link href="/dashboard" className="rounded bg-gray-800 px-4 py-2 text-sm hover:bg-gray-700">Dashboard</Link>
+              <form action="/auth/logout" method="POST">
+                <button type="submit" className="rounded bg-brand px-4 py-2 text-sm font-medium text-black hover:bg-brand-light">
                   Sair
                 </button>
               </form>
             </>
           ) : (
             <>
-              <Link
-                href="/auth/login"
-                className="text-gray-300 transition-colors hover:text-white"
-              >
-                Entrar
-              </Link>
-              <Link
-                href="/auth/signup"
-                className="rounded bg-brand px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-brand-light"
-              >
+              <Link href="/auth/login" className="rounded px-4 py-2 text-sm hover:bg-gray-800">Entrar</Link>
+              <Link href="/auth/signup" className="rounded bg-brand px-4 py-2 text-sm font-medium text-black hover:bg-brand-light">
                 Criar Conta
               </Link>
             </>
