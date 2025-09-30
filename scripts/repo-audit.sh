@@ -19,7 +19,6 @@ grep -q '"postcss": "8.4.41"' package.json || fail "postcss 8.4.41 não encontra
 grep -q '"autoprefixer": "10.4.20"' package.json || fail "autoprefixer 10.4.20 não encontrado"
 grep -q '"typescript": "5.4.5"' package.json || fail "typescript 5.4.5 não encontrado"
 grep -Eq '"\^' package.json && fail "Há dependências com caret (^) em package.json"
-
 ok "Deps fixadas ok"
 
 # 1) Estrutura essencial
