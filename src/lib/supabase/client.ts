@@ -1,37 +1,37 @@
 'use client';
 
 import { createBrowserClient } from '@supabase/ssr';
-import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
- * Instância única por aba
+ * Evita conflito de tipos (Schema) entre versões.
+ * Usamos o tipo retornado pela própria factory do @supabase/ssr.
  */
-let _client: SupabaseClient | null = null;
+type AnyClient = ReturnType<typeof createBrowserClient<any>>;
 
-/**
- * Fábrica real do client (base para todos os exports)
- */
-export function getSupabaseBrowser(): SupabaseClient {
+let _client: AnyClient | null = null;
+
+/** Fábrica única (singleton por aba) */
+export function getSupabaseBrowser(): AnyClient {
   if (_client) return _client;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  _client = createBrowserClient(supabaseUrl, supabaseAnonKey);
+  // Instancia com generics frouxos pra evitar mismatch de "public"/GenericSchema
+  _client = createBrowserClient<any>(supabaseUrl, supabaseAnonKey);
   return _client;
 }
 
 /**
- * DEFAULT EXPORT
- * (nome diferente para não colidir com export nomeado "supabaseClient")
+ * DEFAULT EXPORT (recomendado)
  * Uso: import supabaseClient from '@/lib/supabase/client'
  */
-export default function createSupabaseBrowserClient(): SupabaseClient {
+export default function createSupabaseBrowserClient(): AnyClient {
   return getSupabaseBrowser();
 }
 
 /**
- * EXPORTS NOMEADOS (compatibilidade com código antigo):
+ * EXPORTS NOMEADOS (retrocompatibilidade)
  * Uso: import { supabaseBrowser } from '@/lib/supabase/client'
  * Uso: import { supabaseClient } from '@/lib/supabase/client'
  */
