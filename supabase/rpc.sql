@@ -1,5 +1,6 @@
--- supabase/rpc.sql (updated)
+-- supabase/rpc.sql (inclui grant_welcome_credits + helpers)
 
+-- Créditos de boas-vindas (padrão 20) — chamada pelo gatilho após confirmação de e-mail
 create or replace function public.grant_welcome_credits(p_user uuid, p_amount integer default 20)
 returns void
 language plpgsql
@@ -16,6 +17,7 @@ begin
 end;
 $$;
 
+-- Crédito manual
 create or replace function public.credit_tokens(p_user uuid, p_delta integer)
 returns void
 language plpgsql
@@ -34,6 +36,7 @@ begin
 end;
 $$;
 
+-- Débito (gasto)
 create or replace function public.spend_tokens(p_user uuid, p_cost integer)
 returns void
 language plpgsql
