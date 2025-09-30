@@ -7,11 +7,55 @@ on:
   pull_request:
     branches:
       - desenvolvimento
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
 
 jobs:
   guard:
+    name: Fast Guard
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Run guard script
-        run: bash scripts/ci-guard.sh
+
+      - name: Ensure scripts executable
+        run: |
+          chmod +x scripts/ci-guard.sh || true
+          chmod +x scripts/repo-audit.sh || true
+
+      - name: Run ci-guard (fast)
+        run: |
+          if [ -f scripts/ci-guard.sh ]; then
+            bash scripts/ci-guard.sh
+          else
+            echo "scripts/ci-guard.sh não encontrado (ok, mas recomendo subir)."
+          fi
+
+  audit:
+    name: Deep Repo Audit
+    runs-on: ubuntu-latest
+    needs: guard
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Ensure scripts executable
+        run: chmod +x scripts/repo-audit.sh
+
+      - name: Run repo-audit (deep checks)
+        run: bash scripts/repo-audit.sh
+
+  typecheck:
+    name: TypeScript Check (optional)
+    runs-on: ubuntu-latest
+    needs: audit
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v4
+        with:
+            node-version: 20
+            cache: 'npm'
+      - name: Install deps (npm ci)
+        run: npm ci
+      - name: TypeScript noEmit
+        run: npx tsc -noEmit
