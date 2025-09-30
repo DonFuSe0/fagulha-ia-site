@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -8,12 +8,10 @@ export default function SignupPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // Registra callback global para receber o token do Turnstile
   useEffect(() => {
     (window as any).onTurnstile = (token: string) => {
       (window as any).__turnstile_token = token;
     };
-    // Carrega o script do Turnstile no client
     const s = document.createElement("script");
     s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
     s.async = true;
@@ -36,8 +34,7 @@ export default function SignupPage() {
       const json = await res.json();
       if (!res.ok) setMsg(json?.error || "Erro no cadastro");
       else setMsg("Cadastro criado. Verifique seu e-mail para confirmar. Após confirmar, seus créditos serão liberados.");
-    } catch (err) {
-      console.error(err);
+    } catch {
       setMsg("Erro interno");
     } finally {
       setBusy(false);
@@ -57,7 +54,6 @@ export default function SignupPage() {
           <input value={password} onChange={e => setPassword(e.target.value)} type="password" required minLength={6} className="w-full p-2 rounded bg-gray-900" />
         </label>
 
-        {/* Widget Turnstile com callback */}
         <div
           className="cf-turnstile"
           data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
