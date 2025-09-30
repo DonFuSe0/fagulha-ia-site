@@ -12,3 +12,12 @@ NEXT_PUBLIC_SUPABASE_URL="https://pmmfqpjrltuspfxwnjct.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtbWZxcGpybHR1c3BmeHduamN0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTIwMzk4OSwiZXhwIjoyMDc0Nzc5OTg5fQ.-HM8kKlmLir4fpCU7VcpigYy0rsZulCppYd_9YQidGo"
 POSTGRES_URL_NON_POOLING="postgres://postgres.pmmfqpjrltuspfxwnjct:QmrgrbkuUGI465xT@aws-1-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
 NEXT_PUBLIC_SITE_URL="https://SEU-DOMINIO.vercel.app"
+
+Cloudflare:
+Chave do site
+0x4AAAAAAB4FmqnHEgNFnMLx
+Chave secreta
+0x4AAAAAAB4Fmp4YlyDA29fDrgkjvGPBIwY
+
+SIGNUP_SALT
+f025b537d196b27f6015e016ec0ed6c1930ceefc60ec515b957e6a3269a6fc39
