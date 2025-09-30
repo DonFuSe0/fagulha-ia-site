@@ -1,89 +1,70 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabaseBrowser } from '@/lib/supabase/browserClient';
+import { useEffect, useState } from "react";
 
-/**
- * Tela de cadastro. Permite criar uma conta usando e‑mail e senha. Ao cadastrar
- * o usuário com sucesso, redireciona para o dashboard. Em caso de erro,
- * exibe uma mensagem na tela.
- */
 export default function SignupPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    (window as any).onTurnstile = (token: string) => {
+      (window as any).__turnstile_token = token;
+    };
+    const s = document.createElement("script");
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    s.async = true;
+    s.defer = true;
+    document.body.appendChild(s);
+    return () => { s.remove(); };
+  }, []);
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const { data, error: signUpError } = await supabaseBrowser.auth.signUp({
-      email,
-      password,
-    });
-    setLoading(false);
-    if (signUpError) {
-      setError(signUpError.message);
-      return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const token = (window as any).__turnstile_token;
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, turnstileToken: token })
+      });
+      const json = await res.json();
+      if (!res.ok) setMsg(json?.error || "Erro no cadastro");
+      else setMsg("Cadastro criado. Verifique seu e-mail para confirmar. Após confirmar, seus créditos serão liberados.");
+    } catch {
+      setMsg("Erro interno");
+    } finally {
+      setBusy(false);
     }
-    // Supabase envia um link de verificação por e‑mail quando a opção de email
-    // confirmation está habilitada. Redirecionamos para o dashboard após
-    // cadastrar para uma experiência mais fluida.
-    router.push('/dashboard');
-  };
+  }
 
   return (
-    <div className="mx-auto max-w-md py-10">
-      <h2 className="mb-6 text-center text-3xl font-bold text-white">Criar conta</h2>
-      {error && (
-        <div className="mb-4 rounded border border-red-500 bg-red-900/60 px-4 py-3 text-sm text-red-200">
-          {error}
-        </div>
-      )}
+    <div className="max-w-md mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-4">Criar conta</h1>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="mb-1 block text-sm text-gray-300">
-            E‑mail
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full rounded border border-gray-700 bg-background px-3 py-2 text-gray-200 focus:border-brand focus:outline-none"
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="mb-1 block text-sm text-gray-300">
-            Senha
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full rounded border border-gray-700 bg-background px-3 py-2 text-gray-200 focus:border-brand focus:outline-none"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-brand px-4 py-2 font-medium text-black transition-colors hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? 'Criando...' : 'Criar conta'}
+        <label className="block">
+          <span className="text-sm">Email</span>
+          <input value={email} onChange={e => setEmail(e.target.value)} type="email" required className="w-full p-2 rounded bg-gray-900" />
+        </label>
+        <label className="block">
+          <span className="text-sm">Senha</span>
+          <input value={password} onChange={e => setPassword(e.target.value)} type="password" required minLength={6} className="w-full p-2 rounded bg-gray-900" />
+        </label>
+
+        <div
+          className="cf-turnstile"
+          data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+          data-callback="onTurnstile"
+        ></div>
+
+        <button type="submit" className="px-4 py-2 bg-brand rounded" disabled={busy}>
+          {busy ? 'Cadastrando...' : 'Criar conta'}
         </button>
+        {msg && <p className="text-sm mt-2">{msg}</p>}
       </form>
-      <p className="mt-4 text-center text-sm text-gray-400">
-        Já possui conta?{' '}
-        <a href="/auth/login" className="text-brand hover:underline">
-          Entrar
-        </a>
-      </p>
     </div>
   );
 }
