@@ -10,11 +10,11 @@ if [ ! -f next-env.d.ts ]; then
 fi
 
 # 2) tsconfig tem baseUrl/paths?
-if ! grep -q '"baseUrl"' tsconfig.json; then
+if ! grep -Fq '"baseUrl"' tsconfig.json; then
   echo "❌ tsconfig.json sem baseUrl"
   exit 1
 fi
-if ! grep -q '"@/*"' tsconfig.json; then
+if ! grep -Fq '"@/*"' tsconfig.json; then
   echo "❌ tsconfig.json sem paths '@/\*'"
   exit 1
 fi
@@ -26,11 +26,11 @@ if [ ! -f data/disposable_domains.json ]; then
 fi
 
 # 4) checa exports do lib/ip.ts
-if ! grep -q 'export function getClientIp' lib/ip.ts; then
+if ! grep -Fq 'export function getClientIp' lib/ip.ts; then
   echo "❌ lib/ip.ts não exporta getClientIp"
   exit 1
 fi
-if ! grep -q 'export function hashIpHmac' lib/ip.ts; then
+if ! grep -Fq 'export function hashIpHmac' lib/ip.ts; then
   echo "❌ lib/ip.ts não exporta hashIpHmac"
   exit 1
 fi
