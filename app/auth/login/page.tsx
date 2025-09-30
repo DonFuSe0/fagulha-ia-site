@@ -56,6 +56,12 @@ export default function LoginPage() {
           {loading ? 'Entrando...' : 'Entrar'}
         </button>
       </form>
+      <p className="mt-4 text-center text-sm text-gray-400">
+        Ainda não tem conta?{' '}
+        <a href="/auth/signup" className="text-brand hover:underline">
+          Criar conta
+        </a>
+      </p>
     </div>
   );
 }
