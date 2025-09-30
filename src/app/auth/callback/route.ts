@@ -1,40 +1,38 @@
-import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
-
-// Precisamos de runtime Node para manipular cookies de resposta
-export const runtime = 'nodejs';
+import { NextResponse } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 export async function GET(req: Request) {
-  const store = await cookies(); // <- Next 15 retorna Promise
+  const store = await cookies(); // Next 15: cookies() é assíncrono
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return store.get(name)?.value;
-        },
-        set(name: string, value: string, options?: any) {
-          // Em route handlers, set(name, value, options) é suportado
-          store.set(name, value, options);
-        },
-        remove(name: string) {
-          // Em route handlers, delete só recebe o nome
-          store.delete(name);
-        },
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      get(name: string) {
+        return store.get(name)?.value;
       },
-    }
-  );
+      set(name: string, value: string, options: CookieOptions) {
+        // grava cookie na resposta
+        store.set({ name, value, ...options });
+      },
+      remove(name: string, options: CookieOptions) {
+        // remove cookie forçando expiração
+        store.set({ name, value: '', ...options, maxAge: 0 });
+      },
+    },
+  });
 
-  // Troca code + verifier por sessão e grava os cookies
-  const { error } = await supabase.auth.exchangeCodeForSession(req);
+  // IMPORTANTE: passe a URL (string), não o objeto Request
+  const { error } = await supabase.auth.exchangeCodeForSession(req.url);
 
-  // Redireciona sempre para o painel; se tiver erro, repassa na query
-  const base = process.env.NEXT_PUBLIC_SITE_URL!;
-  const url = new URL('/dashboard', base);
-  if (error) url.searchParams.set('auth_error', error.message);
+  // Redireciona ao painel; se houver erro, propaga via querystring
+  const originBase = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
+  const redirectTo = new URL('/dashboard', originBase);
+  if (error) {
+    redirectTo.searchParams.set('auth_error', error.message);
+  }
 
-  return NextResponse.redirect(url);
+  return NextResponse.redirect(redirectTo);
 }
