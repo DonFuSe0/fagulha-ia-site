@@ -1,118 +1,100 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import supabaseClient from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import supabaseBrowser from '@/lib/supabase/client';
 
 export default function LoginForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const supabase = supabaseClient();
+  const supabase = supabaseBrowser();
+  const [loading, setLoading] = useState(false);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(() => {
-    const err = searchParams.get('auth_error');
-    return err ? `Falha na autenticação: ${err}` : null;
-  });
-
-  const gotoDashboard = () => {
-    router.replace('/dashboard');
-    router.refresh();
-  };
-
-  const loginWithGoogle = async () => {
+  async function signInWithGoogle() {
     try {
-      setBusy(true);
+      setLoading(true);
+      const base = process.env.NEXT_PUBLIC_SITE_URL!;
+      const redirectTo = `${base.replace(/\/$/, '')}/auth/callback`;
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-          queryParams: { prompt: 'select_account' },
-        },
+        options: { redirectTo } // ⚠️ Sempre via /auth/callback
       });
-      if (error) throw error;
-      // o fluxo redireciona para o Google; não há nada a fazer aqui
-    } catch (e: any) {
-      setMsg(e?.message ?? 'Erro ao entrar com Google');
-      setBusy(false);
-    }
-  };
 
-  const loginWithEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setBusy(true);
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      gotoDashboard();
     } catch (e: any) {
-      setMsg(e?.message ?? 'Credenciais inválidas.');
-      setBusy(false);
+      console.error(e);
+      alert(e?.message ?? 'Falha ao iniciar login com Google.');
+      setLoading(false);
     }
-  };
+  }
+
+  async function signInWithEmail(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const email = String(form.get('email') ?? '');
+    const password = String(form.get('password') ?? '');
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      router.replace('/dashboard');
+    } catch (err: any) {
+      alert(err?.message ?? 'Erro ao validar dados. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className="max-w-md mx-auto p-6 rounded-2xl bg-[var(--surface)] border border-[var(--border)]">
-      <h1 className="text-2xl font-semibold text-[var(--text)] mb-4">Entrar</h1>
-
-      {msg && (
-        <div className="mb-4 text-sm text-[var(--danger)] bg-[color-mix(in_oklab,var(--danger)_10%,transparent)] rounded px-3 py-2">
-          {msg}
-        </div>
-      )}
+    <div className="mx-auto w-full max-w-md space-y-6 p-6 rounded-2xl border bg-white/60 shadow">
+      <h1 className="text-2xl font-semibold text-gray-900">Entrar</h1>
 
       <button
         type="button"
-        onClick={loginWithGoogle}
-        disabled={busy}
-        className="w-full mb-4 py-2 rounded-xl border border-[var(--border)] hover:bg-[color-mix(in_oklab,var(--border)_25%,transparent)]"
+        onClick={signInWithGoogle}
+        disabled={loading}
+        className="w-full rounded-lg border px-4 py-2 text-sm font-medium hover:bg-gray-50"
       >
-        Entrar com Google
+        {loading ? 'Conectando…' : 'Entrar com Google'}
       </button>
 
-      <div className="h-px bg-[var(--border)] my-4" />
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-white px-2 text-gray-500">ou</span>
+        </div>
+      </div>
 
-      <form onSubmit={loginWithEmail} className="space-y-3">
+      <form onSubmit={signInWithEmail} className="space-y-4">
         <div>
-          <label className="block text-sm text-[var(--muted)] mb-1">E-mail</label>
+          <label className="mb-1 block text-sm text-gray-700">E-mail</label>
           <input
+            name="email"
             type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
-            className="w-full px-3 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-[var(--text)]"
-            placeholder="seu@email.com"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm text-[var(--muted)] mb-1">Senha</label>
-          <input
-            type="password"
             required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-            className="w-full px-3 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-[var(--text)]"
-            placeholder="••••••••"
+            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring"
           />
         </div>
-
+        <div>
+          <label className="mb-1 block text-sm text-gray-700">Senha</label>
+          <input
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring"
+          />
+        </div>
         <button
           type="submit"
-          disabled={busy}
-          className="w-full py-2 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-600)] text-white"
+          disabled={loading}
+          className="w-full rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/85"
         >
-          Entrar
+          {loading ? 'Entrando…' : 'Entrar'}
         </button>
       </form>
-
-      <p className="text-xs text-[var(--muted)] mt-4">
-        Não tem conta? <a href="/auth/sign-up" className="underline">Cadastre-se</a>
-      </p>
     </div>
   );
 }
