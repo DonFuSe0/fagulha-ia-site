@@ -8,12 +8,12 @@ export default function SignupPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  // registra callback global para pegar o token ao resolver o desafio
+  // Registra callback global para receber o token do Turnstile
   useEffect(() => {
     (window as any).onTurnstile = (token: string) => {
       (window as any).__turnstile_token = token;
     };
-    // carrega script do Turnstile (client-side)
+    // Carrega o script do Turnstile no client
     const s = document.createElement("script");
     s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
     s.async = true;
@@ -57,7 +57,7 @@ export default function SignupPage() {
           <input value={password} onChange={e => setPassword(e.target.value)} type="password" required minLength={6} className="w-full p-2 rounded bg-gray-900" />
         </label>
 
-        {/* Widget Turnstile (callback definida em window.onTurnstile) */}
+        {/* Widget Turnstile com callback */}
         <div
           className="cf-turnstile"
           data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
