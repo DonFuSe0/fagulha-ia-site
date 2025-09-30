@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global styles */
+html,
+body {
+  /* Use the dark background defined in Tailwind's custom colors. */
+  @apply bg-background text-gray-200;
+  min-height: 100vh;
+}
