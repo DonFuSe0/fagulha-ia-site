@@ -2,11 +2,9 @@ name: CI
 
 on:
   push:
-    branches:
-      - desenvolvimento
+    branches: [ desenvolvimento ]
   pull_request:
-    branches:
-      - desenvolvimento
+    branches: [ desenvolvimento ]
   workflow_dispatch: {}
 
 permissions:
@@ -14,11 +12,9 @@ permissions:
 
 jobs:
   guard:
-    name: Fast Guard
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Run ci-guard (fast)
         run: |
           if [ -f scripts/ci-guard.sh ]; then
@@ -29,12 +25,10 @@ jobs:
           fi
 
   audit:
-    name: Deep Repo Audit
     runs-on: ubuntu-latest
     needs: guard
     steps:
       - uses: actions/checkout@v3
-
       - name: Run repo-audit (deep checks)
         run: |
           if [ -f scripts/repo-audit.sh ]; then
@@ -45,7 +39,6 @@ jobs:
           fi
 
   typecheck:
-    name: TypeScript Check
     runs-on: ubuntu-latest
     needs: audit
     steps:
@@ -53,12 +46,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install deps (lockfile opcional)
+      - name: Install deps (dev deps incluídas)
         run: |
           if [ -f package-lock.json ]; then
             npm ci
           else
-            npm i --no-audit --no-fund
+            npm i --include=dev --no-audit --no-fund
           fi
       - name: TypeScript noEmit
         run: npx tsc -noEmit

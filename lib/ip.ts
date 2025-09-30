@@ -1,20 +1,16 @@
+// lib/ip.ts
 import type { NextRequest } from 'next/server';
 import { createHmac } from 'crypto';
 
 /**
- * Extrai o IP do cliente a partir dos headers comuns em ambientes com proxy/CDN.
- * Ordem de preferência:
- * - x-forwarded-for (primeiro IP da lista)
- * - cf-connecting-ip (Cloudflare)
- * - x-real-ip
- * - x-client-ip
+ * Extrai o IP do cliente a partir dos headers comuns (proxy/CDN).
+ * Ordem: x-forwarded-for (primeiro), cf-connecting-ip, x-real-ip, x-client-ip.
  */
 export function getClientIp(req: NextRequest): string | null {
   const h = req.headers;
 
   const xff = h.get('x-forwarded-for');
   if (xff) {
-    // Pode vir como "ip1, ip2, ip3" — pega o primeiro
     const first = xff.split(',')[0]?.trim();
     if (first) return first;
   }
@@ -31,10 +27,7 @@ export function getClientIp(req: NextRequest): string | null {
   return null;
 }
 
-/**
- * Gera um hash HMAC-SHA256 do IP usando um salt/segredo.
- * Útil para rate limit/abuso sem armazenar IP em claro.
- */
+/** HMAC-SHA256 do IP usando salt/segredo. */
 export function hashIpHmac(ip: string, salt: string): string {
   return createHmac('sha256', salt).update(ip).digest('hex');
 }
