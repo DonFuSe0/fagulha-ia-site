@@ -1,58 +1,47 @@
-export const runtime = 'nodejs';
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
-import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '@/lib/supabase/server';
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-/**
- * Esta rota trata os retornos do Supabase:
- *  - OAuth (Google) -> troca o ?code por sessão e redireciona ao destino.
- *  - Confirmação por e-mail (type=signup / email_change / recovery):
- *      alguns links não têm code_verifier -> não dá para "exchange".
- *      Nestes casos, confirmamos visualmente e pedimos login.
- */
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-  const origin = url.origin;
-
-  const code = url.searchParams.get('code');
-  const type = url.searchParams.get('type') || ''; // signup | recovery | email_change | magiclink | oauth etc
-  const destination = url.searchParams.get('redirect') || '/dashboard';
-
-  // Se for um retorno explícito desses tipos "de e-mail", redireciona com aviso
-  // (sem tentar exchange, pois geralmente falta code_verifier).
-  if (['signup', 'email_change', 'recovery', 'magiclink'].includes(type)) {
-    return NextResponse.redirect(
-      new URL(`/auth/login?msg=${encodeURIComponent('Conta confirmada. Faça login para continuar.')}`, origin)
-    );
-  }
+  const url = new URL(req.url)
+  const code = url.searchParams.get('code')
+  const redirectTo = url.searchParams.get('redirect_to') ?? '/dashboard'
 
   if (!code) {
-    // Sem code: apenas volte ao login com erro.
-    return NextResponse.redirect(
-      new URL(`/auth/login?error=${encodeURIComponent('missing_code')}`, origin)
-    );
+    // Sem code do OAuth -> volta pro login com erro
+    const back = new URL(`/auth/login?error=missing_code`, process.env.NEXT_PUBLIC_SITE_URL!)
+    return NextResponse.redirect(back)
   }
 
-  // Tenta trocar o code por uma sessão (funciona para OAuth/PKCE).
-  const supabase = supabaseServer();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  // Prepara a resposta de redirecionamento final desde já
+  const finalRedirect = new URL(redirectTo, process.env.NEXT_PUBLIC_SITE_URL!)
+  const res = NextResponse.redirect(finalRedirect)
 
-  if (error) {
-    const msg = error.message?.toLowerCase() || '';
-
-    // Caso clássico de confirmação por e-mail sem code_verifier no cookie.
-    if (msg.includes('code verifier')) {
-      return NextResponse.redirect(
-        new URL(`/auth/login?msg=${encodeURIComponent('Conta confirmada. Faça login para continuar.')}`, origin)
-      );
+  // Supabase SSR com adaptadores de cookie (Next 15)
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name: string) => req.cookies.get(name)?.value,
+        set: (name: string, value: string, options: any) => {
+          res.cookies.set({ name, value, ...options })
+        },
+        remove: (name: string, options: any) => {
+          res.cookies.set({ name, value: '', expires: new Date(0), ...options })
+        },
+      },
     }
+  )
 
-    // Qualquer outro erro -> volta com mensagem
-    return NextResponse.redirect(
-      new URL(`/auth/login?error=${encodeURIComponent(error.message)}`, origin)
-    );
+  // Troca o code pela sessão e grava os cookies na resposta
+  const { error } = await supabase.auth.exchangeCodeForSession(code)
+  if (error) {
+    const back = new URL(`/auth/login?error=${encodeURIComponent(error.message)}`, process.env.NEXT_PUBLIC_SITE_URL!)
+    return NextResponse.redirect(back)
   }
 
-  // Sucesso (OAuth): sessão gravada no cookie via supabaseServer()
-  return NextResponse.redirect(new URL(destination, origin));
+  return res
 }

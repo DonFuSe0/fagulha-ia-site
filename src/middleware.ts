@@ -1,45 +1,44 @@
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
-// Rotas que exigem login:
-const PROTECTED_PREFIXES = ['/dashboard', '/generate', '/my-gallery', '/profile'];
+// Se quiser rodar middleware no edge, mantenha padrão (edge).
+// Para evitar avisos do Edge (Node APIs), você pode alternar para nodejs em rotas específicas.
+// export const runtime = 'edge'
 
-export function middleware(req: NextRequest) {
-  const { pathname, searchParams } = req.nextUrl;
+export async function middleware(req: NextRequest) {
+  // Clona o cabeçalho da request para preservar cookies/headers ao encaminhar
+  const res = NextResponse.next({
+    request: { headers: new Headers(req.headers) },
+  })
 
-  // Deixa passar estáticos e o callback
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/auth/callback') ||
-    pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webp|txt|xml)$/)
-  ) {
-    return NextResponse.next();
-  }
-
-  // Detecta cookie de sessão do Supabase (sb-xxxx-auth-token)
-  const hasAuthCookie = req.cookies.getAll().some((c) => c.name.endsWith('-auth-token'));
-
-  // Exige sessão nas páginas protegidas
-  if (PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) {
-    if (!hasAuthCookie) {
-      const url = req.nextUrl.clone();
-      url.pathname = '/auth/login';
-      url.searchParams.set('redirect', pathname + (searchParams.toString() ? `?${searchParams.toString()}` : ''));
-      return NextResponse.redirect(url);
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name: string) => req.cookies.get(name)?.value,
+        set: (name: string, value: string, options: any) => {
+          res.cookies.set({ name, value, ...options })
+        },
+        remove: (name: string, options: any) => {
+          res.cookies.set({ name, value: '', expires: new Date(0), ...options })
+        },
+      },
     }
-  }
+  )
 
-  // Evita acessar login/cadastro quando já está logado
-  if ((pathname === '/auth/login' || pathname.startsWith('/auth/sign-up')) && hasAuthCookie) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
-  }
+  // Força refresh de sessão se necessário e sincroniza cookies
+  await supabase.auth.getUser()
 
-  return NextResponse.next();
+  return res
 }
 
+// Protege rotas autenticadas (ajuste conforme suas páginas)
 export const config = {
-  matcher: ['/((?!favicon.ico|robots.txt|sitemap.xml).*)'],
-};
+  matcher: [
+    '/dashboard/:path*',
+    '/generate/:path*',
+    '/profile/:path*',
+    '/minha-galeria/:path*',
+  ],
+}
