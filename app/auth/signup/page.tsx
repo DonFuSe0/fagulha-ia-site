@@ -1,44 +1,41 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const router = useRouter();
 
-  // Turnstile widget will set a token in window.__turnstile_token (simple approach).
-  // You must include the Turnstile script in the page <head> or layout:
-  // <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-  // And render: <div className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}></div>
-  // Simpler approach below: we will programmatically execute the challenge (if available).
+  // registra callback global para pegar o token ao resolver o desafio
+  useEffect(() => {
+    (window as any).onTurnstile = (token: string) => {
+      (window as any).__turnstile_token = token;
+    };
+    // carrega script do Turnstile (client-side)
+    const s = document.createElement("script");
+    s.src = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+    s.async = true;
+    s.defer = true;
+    document.body.appendChild(s);
+    return () => { s.remove(); };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setMsg(null);
-
-    // Try to get token from widget if present:
-    // Many integrations prefer executing grecaptcha-like API; adjust based on widget.
-    const token = (window as any).__turnstile_token || undefined;
-
     try {
+      const token = (window as any).__turnstile_token;
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, turnstileToken: token })
       });
       const json = await res.json();
-      if (!res.ok) {
-        setMsg(json?.error || "Erro no cadastro");
-      } else {
-        setMsg("Cadastro criado. Verifique seu e-mail para confirmar. Após confirmação, seus créditos serão liberados.");
-        // Optionally redirect to login
-        // router.push('/auth/login');
-      }
+      if (!res.ok) setMsg(json?.error || "Erro no cadastro");
+      else setMsg("Cadastro criado. Verifique seu e-mail para confirmar. Após confirmar, seus créditos serão liberados.");
     } catch (err) {
       console.error(err);
       setMsg("Erro interno");
@@ -60,11 +57,12 @@ export default function SignupPage() {
           <input value={password} onChange={e => setPassword(e.target.value)} type="password" required minLength={6} className="w-full p-2 rounded bg-gray-900" />
         </label>
 
-        {/* Add Turnstile container: load script in layout head and this div will render widget */}
-        <div>
-          <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-          <div className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}></div>
-        </div>
+        {/* Widget Turnstile (callback definida em window.onTurnstile) */}
+        <div
+          className="cf-turnstile"
+          data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+          data-callback="onTurnstile"
+        ></div>
 
         <button type="submit" className="px-4 py-2 bg-brand rounded" disabled={busy}>
           {busy ? 'Cadastrando...' : 'Criar conta'}
