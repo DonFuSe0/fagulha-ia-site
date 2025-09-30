@@ -1,8 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
 
-export async function GET(req: Request) {
+export const dynamic = 'force-dynamic';
+
+// GET /auth/callback
+export async function GET(req: NextRequest) {
+  // Em Next 15.5, cookies() é assíncrono
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -10,21 +14,33 @@ export async function GET(req: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: (name: string) => cookieStore.get(name)?.value,
-        set: (name: string, value: string, options: any) =>
-          cookieStore.set({ name, value, ...options }),
-        remove: (name: string, options: any) =>
-          cookieStore.set({ name, value: '', ...options, maxAge: 0 }),
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        // IMPORTANTE: não retornar o ResponseCookies; apenas executar e sair (retorna void)
+        set(name: string, value: string, options: CookieOptions) {
+          cookieStore.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          // zera o cookie
+          cookieStore.set({ name, value: '', ...options, maxAge: 0 });
+        },
       },
     }
   );
 
-  // Troca code+verifier por sessão e grava cookies
-  const { error } = await supabase.auth.exchangeCodeForSession(new URL(req.url));
+  // Troca code + verifier por sessão e grava os cookies.
+  // Em versões recentes, passe a URL (string) — NÃO passe o objeto Request.
+  const { error } = await supabase.auth.exchangeCodeForSession(req.url);
 
-  const base = process.env.NEXT_PUBLIC_SITE_URL!.replace(/\/$/, '');
-  const dest = error ? `/login?error=${encodeURIComponent(error.message)}` : '/dashboard';
+  // Redireciona para o painel (ou com erro na query, se houver)
+  const base = process.env.NEXT_PUBLIC_SITE_URL!;
+  const dest = error
+    ? `/auth/login?error=${encodeURIComponent(error.message)}`
+    : '/dashboard';
 
-  const res = NextResponse.redirect(`${base}${dest}`, { status: 302 });
+  const location = new URL(dest, base).toString();
+  const res = NextResponse.redirect(location, { status: 302 });
+
   return res;
 }
