@@ -18,9 +18,8 @@ export default function SignOutButton({
       await supabase.auth.signOut();
       router.replace('/auth/login');
       router.refresh();
-    } catch (e) {
-      // opcional: exibir toast
-      console.error('Erro ao sair:', e);
+    } catch (err) {
+      console.error('Erro ao sair:', err);
     }
   }
 
