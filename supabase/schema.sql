@@ -1,12 +1,15 @@
--- supabase/schema.sql (updated, idempotente)
+-- supabase/schema.sql (idempotente e alinhado ao anti-abuso + créditos pós-confirmação)
 
+-- Extensões utilitárias
 create extension if not exists pgcrypto;
 
+-- Garanta que antigos objetos não causem erro ao reexecutar
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();
 drop trigger if exists on_auth_user_confirmed on auth.users;
 drop function if exists public.handle_email_confirm();
 
+-- Perfis (saldo inicial 0; créditos dados após confirmação)
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   username text,
@@ -14,6 +17,7 @@ create table if not exists public.profiles (
   created_at timestamp with time zone default now()
 );
 
+-- Anti-abuso: tentativas (rate limit por IP/24h)
 create table if not exists public.signup_attempts (
   id uuid primary key default gen_random_uuid(),
   ip_hash text,
@@ -21,6 +25,7 @@ create table if not exists public.signup_attempts (
   created_at timestamp with time zone default now()
 );
 
+-- Anti-abuso: guarda 1 conta/IP/30d
 create table if not exists public.signup_guards (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade,
@@ -30,6 +35,7 @@ create table if not exists public.signup_guards (
   created_at timestamp with time zone default now()
 );
 
+-- Tokens (histórico de créditos/débitos)
 create table if not exists public.tokens (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -38,6 +44,7 @@ create table if not exists public.tokens (
   created_at timestamp with time zone default now()
 );
 
+-- Gerações
 create table if not exists public.generations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -47,6 +54,7 @@ create table if not exists public.generations (
   created_at timestamp with time zone default now()
 );
 
+-- Webhook events (opcional)
 create table if not exists public.webhook_events (
   id uuid primary key default gen_random_uuid(),
   event_type text not null,
@@ -54,6 +62,7 @@ create table if not exists public.webhook_events (
   created_at timestamp with time zone default now()
 );
 
+-- Trigger: cria perfil com 0 créditos ao criar usuário
 create or replace function public.handle_new_user()
 returns trigger as
 $$
@@ -68,6 +77,7 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- Trigger: ao confirmar e-mail, concede créditos de boas-vindas
 create or replace function public.handle_email_confirm()
 returns trigger as
 $$
@@ -83,8 +93,9 @@ create trigger on_auth_user_confirmed
   after update on auth.users
   for each row execute procedure public.handle_email_confirm();
 
-alter table public.profiles enable row level security;
-alter table public.tokens enable row level security;
+-- RLS e políticas
+alter table public.profiles   enable row level security;
+alter table public.tokens     enable row level security;
 alter table public.generations enable row level security;
 
 create policy "Profiles are viewable by owner" on public.profiles
