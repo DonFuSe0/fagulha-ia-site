@@ -2,25 +2,30 @@ import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
 /**
- * Client para uso no servidor (Route Handlers / Server Components).
- * Implementa CookieMethods com cookies() assíncrono do Next 15.
+ * Client de servidor (Next 15+):
+ * - cookies() agora é ASSÍNCRONO -> await cookies()
+ * - Métodos get/set/remove devem retornar void (não retornar valores)
  */
-export function supabaseServer() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+export async function supabaseServer() {
+  const cookieStore = await cookies(); // <<<<<<<<<< IMPORTANTE no Next 15
 
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      async get(name: string) {
-        return (await cookies()).get(name)?.value;
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          // não retornar nada (void)
+          cookieStore.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          // não retornar nada (void)
+          cookieStore.set({ name, value: '', ...options, maxAge: 0 });
+        },
       },
-      async set(name: string, value: string, options: CookieOptions) {
-        (await cookies()).set(name, value, options);
-      },
-      // assinatura espera 2 args; ignoramos options e usamos delete simples
-      async remove(name: string, _options?: CookieOptions) {
-        (await cookies()).delete(name);
-      },
-    },
-  });
+    }
+  );
 }

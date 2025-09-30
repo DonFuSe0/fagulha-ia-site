@@ -1,31 +1,24 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import supabaseClient from '@/lib/supabase/client';
+import supabaseBrowser from '@/lib/supabase/client';
 
-export default function SignOutButton({
-  className,
-  children,
-}: {
-  className?: string;
-  children?: React.ReactNode;
-}) {
+export default function SignOutButton({ className = '' }: { className?: string }) {
   const router = useRouter();
 
-  const handleSignOut = async () => {
-    try {
-      const supabase = supabaseClient();
-      await supabase.auth.signOut();
-      router.replace('/auth/login');
-      router.refresh();
-    } catch (err) {
-      console.error('Erro ao sair:', err);
-    }
-  };
+  async function onSignOut() {
+    const supabase = supabaseBrowser();
+    await supabase.auth.signOut();
+    router.push('/auth/login');
+    router.refresh();
+  }
 
   return (
-    <button onClick={handleSignOut} className={className}>
-      {children ?? 'Sair'}
+    <button
+      onClick={onSignOut}
+      className={className || 'rounded-md border px-3 py-2 text-sm hover:bg-accent'}
+    >
+      Sair
     </button>
   );
 }

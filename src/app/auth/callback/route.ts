@@ -1,13 +1,18 @@
-import { NextResponse, type NextRequest } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-export const dynamic = 'force-dynamic';
+/**
+ * Callback OAuth (Google e e-mail link). Compatível com Next.js 15.5.
+ * - Usa cookies() assíncrono (Next 15)
+ * - Faz exchange do "code" por sessão (Supabase)
+ * - Grava cookies no Response e redireciona pro /dashboard
+ */
+export async function GET(req: Request) {
+  const cookieStore = await cookies(); // Next 15: API assíncrona
 
-// GET /auth/callback
-export async function GET(req: NextRequest) {
-  // Em Next 15.5, cookies() é assíncrono
-  const cookieStore = await cookies();
+  // Sempre respondemos com um redirect, e os cookies serão gravados nesse response
+  const response = new NextResponse(null, { status: 302 });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,30 +22,37 @@ export async function GET(req: NextRequest) {
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
-        // IMPORTANTE: não retornar o ResponseCookies; apenas executar e sair (retorna void)
         set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options });
+          // NÃO retornar nada (void). Gravamos no response.
+          response.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
-          // zera o cookie
-          cookieStore.set({ name, value: '', ...options, maxAge: 0 });
+          // Para remover, gravamos com maxAge 0 no response
+          response.cookies.set({ name, value: '', ...options, maxAge: 0 });
         },
       },
     }
   );
 
-  // Troca code + verifier por sessão e grava os cookies.
-  // Em versões recentes, passe a URL (string) — NÃO passe o objeto Request.
-  const { error } = await supabase.auth.exchangeCodeForSession(req.url);
+  // Troca o "code" da URL pela sessão. O verifier sai do cookie gerenciado pelo @supabase/ssr
+  const url = new URL(req.url);
+  const code = url.searchParams.get('code');
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      // Em caso de erro, mande o usuário de volta ao login com a msg
+      response.headers.set(
+        'Location',
+        `${process.env.NEXT_PUBLIC_SITE_URL || ''}/auth/login?error=${encodeURIComponent(error.message)}`
+      );
+      return response;
+    }
+  }
 
-  // Redireciona para o painel (ou com erro na query, se houver)
-  const base = process.env.NEXT_PUBLIC_SITE_URL!;
-  const dest = error
-    ? `/auth/login?error=${encodeURIComponent(error.message)}`
-    : '/dashboard';
-
-  const location = new URL(dest, base).toString();
-  const res = NextResponse.redirect(location, { status: 302 });
-
-  return res;
+  // Sucesso: manda pro dashboard
+  response.headers.set(
+    'Location',
+    `${process.env.NEXT_PUBLIC_SITE_URL || ''}/dashboard`
+  );
+  return response;
 }

@@ -1,11 +1,12 @@
 import LoginForm from '@/components/auth/LoginForm';
 
-export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+export const metadata = {
+  title: 'Entrar — Fagulha',
+};
 
 export default function Page() {
   return (
-    <div className="min-h-[70vh] flex items-center justify-center p-4">
+    <div className="mx-auto flex min-h-[70vh] max-w-5xl items-center justify-center px-4">
       <LoginForm />
     </div>
   );
