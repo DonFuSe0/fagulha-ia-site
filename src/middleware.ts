@@ -1,46 +1,43 @@
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
+import { createMiddlewareClient } from '@supabase/ssr';
 
-const PROTECTED_PREFIXES = ['/dashboard', '/generate', '/my-gallery', '/profile'];
+export const config = {
+  matcher: [
+    // tudo exceto assets, callback de auth e webhooks
+    '/((?!_next|favicon.ico|robots.txt|sitemap.xml|images|public|auth/callback|api/webhooks).*)',
+  ],
+};
 
-export function middleware(req: NextRequest) {
-  const { pathname, searchParams } = req.nextUrl;
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
 
-  // Deixa passar estáticos e o callback de auth
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/auth/callback') ||
-    pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|webp|txt|xml)$/)
-  ) {
-    return NextResponse.next();
-  }
+  // Atualiza/renova sessão no Edge
+  const supabase = createMiddlewareClient({ req, res });
+  await supabase.auth.getSession();
 
-  // 🔧 NOVO: detecção robusta do cookie de sessão do Supabase
-  const hasAuthCookie = req.cookies.getAll().some((c) =>
-    /sb-[a-z0-9]+-auth-token(\.\d+)?$/i.test(c.name) || c.name === 'supabase-auth-token'
+  // Verifica usuário
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = req.nextUrl.pathname;
+  const isAuthRoute = pathname.startsWith('/auth');
+  const isProtected = ['/dashboard', '/generate', '/my-gallery', '/profile'].some((p) =>
+    pathname.startsWith(p)
   );
 
-  // Exigir login nas rotas protegidas
-  if (PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) {
-    if (!hasAuthCookie) {
-      const url = req.nextUrl.clone();
-      url.pathname = '/auth/login';
-      url.searchParams.set('redirect', pathname + (searchParams.toString() ? `?${searchParams.toString()}` : ''));
-      return NextResponse.redirect(url);
-    }
+  if (isProtected && !user) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/auth/login';
+    url.searchParams.set('redirectedFrom', pathname);
+    return NextResponse.redirect(url);
   }
 
-  // Evitar acessar login/cadastro estando logado
-  if ((pathname === '/auth/login' || pathname.startsWith('/auth/sign-up')) && hasAuthCookie) {
+  if (isAuthRoute && user) {
     const url = req.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  return res;
 }
-
-export const config = {
-  matcher: ['/((?!favicon.ico|robots.txt|sitemap.xml).*)'],
-};
