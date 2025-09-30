@@ -1,15 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-
-// Se quiser rodar middleware no edge, mantenha padrão (edge).
-// Para evitar avisos do Edge (Node APIs), você pode alternar para nodejs em rotas específicas.
-// export const runtime = 'edge'
+import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 
 export async function middleware(req: NextRequest) {
-  // Clona o cabeçalho da request para preservar cookies/headers ao encaminhar
+  const { nextUrl, headers } = req;
+
   const res = NextResponse.next({
-    request: { headers: new Headers(req.headers) },
-  })
+    request: { headers: new Headers(headers) },
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,27 +15,36 @@ export async function middleware(req: NextRequest) {
       cookies: {
         get: (name: string) => req.cookies.get(name)?.value,
         set: (name: string, value: string, options: any) => {
-          res.cookies.set({ name, value, ...options })
+          res.cookies.set({ name, value, ...options });
         },
         remove: (name: string, options: any) => {
-          res.cookies.set({ name, value: '', expires: new Date(0), ...options })
+          res.cookies.set({ name, value: '', ...options, maxAge: 0 });
         },
       },
     }
-  )
+  );
 
-  // Força refresh de sessão se necessário e sincroniza cookies
-  await supabase.auth.getUser()
+  // Atualiza cookies se necessário (refresh)
+  await supabase.auth.getUser();
 
-  return res
+  // Protege rotas do painel
+  const protectedPaths = ['/dashboard', '/generate', '/profile', '/minha-galeria'];
+  if (protectedPaths.includes(nextUrl.pathname)) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('from', nextUrl.pathname);
+      return NextResponse.redirect(url);
+    }
+  }
+
+  return res;
 }
 
-// Protege rotas autenticadas (ajuste conforme suas páginas)
 export const config = {
-  matcher: [
-    '/dashboard/:path*',
-    '/generate/:path*',
-    '/profile/:path*',
-    '/minha-galeria/:path*',
-  ],
-}
+  matcher: ['/', '/dashboard', '/generate', '/profile', '/minha-galeria', '/login'],
+};

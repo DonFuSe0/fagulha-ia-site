@@ -1,149 +1,86 @@
-// Caminho: src/app/profile/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import supabaseClient from '@/lib/supabase/client';
-
-type Profile = {
-  display_name: string | null;
-  nickname: string | null;
-  avatar_url: string | null;
-};
+import supabaseBrowser from '@/lib/supabase/client';
 
 export default function ProfilePage() {
-  const supabase = supabaseClient();
-
+  const supabase = supabaseBrowser();
   const [loading, setLoading] = useState(true);
-  const [errorMsg, setError] = useState<string>();
-  const [okMsg, setOk] = useState<string>();
   const [displayName, setDisplayName] = useState('');
   const [nickname, setNickname] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
 
   useEffect(() => {
     (async () => {
-      setError(undefined);
-      setOk(undefined);
-
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError('Você precisa estar logado.');
-        setLoading(false);
-        return;
-      }
+      if (!user) { setLoading(false); return; }
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('display_name,nickname,avatar_url')
+        .select('display_name, nickname')
         .eq('id', user.id)
-        .maybeSingle<Profile>();
+        .single();
 
-      if (error) {
-        setError(error.message);
-      } else if (data) {
-        setDisplayName(data.display_name || '');
-        setNickname(data.nickname || '');
-        setAvatarUrl(data.avatar_url || undefined);
+      if (!error && data) {
+        setDisplayName(data.display_name ?? '');
+        setNickname(data.nickname ?? '');
       }
       setLoading(false);
     })();
   }, [supabase]);
 
-  async function saveProfile(e: React.FormEvent) {
-    e.preventDefault();
-    setError(undefined);
-    setOk(undefined);
+  async function onSave() {
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Não autenticado');
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return setError('Sessão expirada.');
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          display_name: displayName,
+          nickname,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ display_name: displayName, nickname })
-      .eq('id', user.id);
-
-    if (error) setError(error.message);
-    else setOk('Perfil atualizado!');
-  }
-
-  async function onAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setError(undefined);
-    setOk(undefined);
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return setError('Sessão expirada.');
-
-    const path = `avatars/${user.id}/${Date.now()}_${file.name}`;
-
-    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, {
-      cacheControl: '3600',
-      upsert: true,
-    });
-    if (upErr) return setError(upErr.message);
-
-    const { data: publicUrl } = supabase.storage.from('avatars').getPublicUrl(path);
-    const newUrl = publicUrl.publicUrl;
-
-    const { error: updErr } = await supabase
-      .from('profiles')
-      .update({ avatar_url: newUrl })
-      .eq('id', user.id);
-
-    if (updErr) setError(updErr.message);
-    else {
-      setAvatarUrl(newUrl);
-      setOk('Avatar atualizado!');
+      if (error) throw error;
+      alert('Perfil atualizado!');
+    } catch (e: any) {
+      alert(e?.message ?? 'Falha ao salvar perfil');
+    } finally {
+      setLoading(false);
     }
   }
 
-  if (loading) return <p className="p-4 text-[var(--text)]">Carregando...</p>;
+  if (loading) return <div className="p-6">Carregando…</div>;
 
   return (
-    <div className="mx-auto max-w-xl p-4 text-[var(--text)]">
-      <h1 className="mb-4 text-xl font-semibold">Perfil</h1>
-
-      {errorMsg && <p className="mb-3 text-[var(--danger)]">{errorMsg}</p>}
-      {okMsg && <p className="mb-3 text-[var(--success)]">{okMsg}</p>}
-
-      <form onSubmit={saveProfile} className="space-y-3">
-        <label className="block">
-          <span className="mb-1 block text-sm">Nome de exibição</span>
+    <div className="mx-auto mt-6 w-full max-w-xl space-y-6 rounded-2xl border bg-white p-6 shadow">
+      <h1 className="text-xl font-semibold">Perfil</h1>
+      <div className="space-y-4">
+        <div>
+          <label className="mb-1 block text-sm">Nome de exibição</label>
           <input
             value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            className="w-full rounded border border-[var(--border)] bg-[var(--surface)] p-2"
+            onChange={e => setDisplayName(e.target.value)}
+            className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
           />
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-sm">Apelido</span>
+        </div>
+        <div>
+          <label className="mb-1 block text-sm">Apelido</label>
           <input
             value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            className="w-full rounded border border-[var(--border)] bg-[var(--surface)] p-2"
+            onChange={e => setNickname(e.target.value)}
+            className="w-full rounded-lg border px-3 py-2 text-sm outline-none"
           />
-        </label>
-
-        <label className="block">
-          <span className="mb-1 block text-sm">Avatar</span>
-          <input type="file" accept="image/*" onChange={onAvatarChange} />
-        </label>
-
-        <button className="rounded bg-[var(--primary)] px-4 py-2 text-white">
-          Salvar
-        </button>
-      </form>
-
-      {avatarUrl && (
-        <div className="mt-6">
-          <p className="mb-2 text-sm">Prévia do avatar</p>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={avatarUrl} alt="Avatar" className="h-20 w-20 rounded-full object-cover" />
         </div>
-      )}
+      </div>
+      <button
+        onClick={onSave}
+        className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-black/85"
+      >
+        Salvar
+      </button>
     </div>
   );
 }

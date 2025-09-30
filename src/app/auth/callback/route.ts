@@ -1,47 +1,46 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
+// GET /auth/callback
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url)
-  const code = url.searchParams.get('code')
-  const redirectTo = url.searchParams.get('redirect_to') ?? '/dashboard'
+  // Em Next 15.5, cookies() é assíncrono
+  const cookieStore = await cookies();
 
-  if (!code) {
-    // Sem code do OAuth -> volta pro login com erro
-    const back = new URL(`/auth/login?error=missing_code`, process.env.NEXT_PUBLIC_SITE_URL!)
-    return NextResponse.redirect(back)
-  }
-
-  // Prepara a resposta de redirecionamento final desde já
-  const finalRedirect = new URL(redirectTo, process.env.NEXT_PUBLIC_SITE_URL!)
-  const res = NextResponse.redirect(finalRedirect)
-
-  // Supabase SSR com adaptadores de cookie (Next 15)
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: (name: string) => req.cookies.get(name)?.value,
-        set: (name: string, value: string, options: any) => {
-          res.cookies.set({ name, value, ...options })
+        get(name: string) {
+          return cookieStore.get(name)?.value;
         },
-        remove: (name: string, options: any) => {
-          res.cookies.set({ name, value: '', expires: new Date(0), ...options })
+        // IMPORTANTE: não retornar o ResponseCookies; apenas executar e sair (retorna void)
+        set(name: string, value: string, options: CookieOptions) {
+          cookieStore.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          // zera o cookie
+          cookieStore.set({ name, value: '', ...options, maxAge: 0 });
         },
       },
     }
-  )
+  );
 
-  // Troca o code pela sessão e grava os cookies na resposta
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
-  if (error) {
-    const back = new URL(`/auth/login?error=${encodeURIComponent(error.message)}`, process.env.NEXT_PUBLIC_SITE_URL!)
-    return NextResponse.redirect(back)
-  }
+  // Troca code + verifier por sessão e grava os cookies.
+  // Em versões recentes, passe a URL (string) — NÃO passe o objeto Request.
+  const { error } = await supabase.auth.exchangeCodeForSession(req.url);
 
-  return res
+  // Redireciona para o painel (ou com erro na query, se houver)
+  const base = process.env.NEXT_PUBLIC_SITE_URL!;
+  const dest = error
+    ? `/auth/login?error=${encodeURIComponent(error.message)}`
+    : '/dashboard';
+
+  const location = new URL(dest, base).toString();
+  const res = NextResponse.redirect(location, { status: 302 });
+
+  return res;
 }
