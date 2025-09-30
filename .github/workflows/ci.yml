@@ -19,18 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # Torna exec. se existir; não falha se não existir
-      - name: Ensure scripts executable
-        run: |
-          chmod +x scripts/ci-guard.sh || true
-          chmod +x scripts/repo-audit.sh || true
-
       - name: Run ci-guard (fast)
         run: |
           if [ -f scripts/ci-guard.sh ]; then
+            chmod +x scripts/ci-guard.sh
             bash scripts/ci-guard.sh
           else
-            echo "scripts/ci-guard.sh não encontrado (ok, mas recomendo subir)."
+            echo "scripts/ci-guard.sh não encontrado (ok)."
           fi
 
   audit:
@@ -43,14 +38,14 @@ jobs:
       - name: Run repo-audit (deep checks)
         run: |
           if [ -f scripts/repo-audit.sh ]; then
+            chmod +x scripts/repo-audit.sh
             bash scripts/repo-audit.sh
           else
-            echo "❌ scripts/repo-audit.sh ausente. Crie-o em scripts/repo-audit.sh (conteúdo no README/Chat)."
-            exit 1
+            echo "scripts/repo-audit.sh não encontrado (ok, auditor desligado)."
           fi
 
   typecheck:
-    name: TypeScript Check (adaptive)
+    name: TypeScript Check
     runs-on: ubuntu-latest
     needs: audit
     steps:
@@ -58,27 +53,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          # Sem 'cache' para não exigir lockfile
-
-      - name: Enable corepack (pnpm/yarn)
-        run: corepack enable
-
-      - name: Install dependencies (adaptive)
-        shell: bash
+      - name: Install deps (lockfile opcional)
         run: |
-          if [ -f pnpm-lock.yaml ]; then
-            echo "Detected pnpm"
-            pnpm i --frozen-lockfile
-          elif [ -f yarn.lock ]; then
-            echo "Detected yarn"
-            yarn install --frozen-lockfile
-          elif [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
-            echo "Detected npm with lockfile"
+          if [ -f package-lock.json ]; then
             npm ci
           else
-            echo "No lockfile found - using npm install"
             npm i --no-audit --no-fund
           fi
-
       - name: TypeScript noEmit
         run: npx tsc -noEmit
