@@ -32,7 +32,6 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
-// Verify Cloudflare Turnstile token server-side
 async function verifyTurnstile(token: string | undefined, remoteip?: string) {
   if (!TURNSTILE_SECRET_KEY) return false;
   if (!token) return false;
@@ -53,12 +52,11 @@ async function verifyTurnstile(token: string | undefined, remoteip?: string) {
 function extractIp(req: NextRequest) {
   const forwarded = req.headers.get('x-forwarded-for');
   if (forwarded) return forwarded.split(',')[0].trim();
-  // fallback
   return (req as any).ip || '0.0.0.0';
 }
 
 function hashIp(ip: string) {
-  return createHmac('sha256', SIGNUP_SALT).update(ip).digest('hex');
+  return createHmac('sha256', SIGNUP_SALT!).update(ip).digest('hex');
 }
 
 export async function POST(req: NextRequest) {
@@ -72,12 +70,11 @@ export async function POST(req: NextRequest) {
     const domain = email.split('@').pop()?.toLowerCase() || '';
 
     // 1) Rate limit: attempts in last 24h
-    const { count: attemptsCountRaw, error: cntErr } = await supabaseAdmin
+    const { count: attemptsCountRaw } = await supabaseAdmin
       .from('signup_attempts')
       .select('id', { count: 'exact' })
       .eq('ip_hash', ipHash)
       .gte('created_at', new Date(Date.now() - 24*60*60*1000).toISOString());
-    if (cntErr) console.warn('count err', cntErr);
     const attemptsCount = typeof attemptsCountRaw === 'number' ? attemptsCountRaw : 0;
     if (attemptsCount >= 10) {
       return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
@@ -85,12 +82,11 @@ export async function POST(req: NextRequest) {
 
     // 2) Denylist check
     if (disposable.includes(domain)) {
-      // record attempt
       await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
       return NextResponse.json({ error: 'disposable_email' }, { status: 400 });
     }
 
-    // 3) Turnstile
+    // 3) Turnstile server-side verify
     const okTurn = await verifyTurnstile(turnstileToken, ip);
     if (!okTurn) {
       await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
@@ -98,19 +94,19 @@ export async function POST(req: NextRequest) {
     }
 
     // 4) 30-day guard check
-    const { data: guards, error: guardErr } = await supabaseAdmin
+    const { data: guards } = await supabaseAdmin
       .from('signup_guards')
       .select('*')
       .eq('ip_hash', ipHash)
       .gte('created_at', new Date(Date.now() - 30*24*60*60*1000).toISOString())
       .limit(1);
-    if (guardErr) console.warn('guardErr', guardErr);
+
     if (guards && guards.length > 0) {
       await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
       return NextResponse.json({ error: 'signup_window' }, { status: 403 });
     }
 
-    // 5) create user via Supabase Admin
+    // 5) Create user via Supabase Admin (don't confirm here)
     const createRes = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -128,13 +124,11 @@ export async function POST(req: NextRequest) {
       user_id: userId,
       ip_hash: ipHash,
       email_domain: domain,
-      user_agent: req.headers.get('user-agent')
+      user_agent: req.headers.get('user-agent') || null
     });
     await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
 
-    // Do NOT grant welcome credits here. grant_welcome_credits will be called by a DB trigger
-    // when the user confirms their email (see SQL instructions).
-
+    // No credits here. Trigger will grant credits after email is confirmed.
     return NextResponse.json({ ok: true, userId }, { status: 201 });
   } catch (err) {
     console.error(err);
