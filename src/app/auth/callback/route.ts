@@ -1,38 +1,47 @@
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
-export async function GET(req: Request) {
-  const store = await cookies(); // Next 15: cookies() é assíncrono
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url)
+  const code = url.searchParams.get('code')
+  const redirectTo = url.searchParams.get('redirect_to') ?? '/dashboard'
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      get(name: string) {
-        return store.get(name)?.value;
-      },
-      set(name: string, value: string, options: CookieOptions) {
-        // grava cookie na resposta
-        store.set({ name, value, ...options });
-      },
-      remove(name: string, options: CookieOptions) {
-        // remove cookie forçando expiração
-        store.set({ name, value: '', ...options, maxAge: 0 });
-      },
-    },
-  });
-
-  // IMPORTANTE: passe a URL (string), não o objeto Request
-  const { error } = await supabase.auth.exchangeCodeForSession(req.url);
-
-  // Redireciona ao painel; se houver erro, propaga via querystring
-  const originBase = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
-  const redirectTo = new URL('/dashboard', originBase);
-  if (error) {
-    redirectTo.searchParams.set('auth_error', error.message);
+  if (!code) {
+    // Sem code do OAuth -> volta pro login com erro
+    const back = new URL(`/auth/login?error=missing_code`, process.env.NEXT_PUBLIC_SITE_URL!)
+    return NextResponse.redirect(back)
   }
 
-  return NextResponse.redirect(redirectTo);
+  // Prepara a resposta de redirecionamento final desde já
+  const finalRedirect = new URL(redirectTo, process.env.NEXT_PUBLIC_SITE_URL!)
+  const res = NextResponse.redirect(finalRedirect)
+
+  // Supabase SSR com adaptadores de cookie (Next 15)
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name: string) => req.cookies.get(name)?.value,
+        set: (name: string, value: string, options: any) => {
+          res.cookies.set({ name, value, ...options })
+        },
+        remove: (name: string, options: any) => {
+          res.cookies.set({ name, value: '', expires: new Date(0), ...options })
+        },
+      },
+    }
+  )
+
+  // Troca o code pela sessão e grava os cookies na resposta
+  const { error } = await supabase.auth.exchangeCodeForSession(code)
+  if (error) {
+    const back = new URL(`/auth/login?error=${encodeURIComponent(error.message)}`, process.env.NEXT_PUBLIC_SITE_URL!)
+    return NextResponse.redirect(back)
+  }
+
+  return res
 }
