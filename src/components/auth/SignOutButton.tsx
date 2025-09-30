@@ -12,7 +12,7 @@ export default function SignOutButton({
 }) {
   const router = useRouter();
 
-  async function handleSignOut() {
+  const handleSignOut = async () => {
     try {
       const supabase = supabaseClient();
       await supabase.auth.signOut();
@@ -21,7 +21,7 @@ export default function SignOutButton({
     } catch (err) {
       console.error('Erro ao sair:', err);
     }
-  }
+  };
 
   return (
     <button onClick={handleSignOut} className={className}>
