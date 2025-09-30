@@ -1,13 +1,12 @@
--- supabase/schema.sql (updated) — idempotente
+-- supabase/schema.sql (updated, idempotente)
+
 create extension if not exists pgcrypto;
 
--- Limpeza segura
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();
 drop trigger if exists on_auth_user_confirmed on auth.users;
 drop function if exists public.handle_email_confirm();
 
--- Perfis (saldo inicial 0; créditos após confirmação)
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   username text,
@@ -15,7 +14,6 @@ create table if not exists public.profiles (
   created_at timestamp with time zone default now()
 );
 
--- Anti-abuso: tentativas (rate limit por IP/24h)
 create table if not exists public.signup_attempts (
   id uuid primary key default gen_random_uuid(),
   ip_hash text,
@@ -23,7 +21,6 @@ create table if not exists public.signup_attempts (
   created_at timestamp with time zone default now()
 );
 
--- Anti-abuso: 1 conta por IP por 30 dias
 create table if not exists public.signup_guards (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade,
@@ -33,7 +30,6 @@ create table if not exists public.signup_guards (
   created_at timestamp with time zone default now()
 );
 
--- Tokens (histórico)
 create table if not exists public.tokens (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
@@ -42,11 +38,68 @@ create table if not exists public.tokens (
   created_at timestamp with time zone default now()
 );
 
--- Gerações
 create table if not exists public.generations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   prompt text not null,
   image_url text,
   is_public boolean not null default false,
-  created
+  created_at timestamp with time zone default now()
+);
+
+create table if not exists public.webhook_events (
+  id uuid primary key default gen_random_uuid(),
+  event_type text not null,
+  payload jsonb,
+  created_at timestamp with time zone default now()
+);
+
+create or replace function public.handle_new_user()
+returns trigger as
+$$
+begin
+  insert into public.profiles (id, credits)
+  values (new.id, 0);
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+create or replace function public.handle_email_confirm()
+returns trigger as
+$$
+begin
+  if (old.email_confirmed_at is null and new.email_confirmed_at is not null) then
+    perform public.grant_welcome_credits(new.id);
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_auth_user_confirmed
+  after update on auth.users
+  for each row execute procedure public.handle_email_confirm();
+
+alter table public.profiles enable row level security;
+alter table public.tokens enable row level security;
+alter table public.generations enable row level security;
+
+create policy "Profiles are viewable by owner" on public.profiles
+  for select using (auth.uid() = id);
+create policy "Profiles are updatable by owner" on public.profiles
+  for update using (auth.uid() = id);
+
+create policy "Tokens by owner" on public.tokens
+  for select using (auth.uid() = user_id);
+
+create policy "Read own generations" on public.generations
+  for select using (auth.uid() = user_id);
+create policy "Insert own generations" on public.generations
+  for insert with check (auth.uid() = user_id);
+create policy "Update own generations" on public.generations
+  for update using (auth.uid() = user_id);
+create policy "Read public generations" on public.generations
+  for select using (is_public = true);
