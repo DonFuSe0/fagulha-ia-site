@@ -4,14 +4,12 @@ import { createBrowserClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
- * Mantemos uma única instância por aba.
+ * Instância única por aba
  */
 let _client: SupabaseClient | null = null;
 
 /**
- * Função real que cria/retorna o client.
- * Damos um nome "neutro" para poder reexportar com vários aliases
- * (default, supabaseBrowser, supabaseClient) e não quebrar nada.
+ * Fábrica real do client (base para todos os exports)
  */
 export function getSupabaseBrowser(): SupabaseClient {
   if (_client) return _client;
@@ -24,16 +22,18 @@ export function getSupabaseBrowser(): SupabaseClient {
 }
 
 /**
- * Export default (recomendado): import supabaseClient from '@/lib/supabase/client'
+ * DEFAULT EXPORT
+ * (nome diferente para não colidir com export nomeado "supabaseClient")
+ * Uso: import supabaseClient from '@/lib/supabase/client'
  */
-export default function supabaseClient(): SupabaseClient {
+export default function createSupabaseBrowserClient(): SupabaseClient {
   return getSupabaseBrowser();
 }
 
 /**
- * Exports nomeados para compatibilidade com código antigo:
- * - import { supabaseBrowser } from '@/lib/supabase/client'
- * - import { supabaseClient } from '@/lib/supabase/client'
+ * EXPORTS NOMEADOS (compatibilidade com código antigo):
+ * Uso: import { supabaseBrowser } from '@/lib/supabase/client'
+ * Uso: import { supabaseClient } from '@/lib/supabase/client'
  */
 export const supabaseBrowser = getSupabaseBrowser;
 export const supabaseClient = getSupabaseBrowser;
