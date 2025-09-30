@@ -1,60 +1,88 @@
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-// Defina aqui as rotas protegidas que exigem login
-const PROTECTED_PREFIXES = ['/dashboard', '/generate', '/my-gallery', '/profile'];
-
-// Exclui assets, favicon etc. e permite o callback do OAuth passar sem bloqueio
-export const config = {
-  matcher: [
-    '/((?!_next|favicon.ico|robots.txt|sitemap.xml|images|public|auth/callback|api/webhooks).*)',
-  ],
-};
-
+/**
+ * Middleware de proteção de rotas usando @supabase/ssr.
+ * Não use createMiddlewareClient (não existe neste pacote).
+ */
 export async function middleware(req: NextRequest) {
+  // Resposta “next()” onde iremos gravar cookies, se necessário
   const res = NextResponse.next();
 
-  // cria um client no middleware usando cookies de req/res
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get: (name: string) => req.cookies.get(name)?.value,
-        set: (name: string, value: string, options?: any) => {
-          // Em middleware, escrevemos no response
-          res.cookies.set(name, value, options);
-        },
-        remove: (name: string, options?: any) => {
-          // Em middleware não há delete direto: setamos maxAge 0
-          res.cookies.set(name, '', { ...options, maxAge: 0 });
-        },
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      // lê a partir do request
+      get(name: string) {
+        return req.cookies.get(name)?.value;
       },
-    }
-  );
+      // grava no response
+      set(name: string, value: string, options: CookieOptions) {
+        res.cookies.set({ name, value, ...options });
+      },
+      // remove do response (expira)
+      remove(name: string, options: CookieOptions) {
+        res.cookies.set({ name, value: '', ...options, maxAge: 0 });
+      },
+    },
+  });
 
-  // Atualiza/valida sessão
-  const { data: { user } } = await supabase.auth.getUser();
+  // Obtém sessão atual
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  const pathname = req.nextUrl.pathname;
-  const isAuthRoute = pathname.startsWith('/auth');
-  const needsAuth = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
+  const { pathname } = req.nextUrl;
 
-  // Bloqueia acesso às protegidas se não autenticado
-  if (needsAuth && !user) {
+  // Ajuste aqui as rotas que exigem login
+  const protectedPaths = [
+    '/dashboard',
+    '/generate',
+    '/gerar',
+    '/gallery',
+    '/minha-galeria',
+    '/profile',
+    '/perfil',
+  ];
+  const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
+
+  // Telas de auth
+  const isAuthPage = pathname.startsWith('/auth');
+
+  // Sem sessão tentando acessar protegido -> manda pro login
+  if (isProtected && !session) {
     const url = req.nextUrl.clone();
     url.pathname = '/auth/login';
-    url.searchParams.set('redirectedFrom', pathname);
-    return NextResponse.redirect(url);
+    url.searchParams.set('next', pathname);
+    return NextResponse.redirect(url, { headers: res.headers });
   }
 
-  // Se já logado e for rota de auth, manda pro painel
-  if (isAuthRoute && user) {
+  // Já logado e indo pra /auth/* -> manda pro painel
+  if (isAuthPage && session) {
     const url = req.nextUrl.clone();
     url.pathname = '/dashboard';
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(url, { headers: res.headers });
   }
 
+  // segue o fluxo normal
   return res;
 }
+
+/**
+ * Defina quais rotas passam pelo middleware.
+ * (middleware SEMPRE roda em Edge Runtime)
+ */
+export const config = {
+  matcher: [
+    '/auth/:path*',
+    '/dashboard/:path*',
+    '/generate/:path*',
+    '/gerar/:path*',
+    '/gallery/:path*',
+    '/minha-galeria/:path*',
+    '/profile/:path*',
+    '/perfil/:path*',
+  ],
+};
