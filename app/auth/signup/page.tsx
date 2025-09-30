@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -20,7 +20,7 @@ export default function SignupPage() {
     return () => { s.remove(); };
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     setMsg(null);
