@@ -16,7 +16,7 @@ export default function LoginPage() {
         </div>
       )}
 
-      <form action="/auth/login" method="POST" className="space-y-4">
+      <form action="/api/auth/login" method="POST" className="space-y-4">
         <div>
           <label htmlFor="email" className="mb-1 block text-sm text-gray-300">E-mail</label>
           <input

@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const password = String(form.get('password') ?? '');
 
   if (!email || !password) {
-    return NextResponse.redirect(new URL('/auth/login?error=' + encodeURIComponent('Informe e-mail e senha.'), url));
+    return NextResponse.redirect(new URL('/auth/login?error=' + encodeURIComponent('Informe e-mail e senha.'), url), 303);
   }
 
   const supabase = supabaseRoute();
@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     const pt = mapErrorToPtBr(error.message);
-    return NextResponse.redirect(new URL('/auth/login?error=' + encodeURIComponent(pt), url));
+    return NextResponse.redirect(new URL('/auth/login?error=' + encodeURIComponent(pt), url), 303);
   }
 
-  return NextResponse.redirect(new URL('/dashboard', url));
+  return NextResponse.redirect(new URL('/dashboard', url), 303);
 }
