@@ -1,8 +1,11 @@
-"use client";
+'use client';
 
+export const dynamic = 'force-dynamic';
+
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function LoginPage() {
+function LoginInner() {
   const params = useSearchParams();
   const serverError = params.get('error');
 
@@ -53,5 +56,13 @@ export default function LoginPage() {
         </a>
       </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="text-sm text-gray-400">Carregando…</div>}>
+      <LoginInner />
+    </Suspense>
   );
 }
