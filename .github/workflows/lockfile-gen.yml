@@ -1,4 +1,4 @@
-name: Generate package-lock.json
+name: Generate full package-lock.json
 
 on:
   workflow_dispatch:
@@ -24,8 +24,18 @@ jobs:
         with:
           node-version: 20
 
-      - name: Generate lockfile (no install)
-        run: npm install --package-lock-only
+      # Remove lock antigo para evitar divergência
+      - name: Remove old lockfile (if any)
+        run: |
+          rm -f package-lock.json
+
+      # Instala para resolver TODAS as subdependências e gerar lockfile completo
+      - name: npm install (resolve full lockfile)
+        run: npm install --no-audit --no-fund
+
+      # Remove node_modules para não "sujar" o working tree do repositório
+      - name: Cleanup node_modules
+        run: rm -rf node_modules
 
       - name: Commit & push lockfile if changed
         run: |
@@ -33,7 +43,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add package-lock.json
-            git commit -m "chore(ci): generate package-lock.json"
+            git commit -m "chore(ci): generate full package-lock.json (resolved)"
             git push
           else
             echo "package-lock.json is up to date. Nothing to commit."
