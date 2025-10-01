@@ -1,0 +1,6 @@
+Se existir este arquivo, remova-o para evitar conflito e o 500 após "Sair":
+- app/auth/logout/route.ts
+
+O logout agora é atendido por:
+- app/api/auth/logout/route.ts
+E o Header posta para /api/auth/logout.
