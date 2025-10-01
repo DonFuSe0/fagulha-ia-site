@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
-import ProfileCard from '../../components/profile/ProfileCard'
-import { getServerClient } from '../../lib/supabase/server'
+import ProfileCard from '../components/profile/ProfileCard'
+import { getServerClient } from '../lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
