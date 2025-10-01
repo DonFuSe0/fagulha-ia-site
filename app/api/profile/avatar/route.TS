@@ -20,16 +20,18 @@ export async function POST(req: Request) {
 
   const form = await req.formData()
   const file = form.get('avatar') as File | null
-  if (!file || file.size > 2*1024*1024 || !['image/png', 'image/jpeg'].includes(file.type)) {
+  if (!file || file.size > 10*1024*1024 || !['image/png', 'image/jpeg'].includes(file.type)) {
     if (ajax) return NextResponse.json({ ok: false, error: 'bad_file' }, { status: 400 })
     return NextResponse.redirect(new URL('/settings?tab=perfil&toast=avatar_fail', req.url))
   }
 
   const arrayBuffer = await file.arrayBuffer()
   const ext = file.type === 'image/png' ? 'png' : 'jpg'
-  const path = `avatars/${user.id}/${user.id}.${ext}`
+  const bucket = 'avatars'
+  const objectPath = `${user.id}/${user.id}.${ext}`
 
-  const upload = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${path}`, {
+  // Upload usando REST do Storage (Service Role)
+  const upload = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${bucket}/${objectPath}`, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
@@ -44,9 +46,10 @@ export async function POST(req: Request) {
     return NextResponse.redirect(new URL('/settings?tab=perfil&toast=avatar_fail', req.url))
   }
 
-  const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${user.id}/${user.id}.${ext}`
+  const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${objectPath}`
+
   await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
 
-  if (ajax) return NextResponse.json({ ok: true })
+  if (ajax) return NextResponse.json({ ok: true, url: publicUrl })
   return NextResponse.redirect(new URL('/settings?tab=perfil&toast=avatar_ok', req.url))
 }
