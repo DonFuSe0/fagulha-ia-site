@@ -1,0 +1,7 @@
+REMOVER ESTE ARQUIVO DO REPOSITÓRIO (para evitar conflito de rotas):
+- app/auth/login/route.ts
+
+O handler de login foi movido para:
+- app/api/auth/login/route.ts
+
+E o <form> de /auth/login/page.tsx agora aponta para /api/auth/login.
