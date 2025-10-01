@@ -1,23 +1,28 @@
-# Fixes: saldo (credits), rotas 404 (/settings, /gallery) e URL pública do avatar
+# Fixes: créditos via RPC, rotas 404 e logout 405
 
-Incluído neste pacote:
-1) **Sincronização automática de `profiles.credits`**
-   - `supabase/patches/028_profile_credits_sync.sql` cria função + triggers em `tokens` para manter `profiles.credits` = soma de `tokens.amount`.
-   - Executa um **backfill** inicial para corrigir saldos existentes.
+1) **SQL (Supabase)**
+   - `supabase/patches/029_credits_rpc.sql` cria RPCs:
+     - `current_user_credits()` → soma `tokens` do usuário da sessão;
+     - `get_user_credits(uuid)` → soma por `user_id` (útil para server/admin).
+   - São `security definer` e `stable` (performáticos e sem esbarrar em RLS).
 
-2) **Rotas ausentes (404)**
-   - `app/settings/page.tsx` — garante a página de configurações.
-   - `app/gallery/page.tsx` — garante a página de **Minha galeria**.
+2) **App**
+   - `app/_components/AppHeader.tsx`:
+     - Mostra créditos via `rpc('current_user_credits')` (fallback `profiles.credits`).
+     - **Sair** agora é um **POST** para `/api/auth/logout` (nada de 405).
+   - `app/api/auth/logout/route.ts`:
+     - Implementa `POST` com `supabase.auth.signOut()` e redireciona ao `/auth/login`.
+     - `GET` responde 405.
+   - `app/settings/page.tsx`:
+     - Garante a rota e exibe saldo via `current_user_credits()` na aba **Tokens**.
+   - `app/gallery/page.tsx`:
+     - Corrige import para `../components/gallery/GalleryCard` (evita 404/compilação).
 
-3) **Avatar público com URL correta**
-   - `app/api/profile/avatar/route.ts` corrigido para gerar a URL pública como:
-     `/storage/v1/object/public/avatars/<user_id>/<user_id>.<ext>`
-
-Como aplicar:
-1) Suba os arquivos do zip.
-2) No Supabase, rode o SQL `028_profile_credits_sync.sql`.
-3) Faça o deploy.
+**Como aplicar**
+1) Execute o SQL `029_credits_rpc.sql` no Supabase.
+2) Suba os arquivos do app.
+3) Deploy.
 4) Teste:
-   - Dashboard/Settings devem exibir o **saldo correto** (agora persiste via trigger).
-   - Links **Editar perfil / Alterar senha / Minha galeria** abrem sem 404.
-   - Ao subir novo avatar, ele aparece (URL pública correta) no header e no perfil.
+   - Header/Settings mostram o saldo correto.
+   - Links para **/settings** e **/gallery** sem 404.
+   - **Sair** funciona sem 405 e volta ao login.

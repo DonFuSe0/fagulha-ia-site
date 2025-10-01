@@ -28,17 +28,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
   const tab = (searchParams.tab || 'perfil') as 'perfil'|'seguranca'|'tokens'
   const toast = toastFrom(searchParams.toast)
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('nickname, credits')
-    .eq('id', user.id)
-    .single()
-
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <Toasts initial={toast as any} />
       <h1 className="text-2xl font-semibold text-white">Configurações</h1>
-
       <nav className="flex gap-2">
         <a href="/settings?tab=perfil" className={"px-3 py-2 rounded-lg border " + (tab==='perfil'?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Perfil</a>
         <a href="/settings?tab=seguranca" className={"px-3 py-2 rounded-lg border " + (tab==='seguranca'?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Segurança</a>
@@ -50,12 +43,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
           <form action="/api/profile/update" method="POST" className="grid gap-3">
             <div>
               <label className="block text-sm text-neutral-400 mb-1">Apelido (único)</label>
-              <input name="nickname" defaultValue={profile?.nickname ?? ''} minLength={3} maxLength={20} pattern="[A-Za-z0-9_]+" className="w-full px-3 py-2 rounded-lg bg-neutral-900/50 border border-neutral-800 text-white" />
+              <input name="nickname" minLength={3} maxLength={20} pattern="[A-Za-z0-9_]+" className="w-full px-3 py-2 rounded-lg bg-neutral-900/50 border border-neutral-800 text-white" />
               <p className="text-xs text-neutral-500 mt-1">3–20 caracteres • letras/números/underline</p>
             </div>
             <button className="self-start px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Salvar apelido</button>
           </form>
-
           <div className="h-px bg-neutral-800" />
           <UploadAvatarForm />
         </section>
@@ -87,11 +79,18 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
         <section className="space-y-4">
           <div className="rounded-xl border border-neutral-800 p-4">
             <div className="text-sm text-neutral-400">Saldo atual</div>
-            <div className="text-3xl font-semibold text-white">{profile?.credits ?? 0} <span className="text-sm font-normal text-neutral-400">tokens</span></div>
+            <CreditsInline />
           </div>
           <a href="/checkout" className="inline-block px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Comprar tokens</a>
         </section>
       )}
     </div>
   )
+}
+
+async function CreditsInline() {
+  const supabase = createServerComponentClient<any>({ cookies })
+  const { data: rpc } = await supabase.rpc('current_user_credits')
+  const credits = typeof rpc === 'number' ? rpc : 0
+  return <div className="text-3xl font-semibold text-white">{credits} <span className="text-sm font-normal text-neutral-400">tokens</span></div>
 }
