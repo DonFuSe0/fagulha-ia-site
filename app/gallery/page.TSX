@@ -14,10 +14,14 @@ export default async function MyGalleryPage() {
 
   const { data: gens } = await supabase
     .from('generations')
-    .select('id, image_url, thumb_url, is_public, created_at')
+    .select('id, image_url, thumb_url, is_public, public_at, created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(40)
+
+  async function refresh() {
+    'use server'
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6">
@@ -30,7 +34,9 @@ export default async function MyGalleryPage() {
             imageUrl={g.image_url}
             thumbUrl={g.thumb_url}
             isPublic={g.is_public}
+            publicAt={g.public_at}
             createdAt={g.created_at}
+            onToggled={() => { /* SSR page; rely on client-side cache invalidation by navigation or soft reload */ window.location.reload() }}
           />
         ))}
       </div>
