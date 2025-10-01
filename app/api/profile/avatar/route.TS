@@ -8,17 +8,25 @@ export const revalidate = 0
 export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
+  const url = new URL(req.url)
+  const ajax = url.searchParams.get('ajax') === '1'
+
   const supabase = createRouteHandlerClient<any>({ cookies })
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.redirect(new URL('/auth/login', req.url))
+  if (!user) {
+    if (ajax) return NextResponse.json({ ok: false, error: 'auth' }, { status: 401 })
+    return NextResponse.redirect(new URL('/auth/login', req.url))
+  }
 
   const form = await req.formData()
   const file = form.get('avatar') as File | null
-  if (!file) return NextResponse.redirect(new URL('/settings?tab=perfil', req.url))
-  if (file.size > 2*1024*1024) return NextResponse.redirect(new URL('/settings?tab=perfil', req.url))
+  if (!file || file.size > 2*1024*1024 || !['image/png', 'image/jpeg'].includes(file.type)) {
+    if (ajax) return NextResponse.json({ ok: false, error: 'bad_file' }, { status: 400 })
+    return NextResponse.redirect(new URL('/settings?tab=perfil&toast=avatar_fail', req.url))
+  }
 
-  const ext = file.type === 'image/png' ? 'png' : 'jpg'
   const arrayBuffer = await file.arrayBuffer()
+  const ext = file.type === 'image/png' ? 'png' : 'jpg'
   const path = `avatars/${user.id}/${user.id}.${ext}`
 
   const upload = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${path}`, {
@@ -32,12 +40,13 @@ export async function POST(req: Request) {
   })
 
   if (!upload.ok) {
-    return NextResponse.redirect(new URL('/settings?tab=perfil', req.url))
+    if (ajax) return NextResponse.json({ ok: false, error: 'upload_fail' }, { status: 500 })
+    return NextResponse.redirect(new URL('/settings?tab=perfil&toast=avatar_fail', req.url))
   }
 
-  const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${path.replace('avatars/', '')}`
-
+  const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${user.id}/${user.id}.${ext}`
   await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
 
-  return NextResponse.redirect(new URL('/settings?tab=perfil', req.url))
+  if (ajax) return NextResponse.json({ ok: true })
+  return NextResponse.redirect(new URL('/settings?tab=perfil&toast=avatar_ok', req.url))
 }

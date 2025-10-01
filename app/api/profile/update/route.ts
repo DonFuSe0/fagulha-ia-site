@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const form = await req.formData()
   const nickname = (form.get('nickname') as string || '').trim()
   if (!isValidNickname(nickname)) {
-    return NextResponse.redirect(new URL('/settings?tab=perfil', req.url))
+    return NextResponse.redirect(new URL('/settings?tab=perfil&toast=nick_fail', req.url))
   }
 
   const { error } = await supabase
@@ -27,9 +27,8 @@ export async function POST(req: Request) {
     .eq('id', user.id)
 
   if (error) {
-    // conflito de unique index (apelido já existe)
-    return NextResponse.redirect(new URL('/settings?tab=perfil', req.url))
+    return NextResponse.redirect(new URL('/settings?tab=perfil&toast=nick_dup', req.url))
   }
 
-  return NextResponse.redirect(new URL('/settings?tab=perfil', req.url))
+  return NextResponse.redirect(new URL('/settings?tab=perfil&toast=perfil_ok', req.url))
 }
