@@ -11,15 +11,16 @@ type Gen = { id: string; image_url: string; thumb_url?: string | null; is_public
 type Move = { id: string; amount: number; description: string; created_at: string }
 type Profile = { id: string; avatar_url: string | null; credits: number | null; nickname: string | null; email: string | null }
 
-function formatPt(dateISO: string) {
-  const d = new Date(dateISO)
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mm = String(d.getMonth()+1).padStart(2, '0')
-  const yyyy = d.getFullYear()
-  const hh = String(d.getHours()).padStart(2, '0')
-  const mi = String(d.getMinutes()).padStart(2, '0')
-  const ss = String(d.getSeconds()).padStart(2, '0')
-  return `${dd}/${mm}/${yyyy} - ${hh}:${mi}:${ss}`
+function formatBRtz(iso: string) {
+  const d = new Date(iso)
+  const fmt = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  })
+  // "dd/mm/aaaa, HH:MM:SS" -> "dd/mm/aaaa - HH:MM:SS"
+  return fmt.format(d).replace(',', ' -')
 }
 
 export default async function DashboardPage() {
@@ -27,13 +28,12 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, avatar_url, credits, nickname, email')
-    .eq('id', user.id)
-    .single<Profile>()
+  const [{ data: profile }, { data: rpcCredits }] = await Promise.all([
+    supabase.from('profiles').select('id, avatar_url, credits, nickname, email').eq('id', user.id).single<Profile>(),
+    supabase.rpc('current_user_credits')
+  ])
 
-  const credits = profile?.credits ?? 0
+  const credits = (typeof rpcCredits === 'number' ? rpcCredits : null) ?? (profile?.credits ?? 0)
 
   const { data: gens } = await supabase
     .from('generations')
@@ -58,7 +58,7 @@ export default async function DashboardPage() {
         email={user.email ?? ''}
         nickname={profile?.nickname ?? null}
         avatarUrl={profile?.avatar_url ?? null}
-        credits={credits}
+        credits={credits ?? 0}
       />
 
       <section>
@@ -87,7 +87,7 @@ export default async function DashboardPage() {
             <tbody className="divide-y divide-neutral-800">
               {moves?.map((m: Move) => (
                 <tr key={m.id} className="text-neutral-200">
-                  <td className="p-3">{formatPt(m.created_at)}</td>
+                  <td className="p-3">{formatBRtz(m.created_at)}</td>
                   <td className="p-3">{m.description}</td>
                   <td className="p-3 text-right">{m.amount}</td>
                 </tr>

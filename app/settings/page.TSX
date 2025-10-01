@@ -20,6 +20,17 @@ function toastFrom(code?: string) {
   }
 }
 
+function formatBRtz(iso: string) {
+  const d = new Date(iso)
+  const fmt = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  })
+  return fmt.format(d).replace(',', ' -')
+}
+
 export default async function SettingsPage({ searchParams }: { searchParams: { tab?: string, toast?: string } }) {
   const supabase = createServerComponentClient<any>({ cookies })
   const { data: { user } } = await supabase.auth.getUser()
@@ -27,6 +38,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
 
   const tab = (searchParams.tab || 'perfil') as 'perfil'|'seguranca'|'tokens'
   const toast = toastFrom(searchParams.toast)
+
+  const [{ data: profile }, { data: moves }] = await Promise.all([
+    supabase.from('profiles').select('nickname, credits').eq('id', user.id).single(),
+    supabase.from('tokens').select('id, amount, description, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20)
+  ])
+
+  const { data: rpc } = await supabase.rpc('current_user_credits')
+  const credits = (typeof rpc === 'number' ? rpc : null) ?? (profile?.credits ?? 0)
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -43,11 +62,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
           <form action="/api/profile/update" method="POST" className="grid gap-3">
             <div>
               <label className="block text-sm text-neutral-400 mb-1">Apelido (único)</label>
-              <input name="nickname" minLength={3} maxLength={20} pattern="[A-Za-z0-9_]+" className="w-full px-3 py-2 rounded-lg bg-neutral-900/50 border border-neutral-800 text-white" />
+              <input name="nickname" defaultValue={profile?.nickname ?? ''} minLength={3} maxLength={20} pattern="[A-Za-z0-9_]+" className="w-full px-3 py-2 rounded-lg bg-neutral-900/50 border border-neutral-800 text-white" />
               <p className="text-xs text-neutral-500 mt-1">3–20 caracteres • letras/números/underline</p>
             </div>
             <button className="self-start px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Salvar apelido</button>
           </form>
+
           <div className="h-px bg-neutral-800" />
           <UploadAvatarForm />
         </section>
@@ -79,18 +99,28 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
         <section className="space-y-4">
           <div className="rounded-xl border border-neutral-800 p-4">
             <div className="text-sm text-neutral-400">Saldo atual</div>
-            <CreditsInline />
+            <div className="text-3xl font-semibold text-white">{credits} <span className="text-sm font-normal text-neutral-400">tokens</span></div>
           </div>
           <a href="/checkout" className="inline-block px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Comprar tokens</a>
+
+          <div className="rounded-xl overflow-hidden border border-neutral-800">
+            <table className="w-full text-sm">
+              <thead className="bg-neutral-900/60 text-neutral-300">
+                <tr><th className="text-left p-3">Data</th><th className="text-left p-3">Descrição</th><th className="text-right p-3">Valor</th></tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-800">
+                {(moves || []).map((m: any) => (
+                  <tr key={m.id} className="text-neutral-200">
+                    <td className="p-3">{formatBRtz(m.created_at)}</td>
+                    <td className="p-3">{m.description}</td>
+                    <td className="p-3 text-right">{m.amount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       )}
     </div>
   )
-}
-
-async function CreditsInline() {
-  const supabase = createServerComponentClient<any>({ cookies })
-  const { data: rpc } = await supabase.rpc('current_user_credits')
-  const credits = typeof rpc === 'number' ? rpc : 0
-  return <div className="text-3xl font-semibold text-white">{credits} <span className="text-sm font-normal text-neutral-400">tokens</span></div>
 }
