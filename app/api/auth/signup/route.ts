@@ -1,108 +1,121 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import disposableDomains from '@/data/disposable_domains.json';
+import { supabaseRoute } from '@/lib/supabase/routeClient';
 import { getClientIp, hashIpHmac } from '@/lib/ip';
+import disposable from '@/data/disposable_domains.json';
 
-function extractDomain(email: string) {
-  return email.toLowerCase().split('@')[1] || '';
+const A1_TURNSTILE_ENABLED = true;
+const A2_CONFIRM_EMAIL = true;
+const A3_DENYLIST = true;
+const B4_WINDOW_30D_BY_IP = true;
+const B5_RATE_10_DAY_BY_IP = true;
+
+function redirect(url: URL, params: Record<string,string>, status: number = 303) {
+  const u = new URL(url);
+  Object.entries(params).forEach(([k,v]) => u.searchParams.set(k, v));
+  return NextResponse.redirect(u, status);
 }
 
-function isDisposable(domain: string) {
-  return disposableDomains.includes(domain);
-}
-
-async function verifyTurnstile(token: string, ip?: string | null) {
-  try {
-    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        secret: process.env.TURNSTILE_SECRET_KEY || '',
-        response: token,
-        remoteip: ip ?? ''
-      })
-    });
-    const json = await r.json();
-    return !!json?.success;
-  } catch {
-    return false;
-  }
-}
+function pt(msg: string) { return msg; }
 
 export async function POST(req: NextRequest) {
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const SIGNUP_SALT = process.env.SIGNUP_SALT;
-
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !SIGNUP_SALT) {
-    return NextResponse.json({ error: 'Configuração do servidor incompleta.' }, { status: 500 });
-  }
-
-  const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
-
+  const url = new URL(req.url);
   try {
-    const { email, password, turnstileToken } = await req.json();
-    if (!email || !password) return NextResponse.json({ error: 'E-mail e senha são obrigatórios.' }, { status: 400 });
-    if (typeof email !== 'string' || typeof password !== 'string') return NextResponse.json({ error: 'Formato inválido.' }, { status: 400 });
-    if (password.length < 6) return NextResponse.json({ error: 'A senha deve ter pelo menos 6 caracteres.' }, { status: 400 });
+    const form = await req.formData();
+    const email = String(form.get('email') ?? '').trim().toLowerCase();
+    const password = String(form.get('password') ?? '');
+    const cfToken = String(form.get('cf-turnstile-response') ?? '');
 
-    const ip = getClientIp(req);
-    const ipHash = hashIpHmac(ip ?? 'unknown', SIGNUP_SALT);
-    const domain = extractDomain(email);
+    if (!email || !password) {
+      return redirect(new URL('/auth/signup', url), { error: 'Informe e-mail e senha.' });
+    }
 
-    // 1) Bloqueios antes do Turnstile
-    if (!domain || isDisposable(domain)) {
-      await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
-      return NextResponse.json({ error: 'Domínio de e-mail não permitido.' }, { status: 400 });
-    }
-    { // 30 dias/IP
-      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const { count } = await supabaseAdmin.from('signup_guards').select('id', { count: 'exact', head: true }).eq('ip_hash', ipHash).gte('created_at', since);
-      if ((count || 0) > 0) {
-        await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
-        return NextResponse.json({ error: 'Não é possível criar mais de uma conta a partir deste IP em um período de 30 dias.' }, { status: 429 });
-      }
-    }
-    { // 10/dia por IP
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { count } = await supabaseAdmin.from('signup_attempts').select('id', { count: 'exact', head: true }).eq('ip_hash', ipHash).gte('created_at', since);
-      if ((count || 0) >= 10) {
-        return NextResponse.json({ error: 'Limite diário de cadastros a partir deste IP foi atingido. Tente novamente amanhã.' }, { status: 429 });
+    // A3: denylist
+    if (A3_DENYLIST) {
+      const domain = email.split('@')[1] || '';
+      if (disposable.includes(domain)) {
+        return redirect(new URL('/auth/signup', url), { error: 'E-mail descartável não é permitido. Use outro endereço.' });
       }
     }
 
-    // 2) Turnstile
-    if (!turnstileToken) return NextResponse.json({ error: 'Validação de segurança ausente.' }, { status: 400 });
-    const turnstileOk = await verifyTurnstile(turnstileToken, ip);
-    if (!turnstileOk) {
-      await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
-      return NextResponse.json({ error: 'Validação de segurança falhou. Tente novamente.' }, { status: 400 });
+    const ip = getClientIp(req) || '0.0.0.0';
+    const ipHash = hashIpHmac(ip);
+
+    // B4: janela 30d por IP
+    if (B4_WINDOW_30D_BY_IP) {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?select=ip_hash&ip_hash=eq.${ipHash}&created_at=gte.${new Date(Date.now()-30*24*60*60*1000).toISOString()}`, {
+        headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '', Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}` }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows.length > 0) {
+          return redirect(new URL('/auth/signup', url), { error: 'Não é possível criar mais de uma conta por IP no período de 30 dias.' });
+        }
+      }
     }
 
-    // 3) Criação do usuário
-    const { data, error: createErr } = await supabaseAdmin.auth.admin.createUser({ email, password, email_confirm: false });
-    if (createErr) {
-      await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
-      return NextResponse.json({ error: createErr.message }, { status: 400 });
-    }
-    const userId = data?.user?.id;
-    if (!userId) {
-      await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
-      return NextResponse.json({ error: 'Falha ao criar usuário.' }, { status: 400 });
+    // B5: rate 10/dia por IP
+    if (B5_RATE_10_DAY_BY_IP) {
+      const since = new Date(Date.now()-24*60*60*1000).toISOString();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles?select=ip_hash&ip_hash=eq.${ipHash}&created_at=gte.${since}`, {
+        headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '', Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}` }
+      });
+      if (res.ok) {
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows.length >= 10) {
+          return redirect(new URL('/auth/signup', url), { error: 'Limite diário de cadastros por IP atingido. Tente novamente mais tarde.' });
+        }
+      }
     }
 
-    await supabaseAdmin.from('signup_guards').insert({
-      user_id: userId,
-      ip_hash: ipHash,
-      email_domain: domain,
-      user_agent: req.headers.get('user-agent') || null
+    // A1: Turnstile
+    if (A1_TURNSTILE_ENABLED) {
+      if (!cfToken) {
+        return redirect(new URL('/auth/signup', url), { error: 'Falha na verificação humana. Atualize a página e tente novamente.' });
+      }
+      const secret = process.env.TURNSTILE_SECRET_KEY || '';
+      const ts = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ secret, response: cfToken }),
+      }).then(r => r.json() as any);
+      if (!ts.success) {
+        return redirect(new URL('/auth/signup', url), { error: 'Verificação humana reprovada. Tente novamente.' });
+      }
+    }
+
+    // Cria usuário (sem créditos iniciais; eles são dados após confirmação)
+    const supabase = supabaseRoute();
+    const { data, error } = await supabase.auth.signUp({
+      email, password,
+      options: A2_CONFIRM_EMAIL ? { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback` } : undefined,
     });
-    await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
 
-    return NextResponse.json({ ok: true, message: 'Conta criada. Verifique seu e-mail para confirmar. Após confirmar, seus créditos serão liberados.' });
-  } catch (err) {
-    console.error('Signup error:', err);
-    return NextResponse.json({ error: 'Erro interno ao processar o cadastro.' }, { status: 500 });
+    if (error) {
+      const m = (error.message || '').toLowerCase();
+      if (m.includes('user_already_exists')) {
+        return redirect(new URL('/auth/login', url), { error: 'Este e-mail já está cadastrado. Faça login.' });
+      }
+      return redirect(new URL('/auth/signup', url), { error: 'Não foi possível criar sua conta. Tente novamente.' });
+    }
+
+    // Salva ip_hash no profile após signUp (pode não existir user ainda sem confirmação — guardamos depois no callback/login, mas tentamos aqui se vier user)
+    const userId = data.user?.id;
+    if (userId) {
+      await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/profiles`, {
+        method: 'PATCH',
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'content-type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({ id: userId, ip_hash: ipHash }),
+      }).catch(() => {});
+    }
+
+    return redirect(new URL('/auth/signup', url), { ok: 'Conta criada! Verifique seu e-mail para confirmar o cadastro.' });
+  } catch (e: any) {
+    return redirect(new URL('/auth/signup', url), { error: 'Erro interno ao processar o cadastro.' });
   }
 }
