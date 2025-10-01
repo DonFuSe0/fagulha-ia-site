@@ -22,7 +22,7 @@ function toastFrom(code?: string) {
 
 export default async function SettingsPage({ searchParams }: { searchParams: { tab?: string, toast?: string } }) {
   const supabase = createServerComponentClient<any>({ cookies })
-  const { data: { user} } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
   const tab = (searchParams.tab || 'perfil') as 'perfil'|'seguranca'|'tokens'
@@ -34,18 +34,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
     .eq('id', user.id)
     .single()
 
-  const { data: moves } = await supabase
-    .from('tokens')
-    .select('id, amount, description, created_at')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(20)
-
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <Toasts initial={toast as any} />
-
       <h1 className="text-2xl font-semibold text-white">Configurações</h1>
+
       <nav className="flex gap-2">
         <a href="/settings?tab=perfil" className={"px-3 py-2 rounded-lg border " + (tab==='perfil'?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Perfil</a>
         <a href="/settings?tab=seguranca" className={"px-3 py-2 rounded-lg border " + (tab==='seguranca'?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Segurança</a>
@@ -64,7 +57,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
           </form>
 
           <div className="h-px bg-neutral-800" />
-          <UploadAvatarForm/>
+          <UploadAvatarForm />
         </section>
       )}
 
@@ -97,23 +90,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
             <div className="text-3xl font-semibold text-white">{profile?.credits ?? 0} <span className="text-sm font-normal text-neutral-400">tokens</span></div>
           </div>
           <a href="/checkout" className="inline-block px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Comprar tokens</a>
-
-          <div className="rounded-xl overflow-hidden border border-neutral-800">
-            <table className="w-full text-sm">
-              <thead className="bg-neutral-900/60 text-neutral-300">
-                <tr><th className="text-left p-3">Data</th><th className="text-left p-3">Descrição</th><th className="text-right p-3">Valor</th></tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-800">
-                {moves?.map((m: any) => (
-                  <tr key={m.id} className="text-neutral-200">
-                    <td className="p-3">{new Date(m.created_at).toLocaleString('pt-BR')}</td>
-                    <td className="p-3">{m.description}</td>
-                    <td className="p-3 text-right">{m.amount}</td>
-                  </tr>
-                )) || null}
-              </tbody>
-            </table>
-          </div>
         </section>
       )}
     </div>
