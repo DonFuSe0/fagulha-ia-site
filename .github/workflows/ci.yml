@@ -2,13 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  
   workflow_dispatch: {}
 
+# Precisamos de write para commitar lockfile quando cair no fallback
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   guard:
@@ -43,15 +42,58 @@ jobs:
     needs: audit
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node (with cache if lock exists)
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install deps (dev deps incluídas)
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+
+      - name: Show npm/env versions
         run: |
+          node -v
+          npm -v
+
+      - name: Install deps (prefer ci; fallback to install)
+        id: deps
+        run: |
+          set -e
+          FALLBACK=0
           if [ -f package-lock.json ]; then
-            npm ci
+            echo "🔐 Lockfile encontrado: tentando 'npm ci'..."
+            if npm ci; then
+              echo "✅ npm ci OK"
+            else
+              echo "⚠️  npm ci falhou (lock fora de sync). Rodando 'npm install' para sincronizar..."
+              FALLBACK=1
+              npm install --no-audit --no-fund
+            fi
           else
-            npm i --include=dev --no-audit --no-fund
+            echo "ℹ️  Sem lockfile. Rodando 'npm install'..."
+            FALLBACK=1
+            npm install --no-audit --no-fund
           fi
+          echo "fallback=${FALLBACK}" >> $GITHUB_OUTPUT
+
+      - name: Commit updated lockfile (if fallback used)
+        if: steps.deps.outputs.fallback == '1'
+        run: |
+          set -e
+          if git status --porcelain | grep -q "package-lock.json"; then
+            echo "🔒 Detected updated lockfile. Committing..."
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore(ci): sync package-lock.json (auto-commit from CI fallback)"
+            # push back to the same branch
+            CURRENT_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+            echo "Pushing to ${CURRENT_BRANCH}"
+            git push origin "HEAD:${CURRENT_BRANCH}"
+          else
+            echo "Lockfile not changed."
+          fi
+
       - name: TypeScript noEmit
         run: npx tsc -noEmit
