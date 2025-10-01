@@ -49,7 +49,7 @@ export default async function DashboardPage() {
       <section>
         <h2 className="text-white/90 font-semibold mb-3">Minhas criações recentes</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {gens?.map((g) => (
+          {gens?.map((g: Gen) => (
             <div key={g.id} className="aspect-square rounded-xl overflow-hidden bg-neutral-900/40 border border-neutral-800">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={g.thumb_url || g.image_url} alt="" className="w-full h-full object-cover" />
@@ -66,7 +66,7 @@ export default async function DashboardPage() {
               <tr><th className="text-left p-3">Data</th><th className="text-left p-3">Descrição</th><th className="text-right p-3">Valor</th></tr>
             </thead>
             <tbody className="divide-y divide-neutral-800">
-              {moves?.map((m) => (
+              {moves?.map((m: Move) => (
                 <tr key={m.id} className="text-neutral-200">
                   <td className="p-3">{new Date(m.created_at).toLocaleString()}</td>
                   <td className="p-3">{m.description}</td>
