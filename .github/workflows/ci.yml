@@ -2,9 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, desenvolvimento ]
-  pull_request:
-    branches: [ main, desenvolvimento ]
+  
   workflow_dispatch: {}
 
 # Precisamos de write para commitar lockfile quando cair no fallback
