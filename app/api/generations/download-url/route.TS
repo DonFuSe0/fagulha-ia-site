@@ -18,6 +18,7 @@ export async function GET(req: Request) {
     .from('generations')
     .select('id, user_id, is_public, created_at, storage_path')
     .eq('id', id).eq('user_id', user.id).single()
+
   if (!g) return NextResponse.json({ error: 'not found' }, { status: 404 })
   if (g.is_public) return NextResponse.json({ error: 'public has no download' }, { status: 400 })
 

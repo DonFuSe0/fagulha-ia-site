@@ -14,7 +14,7 @@ export async function GET() {
 
   const supabase = createRouteHandlerClient<any>({ cookies })
 
-  // públicas com > 4 dias desde public_since
+  // públicas com > 4 dias
   const { data: pubs } = await supabase
     .from('generations')
     .select('id, storage_path, public_since')
@@ -22,7 +22,7 @@ export async function GET() {
     .lt('public_since', new Date(Date.now() - 4*24*3600_000).toISOString())
     .limit(1000)
 
-  // privadas com > 24h (apaga arquivo, mantém linha com flags)
+  // privadas com > 24h (apaga arquivo, mantém linha sinalizada)
   const { data: privs } = await supabase
     .from('generations')
     .select('id, storage_path, created_at')
@@ -31,7 +31,7 @@ export async function GET() {
     .lt('created_at', new Date(Date.now() - 24*3600_000).toISOString())
     .limit(1000)
 
-  // overflow > 200 privadas por usuário
+  // overflow > 200 privadas por user (função SQL 024)
   const { data: olds } = await supabase.rpc('get_private_overflow', { p_limit: 200 })
 
   async function del(path: string) {
@@ -49,13 +49,22 @@ export async function GET() {
 
   for (const g of privs || []) {
     await del((g as any).storage_path)
-    await supabase.from('generations').update({ image_deleted: true, deleted_at: new Date().toISOString() }).eq('id', (g as any).id)
+    await supabase.from('generations').update({
+      image_deleted: true, deleted_at: new Date().toISOString()
+    }).eq('id', (g as any).id)
   }
 
   for (const g of olds || []) {
     await del((g as any).storage_path)
-    await supabase.from('generations').update({ image_deleted: true, deleted_at: new Date().toISOString() }).eq('id', (g as any).id)
+    await supabase.from('generations').update({
+      image_deleted: true, deleted_at: new Date().toISOString()
+    }).eq('id', (g as any).id)
   }
 
-  return NextResponse.json({ ok: true, pubs: pubs?.length||0, privs: privs?.length||0, overflow: (olds as any)?.length||0 })
+  return NextResponse.json({
+    ok: true,
+    pubs: pubs?.length || 0,
+    privs: privs?.length || 0,
+    overflow: (olds as any)?.length || 0
+  })
 }

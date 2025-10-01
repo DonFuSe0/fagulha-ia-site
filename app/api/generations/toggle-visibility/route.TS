@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   if (!privatePath) return NextResponse.json({ error: 'missing storage path' }, { status: 400 })
 
   if (toPublic) {
-    // copiar para bucket público com preview 1280
+    // gera preview 1280 e envia para gen-public
     const fileResp = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${privatePath}`, {
       headers: { Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` }
     })
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
       image_url: publicUrl
     }).eq('id', id).eq('user_id', user.id)
   } else {
-    // voltar a privada: remover cópia pública
+    // voltar a privada: remove cópia pública
     const publicPath = privatePath.replace('gen-private', 'gen-public')
     await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${publicPath}`, {
       method: 'DELETE',
