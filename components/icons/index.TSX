@@ -1,35 +1,6 @@
 import React from 'react'
 type P = React.SVGProps<SVGSVGElement> & { size?: number }
-
-export const IconPublic = ({ size=18, ...p }: P) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} className="text-white/90" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}>
-    <circle cx="12" cy="12" r="9" />
-    <path d="M3 12h18" />
-    <path d="M12 3a15 15 0 0 1 0 18" />
-    <path d="M12 3a15 15 0 0 0 0 18" />
-  </svg>
-)
-
-export const IconPrivate = ({ size=18, ...p }: P) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} className="text-white/90" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}>
-    <rect x="3.5" y="10" width="17" height="10" rx="2" />
-    <path d="M8 10V7a4 4 0 1 1 8 0v3" />
-  </svg>
-)
-
-export const IconDownload = ({ size=18, ...p }: P) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} className="text-white/90" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}>
-    <path d="M12 3v12" />
-    <path d="M7 10l5 5 5-5" />
-    <path d="M5 21h14" />
-  </svg>
-)
-
-export const IconReuse = ({ size=18, ...p }: P) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} className="text-white/90" fill="none" stroke="currentColor" strokeWidth="1.6" {...p}>
-    <path d="M4 4v6h6" />
-    <path d="M20 20v-6h-6" />
-    <path d="M20 8a8 8 0 0 0-8-5" />
-    <path d="M4 16a8 8 0 0 0 8 5" />
-  </svg>
-)
+export const IconPublic = ({ size=18, ...p }: P) => (<svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.6" className="text-white/90" {...p}><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a15 15 0 0 1 0 18" /><path d="M12 3a15 15 0 0 0 0 18" /></svg>)
+export const IconPrivate = ({ size=18, ...p }: P) => (<svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.6" className="text-white/90" {...p}><rect x="3.5" y="10" width="17" height="10" rx="2" /><path d="M8 10V7a4 4 0 1 1 8 0v3" /></svg>)
+export const IconDownload = ({ size=18, ...p }: P) => (<svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.6" className="text-white/90" {...p}><path d="M12 3v12" /><path d="M7 10l5 5 5-5" /><path d="M5 21h14" /></svg>)
+export const IconReuse = ({ size=18, ...p }: P) => (<svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.6" className="text-white/90" {...p}><path d="M4 4v6h6" /><path d="M20 20v-6h-6" /><path d="M20 8a8 8 0 0 0-8-5" /><path d="M4 16a8 8 0 0 0 8 5" /></svg>)
