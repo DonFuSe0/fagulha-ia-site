@@ -2,7 +2,7 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import GalleryCard from '../../components/gallery/GalleryCard'
+import GalleryCard from '../components/gallery/GalleryCard'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0

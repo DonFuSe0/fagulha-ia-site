@@ -22,15 +22,15 @@ export default async function AppHeader() {
   let avatarUrl: string | null = null
   let nickname: string | null = null
   let credits: number | null = null
+
   if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('avatar_url, nickname, credits')
-      .eq('id', user.id)
-      .single()
+    const [{ data: profile }, { data: rpc }] = await Promise.all([
+      supabase.from('profiles').select('avatar_url, nickname, credits').eq('id', user.id).single(),
+      supabase.rpc('current_user_credits')
+    ])
     avatarUrl = profile?.avatar_url ?? null
     nickname = profile?.nickname ?? (user.email?.split('@')[0] ?? null)
-    credits = profile?.credits ?? null
+    credits = (typeof rpc === 'number' ? rpc : null) ?? (profile?.credits ?? null)
   }
 
   return (
@@ -55,7 +55,7 @@ export default async function AppHeader() {
                 </div>
                 <span className="text-white/90 text-sm max-w-[140px] truncate">{nickname ?? 'Usuário'}</span>
                 {typeof credits === 'number' && (
-                  <span className="ml-1 inline-flex items-center rounded-full bg-white/10 border border-white/15 px-2 py-[2px] text-[11px] text-white/80">
+                  <span className="ml-1 inline-flex items-center rounded-full bg-white/10 border border-white/15 px-2 py-[2px] text:[11px] text-white/80">
                     {credits} <span className="ml-1 text-white/50">tok</span>
                   </span>
                 )}
@@ -71,13 +71,15 @@ export default async function AppHeader() {
                 <Link href="/settings?tab=tokens" className="flex items-center gap-2 px-3 py-2 text-white/90 hover:bg-white/10">
                   <IconSettings /> <span>Tokens</span>
                 </Link>
-                <Link href="/explorar" className="flex items-center gap-2 px-3 py-2 text-white/90 hover:bg-white/10">
-                  <IconGallery /> <span>Galeria pública</span>
+                <Link href="/gallery" className="flex items-center gap-2 px-3 py-2 text-white/90 hover:bg-white/10">
+                  <IconGallery /> <span>Minha galeria</span>
                 </Link>
                 <div className="h-px bg-white/10 my-1" />
-                <Link href="/api/auth/logout" className="flex items-center gap-2 px-3 py-2 text-red-300 hover:bg-white/10">
-                  <IconLogout /> <span>Sair</span>
-                </Link>
+                <form action="/api/auth/logout" method="POST">
+                  <button className="w-full flex items-center gap-2 px-3 py-2 text-red-300 hover:bg-white/10">
+                    <IconLogout /> <span>Sair</span>
+                  </button>
+                </form>
               </div>
             </div>
           ) : (
