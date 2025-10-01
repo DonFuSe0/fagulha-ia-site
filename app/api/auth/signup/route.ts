@@ -1,13 +1,3 @@
-/* app/api/auth/signup/route.ts
-   Cadastro com:
-     - Turnstile
-     - denylist de e-mails descartáveis
-     - rate limit: 10 cadastros/dia por IP
-     - janela: 1 conta/30 dias por IP (hash + salt)
-     - cria usuário via Supabase Admin
-     - registra tentativas/guards
-   Envs: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, TURNSTILE_SECRET_KEY, SIGNUP_SALT
-*/
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
@@ -49,83 +39,53 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Configuração do servidor incompleta.' }, { status: 500 });
   }
 
-  const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false }
-  });
+  const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
   try {
     const { email, password, turnstileToken } = await req.json();
-    if (!email || !password) {
-      return NextResponse.json({ error: 'E-mail e senha são obrigatórios.' }, { status: 400 });
-    }
-    if (typeof email !== 'string' || typeof password !== 'string') {
-      return NextResponse.json({ error: 'Formato inválido.' }, { status: 400 });
-    }
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'A senha deve ter pelo menos 6 caracteres.' }, { status: 400 });
-    }
-    if (!turnstileToken) {
-      return NextResponse.json({ error: 'Validação Turnstile ausente.' }, { status: 400 });
-    }
+    if (!email || !password) return NextResponse.json({ error: 'E-mail e senha são obrigatórios.' }, { status: 400 });
+    if (typeof email !== 'string' || typeof password !== 'string') return NextResponse.json({ error: 'Formato inválido.' }, { status: 400 });
+    if (password.length < 6) return NextResponse.json({ error: 'A senha deve ter pelo menos 6 caracteres.' }, { status: 400 });
 
     const ip = getClientIp(req);
     const ipHash = hashIpHmac(ip ?? 'unknown', SIGNUP_SALT);
     const domain = extractDomain(email);
 
-    const turnstileOk = await verifyTurnstile(turnstileToken, ip);
-    if (!turnstileOk) {
-      await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
-      return NextResponse.json({ error: 'Falha na verificação do Turnstile.' }, { status: 400 });
-    }
-
+    // 1) Bloqueios antes do Turnstile
     if (!domain || isDisposable(domain)) {
       await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
       return NextResponse.json({ error: 'Domínio de e-mail não permitido.' }, { status: 400 });
     }
-
-    // 10 cadastros/dia por IP
-    {
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { count } = await supabaseAdmin
-        .from('signup_attempts')
-        .select('id', { count: 'exact', head: true })
-        .eq('ip_hash', ipHash)
-        .gte('created_at', since);
-      if ((count || 0) >= 10) {
-        return NextResponse.json(
-          { error: 'Limite diário de cadastros a partir deste IP foi atingido. Tente amanhã.' },
-          { status: 429 }
-        );
-      }
-    }
-
-    // 1 conta a cada 30 dias por IP
-    {
+    { // 30 dias/IP
       const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const { count } = await supabaseAdmin
-        .from('signup_guards')
-        .select('id', { count: 'exact', head: true })
-        .eq('ip_hash', ipHash)
-        .gte('created_at', since);
+      const { count } = await supabaseAdmin.from('signup_guards').select('id', { count: 'exact', head: true }).eq('ip_hash', ipHash).gte('created_at', since);
       if ((count || 0) > 0) {
         await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
-        return NextResponse.json(
-          { error: 'Uma conta já foi criada a partir deste IP nos últimos 30 dias.' },
-          { status: 429 }
-        );
+        return NextResponse.json({ error: 'Não é possível criar mais de uma conta a partir deste IP em um período de 30 dias.' }, { status: 429 });
+      }
+    }
+    { // 10/dia por IP
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { count } = await supabaseAdmin.from('signup_attempts').select('id', { count: 'exact', head: true }).eq('ip_hash', ipHash).gte('created_at', since);
+      if ((count || 0) >= 10) {
+        return NextResponse.json({ error: 'Limite diário de cadastros a partir deste IP foi atingido. Tente novamente amanhã.' }, { status: 429 });
       }
     }
 
-    const { data, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: false
-    });
+    // 2) Turnstile
+    if (!turnstileToken) return NextResponse.json({ error: 'Validação de segurança ausente.' }, { status: 400 });
+    const turnstileOk = await verifyTurnstile(turnstileToken, ip);
+    if (!turnstileOk) {
+      await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
+      return NextResponse.json({ error: 'Validação de segurança falhou. Tente novamente.' }, { status: 400 });
+    }
+
+    // 3) Criação do usuário
+    const { data, error: createErr } = await supabaseAdmin.auth.admin.createUser({ email, password, email_confirm: false });
     if (createErr) {
       await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
       return NextResponse.json({ error: createErr.message }, { status: 400 });
     }
-
     const userId = data?.user?.id;
     if (!userId) {
       await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
@@ -138,13 +98,9 @@ export async function POST(req: NextRequest) {
       email_domain: domain,
       user_agent: req.headers.get('user-agent') || null
     });
-
     await supabaseAdmin.from('signup_attempts').insert({ ip_hash: ipHash, email_domain: domain });
 
-    return NextResponse.json({
-      ok: true,
-      message: 'Conta criada. Verifique seu e-mail para confirmar. Após confirmar, seus créditos serão liberados.'
-    });
+    return NextResponse.json({ ok: true, message: 'Conta criada. Verifique seu e-mail para confirmar. Após confirmar, seus créditos serão liberados.' });
   } catch (err) {
     console.error('Signup error:', err);
     return NextResponse.json({ error: 'Erro interno ao processar o cadastro.' }, { status: 500 });
