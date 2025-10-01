@@ -1,5 +1,6 @@
+// app/components/profile/ProfileCard.tsx
 'use client'
-import Image from 'next/image'
+import { useState } from 'react'
 
 type Props = {
   userId: string
@@ -13,16 +14,23 @@ function defaultAvatarFor(userId: string) {
   let h = 0
   for (let i = 0; i < userId.length; i++) h = ((h<<5)-h)+userId.charCodeAt(i)|0
   const idx = Math.abs(h) % 4
+  // tenta PNG (se você tiver colocado), senão cai para SVG embutido no pacote
   return `/avatars/fire-${idx+1}.png`
 }
 
 export default function ProfileCard({ userId, email, nickname, avatarUrl, credits }: Props) {
-  const fallback = defaultAvatarFor(userId)
+  const [src, setSrc] = useState<string>(avatarUrl || defaultAvatarFor(userId))
   const name = nickname ?? (email?.split('@')[0] ?? 'Usuário')
+  function handleErr() {
+    // fallback para SVG local se o PNG não existir
+    const idx = Math.abs(userId.split('').reduce((a,c)=>((a<<5)-a)+c.charCodeAt(0)|0,0)) % 4
+    setSrc(`/avatars/fire-${idx+1}.svg`)
+  }
   return (
     <div className="rounded-2xl p-5 bg-neutral-900/50 border border-neutral-800 flex items-center gap-4">
-      <div className="relative w-16 h-16 overflow-hidden rounded-full ring-1 ring-white/10">
-        <Image src={avatarUrl || fallback} alt="Avatar" fill className="object-cover" />
+      <div className="relative w-16 h-16 overflow-hidden rounded-full ring-1 ring-white/10 bg-neutral-800 flex items-center justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} onError={handleErr} alt="Avatar" className="w-full h-full object-cover" />
       </div>
       <div className="flex-1">
         <div className="text-white font-medium text-lg">{name}</div>
