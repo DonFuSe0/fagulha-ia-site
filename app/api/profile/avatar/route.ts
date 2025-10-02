@@ -1,54 +1,46 @@
-// app/api/profile/avatar/route.ts
-import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { cookies } from "next/headers";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@supabase/supabase-js";
 
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-export const runtime = 'nodejs'
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const runtime = "nodejs";
+
+function redirectTo(req: Request, path: string) {
+  return new Response(null, { status: 302, headers: { Location: new URL(path, req.url).toString() } });
+}
 
 export async function POST(req: Request) {
-  const url = new URL(req.url)
-  const ajax = url.searchParams.get('ajax') === '1'
+  const supa = createRouteHandlerClient<any>({ cookies });
+  const { data: { user } } = await supa.auth.getUser();
+  if (!user) return redirectTo(req, "/auth/login");
 
-  const supabase = createRouteHandlerClient<any>({ cookies })
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    if (ajax) return NextResponse.json({ ok: false, error: 'auth' }, { status: 401 })
-    return NextResponse.redirect(new URL('/auth/login', req.url))
-  }
+  const form = await req.formData();
+  const file = form.get("file") as File | null;
+  if (!file) return redirectTo(req, "/settings?tab=perfil&toast=avatar_fail");
 
-  const form = await req.formData()
-  const file = form.get('avatar') as File | null
-  if (!file || file.size > 10*1024*1024 || !['image/png', 'image/jpeg'].includes(file.type)) {
-    if (ajax) return NextResponse.json({ ok: false, error: 'bad_file' }, { status: 400 })
-    return NextResponse.redirect(new URL('/settings?tab=perfil&toast=avatar_fail', req.url))
-  }
+  // opcionalmente poderíamos usar 'zoom', ignorado por enquanto
+  const ext = (file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg");
+  const filename = `${user.id}.${ext}`;
 
-  const arrayBuffer = await file.arrayBuffer()
-  const ext = file.type === 'image/png' ? 'png' : 'jpg'
-  const bucket = 'avatars'
-  const objectPath = `${user.id}/${user.id}.${ext}`
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const admin = createClient(url, key, { auth: { persistSession: false } });
 
-  const upload = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${bucket}/${objectPath}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-      'Content-Type': file.type,
-      'x-upsert': 'true'
-    },
-    body: Buffer.from(arrayBuffer)
-  })
+  // upload (overwrite)
+  const { error: upErr } = await admin.storage.from("avatars").upload(filename, file.stream(), {
+    contentType: file.type,
+    upsert: true,
+  });
+  if (upErr) return redirectTo(req, "/settings?tab=perfil&toast=avatar_fail");
 
-  if (!upload.ok) {
-    if (ajax) return NextResponse.json({ ok: false, error: 'upload_fail' }, { status: 500 })
-    return NextResponse.redirect(new URL('/settings?tab=perfil&toast=avatar_fail', req.url))
-  }
+  // get public URL
+  const { data: pub } = admin.storage.from("avatars").getPublicUrl(filename);
+  const publicUrl = pub.publicUrl;
 
-  const ts = Date.now()
-  const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${objectPath}?v=${ts}`
-  await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
+  // save to profiles
+  const { error: upProfErr } = await supa.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
+  if (upProfErr) return redirectTo(req, "/settings?tab=perfil&toast=avatar_fail");
 
-  if (ajax) return NextResponse.json({ ok: true, url: publicUrl })
-  return NextResponse.redirect(new URL('/settings?tab=perfil&toast=avatar_ok', req.url))
+  return redirectTo(req, "/settings?tab=perfil&toast=avatar_ok");
 }
