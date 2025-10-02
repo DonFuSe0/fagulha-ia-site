@@ -1,7 +1,5 @@
 // app/components/profile/ProfileCard.tsx
 'use client'
-import { useState } from 'react'
-
 type Props = {
   userId: string
   email: string
@@ -9,46 +7,18 @@ type Props = {
   avatarUrl: string | null
   credits: number
 }
-
-function defaultAvatarFor(userId: string) {
-  let h = 0
-  for (let i = 0; i < userId.length; i++) h = ((h<<5)-h)+userId.charCodeAt(i)|0
-  const idx = Math.abs(h) % 4
-  return `/avatars/fire-${idx+1}.png`
-}
-
-export default function ProfileCard({ userId, email, nickname, avatarUrl, credits }: Props) {
-  const [src, setSrc] = useState<string>(avatarUrl || defaultAvatarFor(userId))
-  const name = nickname ?? (email?.split('@')[0] ?? 'Usuário')
-  function handleErr() {
-    const idx = Math.abs(userId.split('').reduce((a,c)=>((a<<5)-a)+c.charCodeAt(0)|0,0)) % 4
-    setSrc(`/avatars/fire-${idx+1}.svg`)
-  }
-
+export default function ProfileCard({ email, nickname, avatarUrl, credits }: Props) {
+  const name = nickname || email.split('@')[0]
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(1200px_400px_at_-200px_-200px,rgba(255,255,255,.08),transparent)]">
-      <div className="p-5 flex items-center gap-5">
-        <div className="relative w-20 h-20 rounded-full overflow-hidden ring-2 ring-white/20">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} onError={handleErr} alt="Avatar" className="w-full h-full object-cover" />
+    <div className="rounded-xl border border-neutral-800 p-4 bg-neutral-900/40">
+      <div className="flex items-center gap-3">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={avatarUrl || '/avatars/fire-1.png'} alt="" className="w-14 h-14 rounded-full object-cover ring-2 ring-white/10" />
+        <div>
+          <div className="text-white font-semibold">{name}</div>
+          <div className="text-white/70 text-sm">{email}</div>
         </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="text-white font-semibold text-xl truncate">{name}</div>
-          <div className="text-neutral-400 text-sm truncate">{email}</div>
-
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <a href="/settings?tab=perfil" className="px-3 py-1.5 rounded-full bg-white/8 border border-white/10 text-white/90 hover:bg-white/12">Editar perfil</a>
-            <a href="/settings?tab=seguranca" className="px-3 py-1.5 rounded-full bg-white/8 border border-white/10 text-white/90 hover:bg-white/12">Alterar senha</a>
-            <a href="/gallery" className="px-3 py-1.5 rounded-full bg-white/8 border border-white/10 text-white/90 hover:bg-white/12">Minha galeria</a>
-          </div>
-        </div>
-
-        <div className="text-right shrink-0">
-          <div className="text-xs text-neutral-400">Saldo</div>
-          <div className="text-3xl font-semibold text-white tracking-tight">{credits}</div>
-          <div className="text-xs text-neutral-400">tokens</div>
-        </div>
+        <div className="ml-auto text-white/90"><span className="text-sm text-white/60">Saldo:</span> <span className="font-semibold">{credits}</span> <span className="text-white/60 text-sm">tok</span></div>
       </div>
     </div>
   )

@@ -45,7 +45,8 @@ export async function POST(req: Request) {
     return NextResponse.redirect(new URL('/settings?tab=perfil&toast=avatar_fail', req.url))
   }
 
-  const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${objectPath}`
+  const ts = Date.now()
+  const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${objectPath}?v=${ts}`
   await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
 
   if (ajax) return NextResponse.json({ ok: true, url: publicUrl })
