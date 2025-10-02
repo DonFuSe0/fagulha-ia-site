@@ -23,7 +23,6 @@ export default async function ProfileHero() {
     .eq("id", user.id)
     .maybeSingle();
 
-  // Padronização do apelido: usar SEMPRE profiles.nickname; se não existir, cair para prefixo do e-mail
   const nickname = (profile?.nickname && profile.nickname.length > 0)
     ? profile.nickname
     : (user.email?.split("@")[0] ?? "Usuário");
@@ -43,7 +42,6 @@ export default async function ProfileHero() {
         </span>
         <div className="flex flex-col">
           <span className="text-base font-semibold text-white">{nickname}</span>
-          {/* email removido conforme solicitado */}
         </div>
       </div>
       <div className="text-right">
