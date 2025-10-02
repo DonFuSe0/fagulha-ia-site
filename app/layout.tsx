@@ -3,8 +3,8 @@ export const revalidate = 0;
 
 import './globals.css';
 import type { Metadata } from 'next';
-import Header from '@/components/Header';
 import React from 'react';
+import AppHeader from '@/app/_components/AppHeader';
 
 export const metadata: Metadata = {
   title: 'Fagulha IA',
@@ -19,8 +19,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
       </head>
       <body className="min-h-screen bg-gray-950 text-gray-200">
-        <Header />
-        <main className="mx-auto max-w-5xl px-4 py-10">{children}</main>
+        <AppHeader />
+        <main className="mx-auto max-w-6xl px-4 py-10">{children}</main>
       </body>
     </html>
   );
