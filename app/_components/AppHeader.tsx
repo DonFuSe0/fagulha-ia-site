@@ -47,7 +47,7 @@ export default async function AppHeader() {
         <nav className="ml-auto flex items-center gap-3">
           <Link href="/explorar" className="text-sm text-white/80 hover:text-white">Explorar</Link>
           <Link href="/gallery" className="text-sm text-white/80 hover:text-white">Galeria</Link>
-          <Link href="/dashboard" className="text-sm text-white/80 hover:text-white">Dashboard</Link>
+          <Link href="/dashboard" className="text-sm text-white/80 hover:text-white">Perfil</Link>
           <div className="flex items-center gap-3">
             {user ? (
               <UserMenu isLogged={true} avatarSrc={avatarSrc} nickname={nickname ?? undefined}
