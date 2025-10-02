@@ -18,7 +18,9 @@ export default function ProfileCard({ email, nickname, avatarUrl, credits }: Pro
           <div className="text-white font-semibold">{name}</div>
           <div className="text-white/70 text-sm">{email}</div>
         </div>
-        <div className="ml-auto text-white/90"><span className="text-sm text-white/60">Saldo:</span> <span className="font-semibold">{credits}</span> <span className="text-white/60 text-sm">tok</span></div>
+        <div className="ml-auto text-white/90">
+          <span className="text-sm text-white/60">Saldo:</span> <span className="font-semibold">{credits}</span> <span className="text-white/60 text-sm">tokens</span>
+        </div>
       </div>
     </div>
   )
