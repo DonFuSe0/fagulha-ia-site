@@ -34,9 +34,9 @@ export default async function TokensHistory() {
             </div>
           </div>
         ))}
-        {(items ?? []).length === 0 && (
+        {(items ?? []).length === 0 ? (
           <div className="text-sm text-white/60">Sem movimentações.</div>
-        )}
+        ) : null}
       </div>
     </div>
   );
