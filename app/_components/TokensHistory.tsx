@@ -10,12 +10,21 @@ export default async function TokensHistory() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: items } = await supabase
+  const { data: items, error } = await supabase
     .from("tokens")
     .select("id, amount, description, created_at, type")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(30);
+
+  if (error) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="mb-2 text-sm font-medium text-red-300">Falha ao carregar histórico de tokens.</div>
+        <pre className="text-xs text-white/50">{error.message}</pre>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
