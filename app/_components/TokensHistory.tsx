@@ -15,7 +15,7 @@ export default async function TokensHistory() {
     .select("id, amount, description, created_at, type")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(30);
 
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">

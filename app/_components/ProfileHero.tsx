@@ -23,9 +23,11 @@ export default async function ProfileHero() {
     .eq("id", user.id)
     .maybeSingle();
 
+  const metaNick = (user.user_metadata && typeof user.user_metadata.nickname === "string") ? String(user.user_metadata.nickname) : null;
+
   const nickname = (profile?.nickname && profile.nickname.length > 0)
     ? profile.nickname
-    : (user.email?.split("@")[0] ?? "Usuário");
+    : (metaNick ?? (user.email?.split("@")[0] ?? "Usuário"));
 
   const rawAvatar = profile?.avatar_url ?? null;
   const avatarSrc = rawAvatar
