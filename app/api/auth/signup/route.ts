@@ -1,22 +1,31 @@
-// Confirmação por e-mail: redireciona para /auth/callback
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 import { NextResponse } from 'next/server'
+import { verifyTurnstileToken } from '@/lib/turnstile/verify'
 import { supabaseRoute } from '@/lib/supabase/routeClient'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 const EMAIL_REDIRECT_TO = `${SITE_URL}/auth/callback`
 
 export async function POST(req: Request) {
-  const supabase = supabaseRoute()
-  const body = await req.json()
-  const { email, password, nickname } = body
+  let body: any = {}
+  try {
+    body = await req.json()
+  } catch {}
 
-  const { data, error } = await supabase.auth.signUp({
+  const { email, password, nickname, turnstileToken } = body ?? {}
+
+  const check = await verifyTurnstileToken(turnstileToken)
+  if (!check.ok) {
+    return NextResponse.json({ ok: false, error: 'captcha_failed', detail: check.error }, { status: 400 })
+  }
+
+  const supabase = supabaseRoute()
+  const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: { 
-      data: { nickname },
-      emailRedirectTo: EMAIL_REDIRECT_TO
-    }
+    options: { data: { nickname }, emailRedirectTo: EMAIL_REDIRECT_TO }
   })
 
   if (error) {
