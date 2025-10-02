@@ -1,0 +1,10 @@
+# .github/workflows/ci.yml (apenas o trecho relevante do step de purge)
+# Substitua o step atual que falha quando PURGE_URL/CRON_SECRET faltam por este:
+- name: Purge (optional)
+  if: ${{ env.PURGE_URL != '' && env.CRON_SECRET != '' }}
+  env:
+    PURGE_URL: ${{ secrets.PURGE_URL }}
+    CRON_SECRET: ${{ secrets.CRON_SECRET }}
+  run: |
+    echo "Running purge against $PURGE_URL"
+    curl -sS -H "X-CRON-SECRET: $CRON_SECRET" "$PURGE_URL" || true
