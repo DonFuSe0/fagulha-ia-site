@@ -30,7 +30,6 @@ export async function POST(req: Request) {
   const bucket = 'avatars'
   const objectPath = `${user.id}/${user.id}.${ext}`
 
-  // Upload usando REST do Storage (Service Role)
   const upload = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${bucket}/${objectPath}`, {
     method: 'PUT',
     headers: {
@@ -47,7 +46,6 @@ export async function POST(req: Request) {
   }
 
   const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${objectPath}`
-
   await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
 
   if (ajax) return NextResponse.json({ ok: true, url: publicUrl })
