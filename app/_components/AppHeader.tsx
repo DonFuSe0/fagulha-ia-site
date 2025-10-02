@@ -1,6 +1,5 @@
 // app/_components/AppHeader.tsx
 import Link from 'next/link'
-import Image from 'next/image'
 import { cookies } from 'next/headers'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
 import UserMenu from './UserMenu'
