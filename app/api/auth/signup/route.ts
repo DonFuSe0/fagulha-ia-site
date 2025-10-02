@@ -1,6 +1,9 @@
-// Correção: usar supabaseRoute(); créditos virão via trigger após confirmação de e-mail
+// Correção: definir emailRedirectTo para link de confirmação
 import { NextResponse } from 'next/server'
 import { supabaseRoute } from '@/lib/supabase/routeClient'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+const EMAIL_REDIRECT_TO = `${SITE_URL}/auth/callback`
 
 export async function POST(req: Request) {
   const supabase = supabaseRoute()
@@ -10,7 +13,10 @@ export async function POST(req: Request) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { nickname } }
+    options: { 
+      data: { nickname },
+      emailRedirectTo: EMAIL_REDIRECT_TO
+    }
   })
 
   if (error) {
