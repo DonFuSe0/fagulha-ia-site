@@ -2,7 +2,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import BalanceCard from "@/app/_components/BalanceCard";
+import ProfileHero from "@/app/_components/ProfileHero";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -14,9 +14,8 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-white">Perfil</h1>
-      <BalanceCard />
-      {/* O histórico existente permanece, apenas garantimos que o SALDO vem de profiles.credits */}
+      <ProfileHero />
+      {/* Aqui abaixo permanece o restante da página: histórico, recentes, etc. */}
     </div>
   );
 }
