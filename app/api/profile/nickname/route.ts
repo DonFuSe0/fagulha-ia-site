@@ -21,7 +21,6 @@ export async function POST(req: Request) {
     return redirectTo(req, "/settings?tab=perfil&toast=nick_fail");
   }
 
-  // tenta atualizar; se houver unique violation (23505), redireciona com nick_dup
   const { error } = await supa.from("profiles").update({ nickname }).eq("id", user.id);
   if (error) {
     if ((error as any).code === "23505") {

@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     const ip = clientIpFrom(req);
     const ipHash = crypto.createHash("sha256").update(ip).digest("hex");
 
-    // 1) Ban por exclusao anterior (30 dias) - service role para leitura confiavel
+    // Ban por email (30 dias pós exclusão)
     const { data: del } = await admin
       .from("account_deletions")
       .select("id, ban_until")
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
       .maybeSingle();
     if (del) return j({ ok:false, error:"signup_blocked_30d" }, 403);
 
-    // 2) Ban por IP (30 dias)
+    // Ban por IP (30 dias)
     const nowIso = new Date().toISOString();
     const { data: guard } = await admin
       .from("signup_guards")
@@ -83,9 +83,18 @@ export async function POST(req: Request) {
       return j({ ok:false, error:"supabase_signup_error:"+error.message }, 400);
     }
 
-    // Define bloqueio de IP por 30 dias a partir de agora
-    const blockForMs = 30 * 24 * 60 * 60 * 1000; // 30 dias
-    const blockedUntil = new Date(Date.now()+blockForMs).toISOString();
+    const userId = data.user?.id;
+    if (userId && nickname && nickname.trim()) {
+      // grava nickname no profiles (admin), útil mesmo antes da confirmação de e-mail
+      const { data: prof } = await admin.from("profiles").select("id, nickname").eq("id", userId).maybeSingle();
+      if (!prof || !prof.nickname) {
+        await admin.from("profiles").update({ nickname: nickname.trim() }).eq("id", userId);
+      }
+    }
+
+    // Define bloqueio de IP por 30 dias
+    const blockForMs = 30 * 24 * 60 * 60 * 1000;
+    const blockedUntil = new Date(Date.now() + blockForMs).toISOString();
     await admin.from("signup_guards").upsert({ ip_hash: ipHash, blocked_until: blockedUntil });
 
     if (ct.includes("application/json")) return j({ ok:true, id: data.user?.id ?? null }, 200);
