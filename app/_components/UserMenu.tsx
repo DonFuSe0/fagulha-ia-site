@@ -34,10 +34,9 @@ export default function UserMenu({ isLogged, avatarSrc="/avatars/fire-1.png", ni
       </button>
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-white/10 bg-neutral-900/95 p-1 shadow-xl">
-          <Link href="/dashboard" className="flex items-center gap-2 rounded-lg px-3 py-2 text-white/90 hover:bg-white/10">Perfil</Link>
           <Link href="/settings?tab=perfil" className="flex items-center gap-2 rounded-lg px-3 py-2 text-white/90 hover:bg-white/10">Editar perfil</Link>
           <Link href="/settings?tab=seguranca" className="flex items-center gap-2 rounded-lg px-3 py-2 text-white/90 hover:bg-white/10">Alterar senha</Link>
-          <Link href="/settings?tab=tokens" className="flex items-center gap-2 rounded-lg px-3 py-2 text-white/90 hover:bg-white/10">Tokens</Link>
+          <Link href="/planos" className="flex items-center gap-2 rounded-lg px-3 py-2 text-white/90 hover:bg-white/10">Adquirir tokens</Link>
           <Link href="/gallery" className="flex items-center gap-2 rounded-lg px-3 py-2 text-white/90 hover:bg-white/10">Minha galeria</Link>
           <div className="my-1 h-px bg-white/10" />
           <form action="/api/auth/logout" method="POST">

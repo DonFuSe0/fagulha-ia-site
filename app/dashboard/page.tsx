@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import ProfileHero from "@/app/_components/ProfileHero";
+import RecentGenerations from "@/app/_components/RecentGenerations";
 import TokensHistory from "@/app/_components/TokensHistory";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <ProfileHero />
+      <RecentGenerations />
       <TokensHistory />
     </div>
   );
