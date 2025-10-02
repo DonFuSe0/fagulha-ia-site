@@ -1,97 +1,85 @@
-// components/gallery/GalleryCard.tsx
-'use client'
-import Image from 'next/image'
-import { useMemo, useState } from 'react'
-import { IconPublic, IconPrivate, IconDownload, IconReuse } from '@/components/icons'
-import { useCountdown } from '@/components/hooks/useCountdown'
+"use client";
+import { useMemo } from "react";
 
 type Props = {
-  id: string
-  imageUrl: string
-  thumbUrl: string | null
-  isPublic: boolean
-  createdAt: string
+  id: string;
+  imageUrl: string;
+  thumbUrl?: string | null;
+  isPublic: boolean;
+  publicAt?: string | null;
+  createdAt: string;
+  onToggled?: () => void;
+  showPublicTimer?: boolean;
+};
+
+function formatBR(dt: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const d = pad(dt.getDate());
+  const m = pad(dt.getMonth() + 1);
+  const y = dt.getFullYear();
+  const hh = pad(dt.getHours());
+  const mm = pad(dt.getMinutes());
+  const ss = pad(dt.getSeconds());
+  return `${d}/${m}/${y} - ${hh}:${mm}:${ss}`;
 }
 
-export default function GalleryCard(p: Props) {
-  const [busy, setBusy] = useState(false)
-  const expiresAtISO = useMemo(() => {
-    // 24h após a criação
-    const ms = new Date(p.createdAt).getTime() + 24*3600*1000
-    return new Date(ms).toISOString()
-  }, [p.createdAt])
-  const countdown = useCountdown(expiresAtISO)
+function remaining(fromIso: string, hours: number) {
+  const end = new Date(new Date(fromIso).getTime() + hours * 3600_000);
+  const diff = end.getTime() - Date.now();
+  const left = Math.max(0, diff);
+  const h = Math.floor(left / 3600_000);
+  const m = Math.floor((left % 3600_000) / 60000);
+  const s = Math.floor((left % 60000) / 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+export default function GalleryCard({
+  id, imageUrl, thumbUrl, isPublic, publicAt, createdAt, onToggled, showPublicTimer
+}: Props) {
+
+  const createdFmt = useMemo(() => formatBR(new Date(createdAt)), [createdAt]);
+  const ttlText = useMemo(() => {
+    if (isPublic && publicAt) return remaining(publicAt, 96); // 4 dias
+    return remaining(createdAt, 24); // privados 24h para download
+  }, [isPublic, publicAt, createdAt]);
 
   async function toggle() {
-    setBusy(true)
-    try {
-      await fetch(`/api/generations/toggle-visibility?id=${p.id}`, { method: 'POST' })
-      location.reload()
-    } finally {
-      setBusy(false)
-    }
+    const res = await fetch("/api/generations/toggle-visibility", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, makePublic: !isPublic }),
+    });
+    if (res.ok) onToggled?.();
   }
-
-  async function download() {
-    if (countdown.isExpired) return
-    setBusy(true)
-    try {
-      const r = await fetch(`/api/generations/download-url?id=${p.id}`)
-      const j = await r.json()
-      if (j?.url) location.href = j.url
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  function reuse() { location.href = `/generate?from=${p.id}` }
 
   return (
-    <div className="group relative rounded-xl overflow-hidden bg-black/20 border border-white/10">
-      <div className="relative w-full pt-[100%]">
-        <Image src={p.thumbUrl || p.imageUrl} alt="" fill className="object-cover" />
+    <div className="group overflow-hidden rounded-xl border border-white/10 bg-black/30">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={thumbUrl || imageUrl} alt="" className="aspect-square w-full object-cover" />
+      <div className="flex items-center justify-between p-2 text-xs text-white/80">
+        <span>{createdFmt}</span>
+        {showPublicTimer && (<span className="rounded bg-white/10 px-2 py-[2px]">{ttlText}</span>)}
       </div>
-
-      {/* Badge de expiração (somente privada) */}
-      {!p.isPublic && (
-        <div className="absolute left-2 top-2 px-2 py-1 rounded-md bg-black/60 border border-white/10 text-[11px] text-white/90">
-          {countdown.isExpired ? 'Expirada' : `Expira em ${countdown.toString()()}`}
-        </div>
-      )}
-
-      <div className="absolute top-2 right-2 flex gap-2">
-        <button
-          onClick={toggle}
-          className="p-2 rounded-lg bg-black/40 border border-white/10 hover:bg-black/60 text-white"
-          aria-label={p.isPublic ? 'Tornar privada' : 'Tornar pública'}
-          title={p.isPublic ? 'Tornar privada' : 'Tornar pública'}
-          disabled={busy}
-        >
-          {p.isPublic ? <IconPrivate/> : <IconPublic/>}
+      <div className="flex items-center gap-2 p-2">
+        <button onClick={toggle} className="rounded-md border border-white/15 px-2 py-1 text-xs text-white/90 hover:bg-white/10">
+          {isPublic ? "Tornar privada" : "Tornar pública"}
         </button>
-
-        {!p.isPublic && (
-          <button
-            onClick={download}
-            className={`p-2 rounded-lg border ${countdown.isExpired ? 'bg-black/20 border-white/10 text-white/30 cursor-not-allowed' : 'bg-black/40 border-white/10 hover:bg-black/60 text-white'}`}
-            aria-label="Baixar (disponível 24h)"
-            title={countdown.isExpired ? 'Link expirado (24h)' : 'Baixar (disponível 24h)'}
-            disabled={busy || countdown.isExpired}
+        {!isPublic && (
+          <a
+            href={`/api/generations/download-url?id=${encodeURIComponent(id)}`}
+            className="ml-auto rounded-md border border-white/15 px-2 py-1 text-xs text-white/90 hover:bg-white/10"
           >
-            <IconDownload/>
-          </button>
+            Download (24h)
+          </a>
         )}
-
-        <button
-          onClick={reuse}
-          className="p-2 rounded-lg bg-black/40 border border-white/10 hover:bg-black/60 text-white"
-          aria-label="Reutilizar"
-          title="Reutilizar configurações"
-          disabled={busy}
+        <a
+          href={`/gerar?from=${encodeURIComponent(id)}`}
+          className="rounded-md border border-white/15 px-2 py-1 text-xs text-white/90 hover:bg-white/10"
         >
-          <IconReuse/>
-        </button>
+          Reutilizar
+        </a>
       </div>
     </div>
-  )
+  );
 }

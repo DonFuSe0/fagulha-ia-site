@@ -1,36 +1,42 @@
-import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-import sharp from 'sharp'
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-export const runtime = 'nodejs'
+import { cookies } from "next/headers";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const runtime = "nodejs";
+
+function j(body: any, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
 export async function POST(req: Request) {
-  const { searchParams } = new URL(req.url)
-  const id = searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 })
-  const supabase = createRouteHandlerClient<any>({ cookies })
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  const { data: g, error } = await supabase.from('generations').select('id, user_id, image_url, is_public, public_since, storage_path, thumb_url').eq('id', id).eq('user_id', user.id).single()
-  if (error || !g) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  const toPublic = !g.is_public
-  const privatePath = (g as any).storage_path as string | null
-  if (!privatePath) return NextResponse.json({ error: 'missing storage path' }, { status: 400 })
-  if (toPublic) {
-    const fileResp = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${privatePath}`, { headers: { Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` } })
-    if (!fileResp.ok) return NextResponse.json({ error: 'fetch private file failed' }, { status: 500 })
-    const buf = Buffer.from(await fileResp.arrayBuffer())
-    const preview = await sharp(buf).resize({ width: 1280, withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer()
-    const publicPath = privatePath.replace('gen-private', 'gen-public')
-    const up = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${publicPath}`, { method: 'PUT', headers: { Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`, 'Content-Type': 'image/jpeg', 'x-upsert': 'true' }, body: preview })
-    if (!up.ok) return NextResponse.json({ error: 'upload preview failed' }, { status: 500 })
-    const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${publicPath.replace('gen-public/', '')}`
-    await supabase.from('generations').update({ is_public: true, public_since: new Date().toISOString(), image_url: publicUrl }).eq('id', id).eq('user_id', user.id)
-  } else {
-    const publicPath = privatePath.replace('gen-private', 'gen-public')
-    await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/${publicPath}`, { method: 'DELETE', headers: { Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` } })
-    await supabase.from('generations').update({ is_public: false, public_since: null }).eq('id', id).eq('user_id', user.id)
-  }
-  return NextResponse.json({ ok: true })
+  const supa = createRouteHandlerClient<any>({ cookies });
+  const { data: { user } } = await supa.auth.getUser();
+  if (!user) return j({ ok: false, error: "unauthorized" }, 401);
+
+  const { id, makePublic } = await req.json().catch(() => ({}));
+  if (!id || typeof makePublic !== "boolean") return j({ ok: false, error: "bad_request" }, 400);
+
+  const nowIso = new Date().toISOString();
+
+  const { data, error } = await supa
+    .from("generations")
+    .update({
+      is_public: makePublic,
+      public_at: makePublic ? nowIso : null,
+    })
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .select("id, is_public, public_at")
+    .single();
+
+  if (error) return j({ ok: false, error: error.message }, 400);
+
+  // Se precisar gerar thumbs/preview, faça isso aqui. 'sharp' pode ser usado opcionalmente:
+  // try { const sharp = (await import("sharp")).default; /* ... */ } catch {}
+
+  return j({ ok: true, data });
 }
