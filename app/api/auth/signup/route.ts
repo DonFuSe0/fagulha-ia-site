@@ -1,4 +1,4 @@
-// Correção: definir emailRedirectTo para link de confirmação
+// Confirmação por e-mail: redireciona para /auth/callback
 import { NextResponse } from 'next/server'
 import { supabaseRoute } from '@/lib/supabase/routeClient'
 
