@@ -2,7 +2,7 @@ name: Purge expired generations (daily)
 
 on:
   schedule:
-    - cron: '0 5 * * *'    # 05:00 UTC
+    - cron: '0 5 * * *'    # 05:00 UTC, uma vez ao dia
   workflow_dispatch:
 
 jobs:

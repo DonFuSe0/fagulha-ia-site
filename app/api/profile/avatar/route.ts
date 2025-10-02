@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
-  // Upload usando Buffer (mais robusto nos runtimes Node)
+  // Buffer é mais estável no runtime node
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 

@@ -20,12 +20,12 @@ export default function UploadAvatarForm() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("zoom", String(zoom));
+      fd.append("zoom", String(zoom)); // (por enquanto só preview; corte real fica para depois, se quiser)
       const res = await fetch("/api/profile/avatar", { method: "POST", body: fd });
       if (!res.ok) throw new Error("upload_failed");
       setOk(true);
       setTimeout(() => window.location.href = "/settings?tab=perfil&toast=avatar_ok", 300);
-    } catch (e:any) {
+    } catch {
       setError("Falha ao enviar avatar.");
     } finally { setLoading(false); }
   }
