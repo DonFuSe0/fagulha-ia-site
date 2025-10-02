@@ -1,70 +1,117 @@
-'use client';
+"use client";
 
-export const dynamic = 'force-dynamic';
+import { useState } from "react";
 
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+export default function SignupPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-function SignupInner() {
-  const params = useSearchParams();
-  const serverError = params.get('error');
-  const serverOk = params.get('ok');
+  // permite ajustar via env; default 6
+  const minLen = Number(process.env.NEXT_PUBLIC_MIN_PASSWORD_LENGTH ?? 6);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (password.length < minLen) {
+      setError(`A senha deve ter pelo menos ${minLen} caracteres.`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, nickname }),
+      });
+
+      // em dev volta JSON; em prod pode redirecionar
+      if (res.headers.get("content-type")?.includes("application/json")) {
+        const data = await res.json();
+        if (!data.ok) {
+          setError(
+            data.error === "email_already_registered"
+              ? "Este e-mail já está cadastrado."
+              : data.error === "weak_password"
+              ? `A senha deve ter pelo menos ${minLen} caracteres.`
+              : "Não foi possível criar sua conta."
+          );
+        } else {
+          window.location.href = "/auth/confirmar-email";
+        }
+      } else if (res.ok) {
+        window.location.href = "/auth/confirmar-email";
+      } else {
+        setError("Não foi possível criar sua conta.");
+      }
+    } catch {
+      setError("Falha de rede. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className="mx-auto max-w-md space-y-4">
-      <h1 className="text-2xl font-bold text-white">Criar conta</h1>
+    <div className="max-w-md mx-auto p-6 text-white">
+      <h1 className="text-2xl font-semibold mb-4">Criar conta</h1>
 
-      {serverOk && (
-        <div className="rounded border border-emerald-700 bg-emerald-900/30 p-3 text-sm text-emerald-200">
-          {serverOk}
-        </div>
-      )}
-      {serverError && (
-        <div className="rounded border border-red-700 bg-red-900/40 p-3 text-sm text-red-200">
-          {serverError}
+      {error && (
+        <div className="mb-3 rounded-lg border border-red-500/40 bg-red-900/20 px-3 py-2 text-red-200 text-sm">
+          {error}
         </div>
       )}
 
-      <form action="/api/auth/signup" method="POST" className="space-y-4">
-        <div>
-          <label htmlFor="email" className="mb-1 block text-sm text-gray-300">E-mail</label>
+      <form onSubmit={onSubmit} className="grid gap-3">
+        <label className="grid gap-1">
+          <span className="text-sm text-white/70">E-mail</span>
           <input
-            id="email"
-            name="email"
             type="email"
             required
-            className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-gray-200 focus:border-brand focus:outline-none"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="rounded-lg border border-white/10 bg-neutral-900/50 px-3 py-2 outline-none focus:border-white/30"
           />
-        </div>
-        <div>
-          <label htmlFor="password" className="mb-1 block text-sm text-gray-300">Senha</label>
+        </label>
+
+        <label className="grid gap-1">
+          <span className="text-sm text-white/70">
+            Senha <span className="text-white/40 text-xs">(mín. {minLen})</span>
+          </span>
           <input
-            id="password"
-            name="password"
             type="password"
             required
-            className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-gray-200 focus:border-brand focus:outline-none"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="rounded-lg border border-white/10 bg-neutral-900/50 px-3 py-2 outline-none focus:border-white/30"
           />
-        </div>
+        </label>
 
-        {/* Turnstile widget */}
-        <div className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''}></div>
+        <label className="grid gap-1">
+          <span className="text-sm text-white/70">Apelido (opcional)</span>
+          <input
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            minLength={3}
+            maxLength={20}
+            pattern="[A-Za-z0-9_]+"
+            className="rounded-lg border border-white/10 bg-neutral-900/50 px-3 py-2 outline-none focus:border-white/30"
+          />
+          <span className="text-xs text-white/40">
+            3–20 caracteres (letras, números ou underline)
+          </span>
+        </label>
 
         <button
-          type="submit"
-          className="w-full rounded bg-brand px-4 py-2 font-medium text-black hover:bg-brand-light"
+          disabled={loading}
+          className="mt-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2 hover:bg-white/15 disabled:opacity-50"
         >
-          Criar conta
+          {loading ? "Criando..." : "Criar conta"}
         </button>
       </form>
     </div>
-  );
-}
-
-export default function SignupPage() {
-  return (
-    <Suspense fallback={<div className="text-sm text-gray-400">Carregando…</div>}>
-      <SignupInner />
-    </Suspense>
   );
 }
