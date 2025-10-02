@@ -2,7 +2,7 @@
 'use client'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { IconGallery, IconSettings, IconLogout } from './icons'
 
 type Props = {
@@ -13,6 +13,8 @@ type Props = {
 }
 
 export default function UserMenu({ isLogged, avatarSrc='/avatars/fire-1.png', nickname='Usuário', credits }: Props) {
+  if (!isLogged) return <Link href="/auth/login" className="text-white/80 hover:text-white text-sm">Entrar</Link>
+
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -25,16 +27,17 @@ export default function UserMenu({ isLogged, avatarSrc='/avatars/fire-1.png', ni
     return () => window.removeEventListener('click', onClick)
   }, [])
 
-  if (!isLogged) {
-    return <Link href="/auth/login" className="text-white/80 hover:text-white text-sm">Entrar</Link>
-  }
-
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen(v => !v)} className="flex items-center gap-2 cursor-pointer select-none rounded-full pl-2 pr-2.5 py-1 hover:bg-white/10">
-        <div className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-white/15">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 cursor-pointer select-none rounded-full pl-2 pr-2.5 py-1 hover:bg-white/10"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <span className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-white/15">
           <Image src={avatarSrc} alt="avatar" fill className="object-cover" />
-        </div>
+        </span>
         <span className="text-white/90 text-sm max-w-[140px] truncate">{nickname}</span>
         {typeof credits === 'number' && (
           <span className="ml-1 inline-flex items-center rounded-full bg-white/10 border border-white/15 px-2 py-[2px] text-[11px] text-white/80">
@@ -45,7 +48,7 @@ export default function UserMenu({ isLogged, avatarSrc='/avatars/fire-1.png', ni
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-56 rounded-xl bg-neutral-900/95 border border-white/10 shadow-xl p-1">
+        <div role="menu" className="absolute right-0 mt-2 w-56 rounded-xl bg-neutral-900/95 border border-white/10 shadow-xl p-1 z-50">
           <Link href="/settings?tab=perfil" className="flex items-center gap-2 px-3 py-2 text-white/90 hover:bg-white/10 rounded-lg">
             <IconSettings /> <span>Editar perfil</span>
           </Link>
