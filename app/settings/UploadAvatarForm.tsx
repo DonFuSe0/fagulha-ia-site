@@ -1,3 +1,4 @@
+
 "use client";
 import { useRef, useState, useMemo } from "react";
 
@@ -20,7 +21,7 @@ export default function UploadAvatarForm() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("zoom", String(zoom)); // (por enquanto só preview; corte real fica para depois, se quiser)
+      fd.append("zoom", String(zoom));
       const res = await fetch("/api/profile/avatar", { method: "POST", body: fd });
       if (!res.ok) throw new Error("upload_failed");
       setOk(true);
