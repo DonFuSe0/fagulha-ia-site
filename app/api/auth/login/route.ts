@@ -1,33 +1,26 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { supabaseRoute } from '@/lib/supabase/routeClient';
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
-function mapErrorToPtBr(message: string): string {
-  const msg = (message || '').toLowerCase();
-  if (msg.includes('email not confirmed')) return 'E-mail não confirmado. Verifique sua caixa de entrada.';
-  if (msg.includes('invalid login credentials')) return 'Credenciais inválidas. Confira e tente novamente.';
-  if (msg.includes('invalid email')) return 'E-mail inválido.';
-  if (msg.includes('password')) return 'Senha inválida.';
-  return 'Não foi possível entrar. Tente novamente.';
-}
+import { NextResponse } from 'next/server'
+import { verifyTurnstileToken } from '@/lib/turnstile/verify'
+import { supabaseRoute } from '@/lib/supabase/routeClient'
 
-export async function POST(req: NextRequest) {
-  const url = new URL(req.url);
-  const form = await req.formData();
-  const email = String(form.get('email') ?? '');
-  const password = String(form.get('password') ?? '');
+export async function POST(req: Request) {
+  let body: any = {}
+  try {
+    body = await req.json()
+  } catch {}
 
-  if (!email || !password) {
-    return NextResponse.redirect(new URL('/auth/login?error=' + encodeURIComponent('Informe e-mail e senha.'), url), 303);
+  const { email, password, turnstileToken } = body ?? {}
+
+  const check = await verifyTurnstileToken(turnstileToken)
+  if (!check.ok) {
+    return NextResponse.json({ ok: false, error: 'captcha_failed', detail: check.error }, { status: 400 })
   }
 
-  const supabase = supabaseRoute();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const supabase = supabaseRoute()
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
-  if (error) {
-    const pt = mapErrorToPtBr(error.message);
-    return NextResponse.redirect(new URL('/auth/login?error=' + encodeURIComponent(pt), url), 303);
-  }
-
-  return NextResponse.redirect(new URL('/dashboard', url), 303);
+  return NextResponse.json({ ok: true })
 }
