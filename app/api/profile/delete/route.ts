@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
   const email = user.email || ''
   const emailHash = crypto.createHash('sha256').update(email.toLowerCase()).digest('hex')
-  const banUntil = new Date(Date.now() + 30*24*3600_000).toISOString()
+  const ban_until: banUntil, = new Date(Date.now() + 30*24*3600_000).toISOString()
   await supaUser.from('account_deletions').insert({ user_id: user.id, email_hash: emailHash, ban_until })
 
   // (opcional) anotar no extrato
