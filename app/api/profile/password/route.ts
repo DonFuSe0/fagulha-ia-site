@@ -1,7 +1,7 @@
 // app/api/profile/password/route.ts
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -12,9 +12,8 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.redirect(new URL('/auth/login', req.url))
 
   const form = await req.formData()
-  const password = (form.get('password') as string || '').trim()
-
-  if (password.length < 8) {
+  const password = (form.get('password') as string | null)?.trim()
+  if (!password || password.length < 8) {
     return NextResponse.redirect(new URL('/settings?tab=seguranca&toast=senha_fail', req.url))
   }
 
