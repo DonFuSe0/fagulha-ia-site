@@ -1,44 +1,22 @@
-
-import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { createClient } from "@supabase/supabase-js";
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-export const runtime = "nodejs";
-
-function redirectTo(req: Request, path: string) {
-  return new Response(null, { status: 302, headers: { Location: new URL(path, req.url).toString() } });
-}
+// Correção: salvar avatar_url após upload
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: Request) {
-  const supa = createRouteHandlerClient<any>({ cookies });
-  const { data: { user } } = await supa.auth.getUser();
-  if (!user) return redirectTo(req, "/auth/login");
+  const supabase = createClient()
+  const formData = await req.formData()
+  const file = formData.get('file') as File
 
-  const form = await req.formData();
-  const file = form.get("file") as File | null;
-  if (!file) return redirectTo(req, "/settings?tab=perfil&toast=avatar_fail");
+  const user = (await supabase.auth.getUser()).data.user
+  if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
-  const ext = file.type.includes("png") ? "png" : file.type.includes("webp") ? "webp" : "jpg";
-  const filename = `${user.id}.${ext}`;
+  const filePath = `avatars/${user.id}-${Date.now()}.png`
+  const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file)
+  if (uploadError) return NextResponse.json({ ok: false, error: uploadError.message }, { status: 400 })
 
-  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+  const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath)
 
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
+  await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
 
-  const { error: upErr } = await admin.storage.from("avatars").upload(filename, buffer, {
-    contentType: file.type,
-    upsert: true,
-  });
-  if (upErr) return redirectTo(req, "/settings?tab=perfil&toast=avatar_fail");
-
-  const { data: pub } = admin.storage.from("avatars").getPublicUrl(filename);
-  const publicUrl = pub.publicUrl;
-
-  const { error: upProfErr } = await supa.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
-  if (upProfErr) return redirectTo(req, "/settings?tab=perfil&toast=avatar_fail");
-
-  return redirectTo(req, "/settings?tab=perfil&toast=avatar_ok");
+  return NextResponse.json({ ok: true, avatar_url: publicUrl })
 }
