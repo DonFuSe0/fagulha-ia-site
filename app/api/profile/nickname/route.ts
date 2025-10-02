@@ -1,13 +1,14 @@
-// Correção: update persistente de nickname
+// Correção: usar supabaseRoute() com policy RLS para update do próprio perfil
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { supabaseRoute } from '@/lib/supabase/routeClient'
 
 export async function POST(req: Request) {
-  const supabase = createClient()
+  const supabase = supabaseRoute()
   const body = await req.json()
   const { nickname } = body
 
-  const user = (await supabase.auth.getUser()).data.user
+  const { data: userRes } = await supabase.auth.getUser()
+  const user = userRes?.user
   if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
   const { error } = await supabase.from('profiles').update({ nickname }).eq('id', user.id)

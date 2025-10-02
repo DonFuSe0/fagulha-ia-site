@@ -1,16 +1,19 @@
-// Correção: exibir tokens iniciais sempre
+// Correção: usar supabaseBrowser no cliente
 'use client'
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { supabaseBrowser } from '@/lib/supabase/browserClient'
 
 export default function TokensHistory() {
-  const supabase = createClient()
+  const supabase = supabaseBrowser
   const [tokens, setTokens] = useState<any[]>([])
 
   useEffect(() => {
     const fetchTokens = async () => {
-      const { data } = await supabase.from('tokens').select('*').order('created_at', { ascending: false })
-      if (data) setTokens(data)
+      const { data, error } = await supabase
+        .from('tokens')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (!error && data) setTokens(data)
     }
     fetchTokens()
   }, [])
