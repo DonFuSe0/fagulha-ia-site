@@ -28,10 +28,13 @@ export default async function AppHeader() {
       supabase.from('profiles').select('avatar_url, nickname, credits').eq('id', user.id).single(),
       supabase.rpc('current_user_credits')
     ])
-    avatarUrl = profile?.avatar_url ?? null
     nickname = profile?.nickname ?? (user.email?.split('@')[0] ?? null)
+    const rawAvatar = profile?.avatar_url ?? null
+    avatarUrl = rawAvatar ? `${rawAvatar}${rawAvatar.includes('?') ? '&' : '?'}v=${Date.now()}` : null
     credits = (typeof rpc === 'number' ? rpc : null) ?? (profile?.credits ?? null)
   }
+
+  const avatarSrc = avatarUrl || (user ? fallbackAvatarFor(user.id) : '/avatars/fire-1.png')
 
   return (
     <header className="sticky top-0 z-40 bg-[linear-gradient(180deg,rgba(6,6,6,.7),rgba(6,6,6,.5))] backdrop-blur border-b border-white/10">
@@ -47,7 +50,7 @@ export default async function AppHeader() {
               <button className="flex items-center gap-2 cursor-pointer select-none rounded-full pl-2 pr-2.5 py-1 hover:bg-white/10">
                 <div className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-white/15">
                   <Image
-                    src={avatarUrl || fallbackAvatarFor(user.id)}
+                    src={avatarSrc}
                     alt="avatar"
                     fill
                     className="object-cover"
@@ -55,7 +58,7 @@ export default async function AppHeader() {
                 </div>
                 <span className="text-white/90 text-sm max-w-[140px] truncate">{nickname ?? 'Usuário'}</span>
                 {typeof credits === 'number' && (
-                  <span className="ml-1 inline-flex items-center rounded-full bg-white/10 border border-white/15 px-2 py-[2px] text:[11px] text-white/80">
+                  <span className="ml-1 inline-flex items-center rounded-full bg-white/10 border border-white/15 px-2 py-[2px] text-[11px] text-white/80">
                     {credits} <span className="ml-1 text-white/50">tok</span>
                   </span>
                 )}
