@@ -11,7 +11,7 @@ type Props = {
   publicAt?: string | null
   showDownload?: boolean
   onToggled?: () => void
-  showPublicTimer?: boolean // novo: mostra contador também no público
+  showPublicTimer?: boolean
 }
 
 function msUntil(dateISO: string) {
@@ -82,9 +82,7 @@ export default function GalleryCard({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt="" className="w-full h-full object-cover transition group-hover:scale-[1.02]" />
 
-      {/* Ações */}
       <div className="absolute top-2 right-2 flex items-center gap-2">
-        {/* Toggle visibilidade */}
         <button
           title={isPublic ? 'Tornar privado' : 'Tornar público'}
           onClick={() => togglePublic(!isPublic)}
@@ -99,7 +97,6 @@ export default function GalleryCard({
           </svg>
         </button>
 
-        {/* Download somente no privado e com tempo disponível */}
         {canDownload && (
           <a
             href={imageUrl}
@@ -113,7 +110,6 @@ export default function GalleryCard({
           </a>
         )}
 
-        {/* Reutilizar */}
         <a
           href={`/gerar?from=${id}`}
           title="Reutilizar ajustes"
@@ -125,10 +121,6 @@ export default function GalleryCard({
         </a>
       </div>
 
-      {/* Badge do timer:
-          - privado: sempre mostra (expira em 24h de created_at)
-          - público: agora também mostra (expira em 4d de public_at) se showPublicTimer = true
-      */}
       {(!isPublic || showPublicTimer) && (
         <div className="absolute bottom-2 left-2">
           <span className="px-2 py-1 rounded-full bg-black/40 border border-white/15 text-[11px] text-white/90 backdrop-blur">

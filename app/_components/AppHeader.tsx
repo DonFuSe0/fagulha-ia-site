@@ -1,9 +1,9 @@
 // app/_components/AppHeader.tsx
-import Image from 'next/image'
 import Link from 'next/link'
+import Image from 'next/image'
 import { cookies } from 'next/headers'
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { IconGallery, IconSettings, IconLogout } from '../_components/icons'
+import UserMenu from './UserMenu'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -34,7 +34,7 @@ export default async function AppHeader() {
     credits = (typeof rpc === 'number' ? rpc : null) ?? (profile?.credits ?? null)
   }
 
-  const avatarSrc = avatarUrl || (user ? fallbackAvatarFor(user.id) : '/avatars/fire-1.png')
+  const avatarSrc = avatarUrl || (user ? fallbackAvatarFor(user!.id) : '/avatars/fire-1.png')
 
   return (
     <header className="sticky top-0 z-40 bg-[linear-gradient(180deg,rgba(6,6,6,.7),rgba(6,6,6,.5))] backdrop-blur border-b border-white/10">
@@ -45,50 +45,12 @@ export default async function AppHeader() {
           <Link href="/gallery" className="text-white/80 hover:text-white text-sm">Galeria</Link>
           <Link href="/dashboard" className="text-white/80 hover:text-white text-sm">Dashboard</Link>
 
-          {user ? (
-            <details className="relative">
-              <summary className="list-none flex items-center gap-2 cursor-pointer select-none rounded-full pl-2 pr-2.5 py-1 hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30">
-                <div className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-white/15">
-                  <Image
-                    src={avatarSrc}
-                    alt="avatar"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <span className="text-white/90 text-sm max-w-[140px] truncate">{nickname ?? 'Usuário'}</span>
-                {typeof credits === 'number' && (
-                  <span className="ml-1 inline-flex items-center rounded-full bg-white/10 border border-white/15 px-2 py-[2px] text-[11px] text-white/80">
-                    {credits} <span className="ml-1 text-white/50">tokens</span>
-                  </span>
-                )}
-                <svg viewBox="0 0 24 24" className="h-4 w-4 text-white/60"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
-              </summary>
-
-              <div className="absolute right-0 mt-2 w-56 rounded-xl bg-neutral-900/95 border border-white/10 shadow-xl p-1">
-                <Link href="/settings?tab=perfil" className="flex items-center gap-2 px-3 py-2 text-white/90 hover:bg-white/10 rounded-lg">
-                  <IconSettings /> <span>Editar perfil</span>
-                </Link>
-                <Link href="/settings?tab=seguranca" className="flex items-center gap-2 px-3 py-2 text-white/90 hover:bg-white/10 rounded-lg">
-                  <IconSettings /> <span>Alterar senha</span>
-                </Link>
-                <Link href="/settings?tab=tokens" className="flex items-center gap-2 px-3 py-2 text-white/90 hover:bg-white/10 rounded-lg">
-                  <IconSettings /> <span>Tokens</span>
-                </Link>
-                <Link href="/gallery" className="flex items-center gap-2 px-3 py-2 text-white/90 hover:bg-white/10 rounded-lg">
-                  <IconGallery /> <span>Minha galeria</span>
-                </Link>
-                <div className="h-px bg-white/10 my-1" />
-                <form action="/api/auth/logout" method="POST">
-                  <button className="w-full flex items-center gap-2 px-3 py-2 text-red-300 hover:bg-white/10 rounded-lg">
-                    <IconLogout /> <span>Sair</span>
-                  </button>
-                </form>
-              </div>
-            </details>
-          ) : (
-            <Link href="/auth/login" className="text-white/80 hover:text-white text-sm">Entrar</Link>
-          )}
+          <UserMenu
+            isLogged={!!user}
+            avatarSrc={avatarSrc}
+            nickname={nickname ?? undefined}
+            credits={typeof credits === 'number' ? credits : undefined}
+          />
         </nav>
       </div>
     </header>
