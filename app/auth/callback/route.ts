@@ -1,29 +1,27 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { supabaseRoute } from '@/lib/supabase/routeClient';
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 
-function toPtBr(msg?: string) {
-  const m = (msg || '').toLowerCase();
-  if (!msg) return 'Não foi possível concluir a autenticação.';
-  if (m.includes('invalid_grant') || m.includes('invalid') || m.includes('code')) return 'Código de autenticação inválido ou expirado.';
-  if (m.includes('session')) return 'Não foi possível criar a sessão.';
-  return 'Não foi possível concluir a autenticação.';
-}
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const runtime = "nodejs";
 
-export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-  const code = url.searchParams.get('code');
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const code = url.searchParams.get("code");
+    const supabase = createRouteHandlerClient<any>({ cookies });
 
-  if (!code) {
-    return NextResponse.redirect(new URL('/auth/login?error=' + encodeURIComponent('Código de autenticação ausente.'), url));
+    if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) {
+        console.error("callback_exchange_error", error.message);
+        return NextResponse.redirect(new URL("/auth/login?err=callback", req.url));
+      }
+    }
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  } catch (e: any) {
+    console.error("callback_500", e?.message || e);
+    return NextResponse.redirect(new URL("/auth/login?err=callback500", req.url));
   }
-
-  const supabase = supabaseRoute();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-  if (error) {
-    return NextResponse.redirect(new URL('/auth/login?error=' + encodeURIComponent(toPtBr(error.message)), url));
-  }
-
-  return NextResponse.redirect(new URL('/bemvindo', url));
 }
