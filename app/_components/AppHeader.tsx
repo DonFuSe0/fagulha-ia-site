@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import Image from "next/image";
 import { cookies } from "next/headers";
@@ -22,18 +23,19 @@ export default async function AppHeader() {
   let credits: number | null = null;
 
   if (user) {
-    const [{ data: profile }, { data: rpc }] = await Promise.all([
-      supabase.from("profiles").select("avatar_url, nickname, credits").eq("id", user.id).maybeSingle(),
-      supabase.rpc("current_user_credits")
-    ]);
-    // nickname precedence: profiles.nickname > user.user_metadata.nickname > email prefix
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("avatar_url, nickname, credits")
+      .eq("id", user.id)
+      .maybeSingle();
+
     const metaNick = (user.user_metadata && typeof user.user_metadata.nickname === "string")
       ? String(user.user_metadata.nickname) : null;
-    nickname = profile?.nickname ?? metaNick ?? (user.email?.split("@")[0] ?? null);
 
+    nickname = profile?.nickname ?? metaNick ?? (user.email?.split("@")[0] ?? null);
     const rawAvatar = profile?.avatar_url ?? null;
     avatarUrl = rawAvatar ? `${rawAvatar}${rawAvatar.includes("?") ? "&" : "?"}v=${Date.now()}` : null;
-    credits = (typeof rpc === "number" ? rpc : null) ?? (profile?.credits ?? null);
+    credits = profile?.credits ?? null;
   }
 
   const avatarSrc = user ? (avatarUrl || fallbackAvatarFor(user.id)) : "/avatars/fire-1.png";

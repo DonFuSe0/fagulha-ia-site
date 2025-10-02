@@ -1,3 +1,4 @@
+
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { createClient } from "@supabase/supabase-js";
@@ -24,7 +25,6 @@ export async function POST(req: Request) {
 
   const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
-  // Upload usando Buffer (mais robusto nos runtimes Node)
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 

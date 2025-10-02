@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
     const ip = clientIpFrom(req);
     const ipHash = crypto.createHash("sha256").update(ip).digest("hex");
 
-    // Ban por email (30 dias pós exclusão)
+    // Ban por email (30 dias após exclusão)
     const { data: del } = await admin
       .from("account_deletions")
       .select("id, ban_until")
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
       .maybeSingle();
     if (guard) return j({ ok:false, error:"too_many_signups_from_ip" }, 429);
 
-    // Processo de signup
+    // SignUp
     const callbackUrl = new URL("/auth/callback", req.url).toString();
     const { data, error } = await anon.auth.signUp({
       email, password,
@@ -85,14 +86,13 @@ export async function POST(req: Request) {
 
     const userId = data.user?.id;
     if (userId && nickname && nickname.trim()) {
-      // grava nickname no profiles (admin), útil mesmo antes da confirmação de e-mail
       const { data: prof } = await admin.from("profiles").select("id, nickname").eq("id", userId).maybeSingle();
       if (!prof || !prof.nickname) {
         await admin.from("profiles").update({ nickname: nickname.trim() }).eq("id", userId);
       }
     }
 
-    // Define bloqueio de IP por 30 dias
+    // Guarda IP por 30 dias
     const blockForMs = 30 * 24 * 60 * 60 * 1000;
     const blockedUntil = new Date(Date.now() + blockForMs).toISOString();
     await admin.from("signup_guards").upsert({ ip_hash: ipHash, blocked_until: blockedUntil });

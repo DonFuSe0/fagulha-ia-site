@@ -1,3 +1,4 @@
+
 "use client";
 import { useRef, useState, useMemo } from "react";
 
@@ -25,7 +26,7 @@ export default function UploadAvatarForm() {
       if (!res.ok) throw new Error("upload_failed");
       setOk(true);
       setTimeout(() => window.location.href = "/settings?tab=perfil&toast=avatar_ok", 300);
-    } catch (e:any) {
+    } catch {
       setError("Falha ao enviar avatar.");
     } finally { setLoading(false); }
   }
