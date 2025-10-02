@@ -79,7 +79,6 @@ export default function SignupPage() {
           />
         </div>
 
-        {/* TURNSTILE */}
         <div className="pt-2">
           <Turnstile onVerify={(t) => setTurnstileToken(t)} />
           <p className="text-xs opacity-70 mt-1">Protegido por Cloudflare Turnstile</p>
