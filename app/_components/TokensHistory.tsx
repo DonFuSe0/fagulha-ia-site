@@ -1,52 +1,32 @@
+// Correção: usar supabaseBrowser no cliente
+'use client'
+import { useEffect, useState } from 'react'
+import { supabaseBrowser } from '@/lib/supabase/browserClient'
 
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+export default function TokensHistory() {
+  const supabase = supabaseBrowser
+  const [tokens, setTokens] = useState<any[]>([])
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
-export default async function TokensHistory() {
-  const supabase = createServerComponentClient<any>({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data: items, error } = await supabase
-    .from("tokens")
-    .select("id, amount, description, created_at, type")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(30);
-
-  if (error) {
-    return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-        <div className="mb-2 text-sm font-medium text-red-300">Falha ao carregar histórico de tokens.</div>
-        <pre className="text-xs text-white/50">{error.message}</pre>
-      </div>
-    );
-  }
+  useEffect(() => {
+    const fetchTokens = async () => {
+      const { data, error } = await supabase
+        .from('tokens')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (!error && data) setTokens(data)
+    }
+    fetchTokens()
+  }, [])
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="mb-3 text-sm font-medium text-white/90">Histórico de tokens</div>
-      <div className="grid gap-2">
-        {(items ?? []).map((t) => (
-          <div key={t.id} className="flex items-center justify-between rounded-lg border border-white/10 bg-black/10 px-3 py-2">
-            <div className="flex min-w-0 flex-col">
-              <span className="truncate text-sm text-white/90">{t.description ?? "Movimentação"}</span>
-              <span className="text-xs text-white/50">
-                {new Date(t.created_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}
-              </span>
-            </div>
-            <div className={`text-sm font-semibold ${t.amount >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-              {t.amount >= 0 ? "+" : ""}{t.amount}
-            </div>
-          </div>
+    <div className="space-y-2">
+      <h2 className="font-semibold">Histórico de Tokens</h2>
+      {tokens.length === 0 && <p>Nenhum crédito encontrado.</p>}
+      <ul className="text-sm">
+        {tokens.map(t => (
+          <li key={t.id}>{t.amount} — {t.description}</li>
         ))}
-        {(items ?? []).length === 0 ? (
-          <div className="text-sm text-white/60">Sem movimentações.</div>
-        ) : null}
-      </div>
+      </ul>
     </div>
-  );
+  )
 }
