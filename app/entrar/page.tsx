@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabaseBrowser } from '@/lib/supabase/browserClient'
 
 export default function EntrarPage() {
@@ -55,9 +56,11 @@ export default function EntrarPage() {
         >
           {loading ? 'Entrando...' : 'Entrar'}
         </button>
-        <p className="text-xs opacity-70">
-          Ainda não tem conta? Cadastre-se pelo fluxo de geração ou cadastro.
-        </p>
+
+        <div className="pt-2 text-xs opacity-80">
+          <span>Ainda não tem conta? </span>
+          <Link href="/auth/signup" className="underline hover:opacity-90">Criar cadastro</Link>
+        </div>
       </form>
     </main>
   )
