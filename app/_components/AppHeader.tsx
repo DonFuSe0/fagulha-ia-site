@@ -10,7 +10,6 @@ export default function AppHeader() {
   const pathname = usePathname()
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Fetch auth session (client)
   useEffect(() => {
     const run = async () => {
       const { data } = await supabaseBrowser.auth.getSession()
@@ -19,10 +18,8 @@ export default function AppHeader() {
     run()
   }, [])
 
-  // Close when route changes
   useEffect(() => { setOpen(false) }, [pathname])
 
-  // Close on outside click & ESC
   useEffect(() => {
     function onDocClick(e: MouseEvent) {
       if (!menuRef.current) return
@@ -45,19 +42,16 @@ export default function AppHeader() {
     <header className="flex items-center gap-4 p-4 border-b border-white/10">
       <Link href="/" className="font-bold">Fagulha</Link>
 
-      {/* Right side nav */}
       <div className="ml-auto flex items-center gap-2">
-        {/* Always visible links (Entrar -> Perfil quando logado) */}
         <nav className="flex items-center gap-2">
           {userId
             ? <Link href="/dashboard" className="px-3 py-2 rounded-lg hover:bg-white/10">Perfil</Link>
-            : <Link href="/entrar"    className="px-3 py-2 rounded-lg hover:bg-white/10">Entrar</Link>
+            : <Link href="/auth/login" className="px-3 py-2 rounded-lg hover:bg-white/10">Entrar</Link>
           }
           <Link href="/explorar" className="px-3 py-2 rounded-lg hover:bg-white/10">Explorar</Link>
-          <Link href="/planos"   className="px-3 py-2 rounded-lg hover:bg-white/10">Planos</Link>
+          <Link href="/planos" className="px-3 py-2 rounded-lg hover:bg-white/10">Planos</Link>
         </nav>
 
-        {/* Dropdown only when logged-in */}
         {userId && (
           <div className="relative" ref={menuRef}>
             <button
