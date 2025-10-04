@@ -1,27 +1,16 @@
-// app/layout.tsx
-import { headers } from 'next/headers'
-import Script from 'next/script'
+import { ReactNode } from 'react'
 
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic' // ou remova se não usar
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const nonce = headers().get('x-nonce') ?? ''
-
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
       <head>
-        {/* outros <meta> etc */}
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* adicione seus outros metadados / links / favicon aqui */}
       </head>
-      <body>
-        {/* define nonce para Webpack / bundles */}
-        <Script
-          id="webpack-nonce"
-          nonce={nonce}
-          strategy="afterInteractive"
-        >
-          {`__webpack_nonce__ = ${JSON.stringify(nonce)}`}
-        </Script>
-
+      <body className="bg-black text-white">
         {children}
       </body>
     </html>
