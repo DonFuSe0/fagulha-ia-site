@@ -1,10 +1,27 @@
-// app/lib/supabase/server.ts
-// Fix: remove 'use server' so this helper is NOT treated as a Server Action.
-// It can be sync; Next 14 only requires async when it's a Server Action.
+// lib/supabase/server.ts
 import { cookies } from 'next/headers'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-export function getServerClient() {
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string
+const key =
+  (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as string) ??
+  (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string)
+
+export function createClient(): SupabaseClient {
   const cookieStore = cookies()
-  return createServerComponentClient<any>({ cookies: () => cookieStore })
+
+  return createServerClient(url, key, {
+    cookies: {
+      get(name: string) {
+        return cookieStore.get(name)?.value
+      },
+      set(name: string, value: string, options: CookieOptions) {
+        cookieStore.set({ name, value, ...options })
+      },
+      remove(name: string, options: CookieOptions) {
+        cookieStore.set({ name, value: '', ...options })
+      }
+    }
+  })
 }

@@ -1,9 +1,11 @@
+// app/_components/NavBarClient.tsx
 'use client'
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import UserDropdown from './UserDropdown'
-import { createClient } from '@/lib/supabase/client' // usa o seu helper atual
+import { createClient } from '@/lib/supabase/client'
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js'
 
 export default function NavBarClient() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
@@ -12,26 +14,28 @@ export default function NavBarClient() {
   useEffect(() => {
     let mounted = true
 
-    // sessão inicial
-    supabase.auth.getSession().then(({ data }) => {
+    ;(async () => {
+      const { data } = await supabase.auth.getSession()
       if (!mounted) return
-      setIsLoggedIn(!!data.session)
-    })
+      setIsLoggedIn(Boolean(data.session))
+    })()
 
-    // escuta mudanças de auth
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsLoggedIn(!!session)
-    })
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        setIsLoggedIn(Boolean(session))
+      }
+    )
 
     return () => {
       mounted = false
-      sub.subscription.unsubscribe()
+      subscription.unsubscribe()
     }
   }, [supabase])
 
   return (
     <nav className="ml-auto flex items-center gap-5">
-      {/* Sempre visíveis quando deslogado */}
       {!isLoggedIn && (
         <>
           <Link
@@ -58,7 +62,6 @@ export default function NavBarClient() {
         </>
       )}
 
-      {/* Quando logado: Explorar, Planos e Dropdown Perfil */}
       {isLoggedIn && (
         <>
           <Link
