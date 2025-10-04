@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // suas outras config aqui ...
   async headers() {
     return [
       {

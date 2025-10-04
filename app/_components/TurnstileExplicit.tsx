@@ -1,4 +1,3 @@
-// app/_components/TurnstileExplicit.tsx
 'use client'
 import { useEffect, useRef, useState } from 'react'
 
@@ -17,7 +16,7 @@ type Props = {
 export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props) {
   const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const [scriptLoaded, setScriptLoaded] = useState<boolean>(false)
+  const [scriptLoaded, setScriptLoaded] = useState(false)
 
   useEffect(() => {
     if (!sitekey) {
@@ -30,13 +29,12 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
     }
     const script = document.createElement('script')
     script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-    // não colocar async/defer (para que turnstile.ready funcione corretamente)
     document.head.appendChild(script)
     script.onload = () => {
       setScriptLoaded(true)
     }
     script.onerror = () => {
-      console.error('Falha ao carregar script Turnstile')
+      console.error('Falha ao carregar Turnstile script')
       onError?.('load-failed')
     }
   }, [sitekey, onError])
@@ -45,14 +43,24 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
     if (!scriptLoaded) return
     if (!containerRef.current) return
     if (!window.turnstile) {
-      console.warn('window.turnstile não está definido')
+      console.warn('window.turnstile ainda não definido')
       return
     }
 
-    // limpar container existente
-    containerRef.current.innerHTML = ''
+    const container = containerRef.current
 
-    window.turnstile.render(containerRef.current, {
+    // se container invisível, não renderiza ainda
+    if (container.offsetParent === null) {
+      return
+    }
+
+    // evitar render múltiplo
+    if (container.dataset.turnstileRendered === 'true') {
+      return
+    }
+    container.dataset.turnstileRendered = 'true'
+
+    window.turnstile.render(container, {
       sitekey,
       theme: 'auto',
       callback: (token: string) => {
