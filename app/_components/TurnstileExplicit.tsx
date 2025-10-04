@@ -3,18 +3,13 @@ import { useEffect, useRef } from 'react'
 
 declare global {
   interface Window {
-    turnstile?: {
-      render: (el: HTMLElement | string, opts: any) => string
-      reset: (id: string) => void
-      remove: (id: string) => void
-      getResponse: (id: string) => string | undefined
-    }
+    turnstile?: any
   }
 }
 
 type Props = {
   onVerify: (token: string) => void
-  onError?: (code?: string) => void
+  onError?: (err?: any) => void
   onExpire?: () => void
 }
 
@@ -22,48 +17,51 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
   const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
   const containerRef = useRef<HTMLDivElement | null>(null)
   const widgetIdRef = useRef<string | null>(null)
-  const renderedRef = useRef(false)
+  const scriptInjectedRef = useRef<boolean>(false)
 
   useEffect(() => {
-    if (!sitekey || !containerRef.current) return
+    if (!sitekey) return
 
-    let canceled = false
-    const tryRender = () => {
-      if (canceled || renderedRef.current) return
-      if (!window.turnstile) {
-        // Script ainda não carregou — tenta novamente em seguida
-        setTimeout(tryRender, 150)
-        return
-      }
-      // Renderiza apenas UMA vez por montagem
-      renderedRef.current = true
-      widgetIdRef.current = window.turnstile.render(containerRef.current!, {
+    // injeta script apenas uma vez
+    if (!scriptInjectedRef.current) {
+      const s = document.createElement('script')
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+      s.async = true
+      s.defer = true
+      document.head.appendChild(s)
+      scriptInjectedRef.current = true
+    }
+
+    const render = () => {
+      if (!containerRef.current || !window.turnstile) return
+      // limpa widget anterior se existir
+      containerRef.current.innerHTML = ''
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey,
         theme: 'auto',
-        retry: 'auto', // mude para 'never' se quiser evitar tentativas automáticas
-        'error-callback': (code?: string) => onError?.(code),
-        'expired-callback': () => onExpire?.(),
         callback: (token: string) => onVerify(token),
+        'error-callback': () => onError?.(),
+        'expired-callback': () => {
+          onExpire?.()
+          window.turnstile?.reset(widgetIdRef.current || undefined)
+        },
       })
     }
 
-    tryRender()
-
-    // Cleanup remove o widget para evitar múltiplas instâncias/listeners
-    return () => {
-      canceled = true
-      if (widgetIdRef.current && window.turnstile) {
-        try {
-          window.turnstile.remove(widgetIdRef.current)
-        } catch {}
+    const id = setInterval(() => {
+      if (window.turnstile) {
+        clearInterval(id)
+        window.turnstile.ready(render)
       }
-    }
-  }, [sitekey, onVerify, onError, onExpire])
+    }, 50)
+
+    return () => clearInterval(id)
+  }, [onVerify, onError, onExpire, sitekey])
 
   if (!sitekey) {
     return (
       <div className="text-xs text-red-400">
-        Falta configurar <code>NEXT_PUBLIC_TURNSTILE_SITE_KEY</code> na Vercel e fazer deploy.
+        Falta configurar <code>NEXT_PUBLIC_TURNSTILE_SITE_KEY</code> na Vercel e redeploy.
       </div>
     )
   }

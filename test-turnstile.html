@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Cloudflare Turnstile</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            background-color: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background-color: #333;
+            color: #fff;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #f97316;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
+            background-color: #ea580c;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #065f46;
+            border: 1px solid #10b981;
+        }
+        .error {
+            background-color: #7f1d1d;
+            border: 1px solid #ef4444;
+        }
+        .info {
+            background-color: #1e3a8a;
+            border: 1px solid #3b82f6;
+        }
+        #turnstile-container {
+            margin: 20px 0;
+            min-height: 65px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #9ca3af;
+        }
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #374151;
+            border-top: 2px solid #f97316;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Teste do Cloudflare Turnstile</h1>
+        <p>Este é um teste para verificar se o Cloudflare Turnstile está funcionando corretamente.</p>
+        
+        <form id="test-form">
+            <div class="form-group">
+                <label for="email">E-mail:</label>
+                <input type="email" id="email" name="email" required placeholder="teste@exemplo.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" name="password" required placeholder="••••••••">
+            </div>
+            
+            <div id="turnstile-container">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <span>Carregando verificação de segurança...</span>
+                </div>
+            </div>
+            
+            <button type="submit" id="submit-btn" disabled>Testar Login</button>
+        </form>
+        
+        <div id="status"></div>
+    </div>
+
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+    <script>
+        let turnstileToken = null;
+        let widgetId = null;
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        function updateSubmitButton() {
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = !turnstileToken;
+        }
+
+        function onTurnstileLoad() {
+            console.log('Turnstile carregado com sucesso');
+            
+            const container = document.getElementById('turnstile-container');
+            container.innerHTML = '';
+            
+            try {
+                widgetId = window.turnstile.render(container, {
+                    sitekey: '1x00000000000000000000AA', // Site key de teste do Cloudflare
+                    theme: 'dark',
+                    callback: function(token) {
+                        console.log('Token recebido:', token);
+                        turnstileToken = token;
+                        updateSubmitButton();
+                        showStatus('✅ Verificação de segurança concluída com sucesso!', 'success');
+                    },
+                    'error-callback': function(error) {
+                        console.error('Erro no Turnstile:', error);
+                        turnstileToken = null;
+                        updateSubmitButton();
+                        showStatus('❌ Erro na verificação de segurança. Tente recarregar a página.', 'error');
+                    },
+                    'expired-callback': function() {
+                        console.log('Token expirado');
+                        turnstileToken = null;
+                        updateSubmitButton();
+                        showStatus('⏰ Verificação expirada. Complete novamente a verificação.', 'error');
+                        if (widgetId) {
+                            window.turnstile.reset(widgetId);
+                        }
+                    }
+                });
+                
+                showStatus('🔄 Aguardando verificação de segurança...', 'info');
+            } catch (error) {
+                console.error('Erro ao renderizar Turnstile:', error);
+                showStatus('❌ Erro ao carregar verificação de segurança.', 'error');
+            }
+        }
+
+        function waitForTurnstile() {
+            if (window.turnstile) {
+                window.turnstile.ready(onTurnstileLoad);
+            } else {
+                setTimeout(waitForTurnstile, 100);
+            }
+        }
+
+        document.getElementById('test-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!turnstileToken) {
+                showStatus('❌ Complete a verificação de segurança antes de continuar.', 'error');
+                return;
+            }
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            showStatus(`✅ Formulário enviado com sucesso!<br>
+                       📧 E-mail: ${email}<br>
+                       🔐 Senha: ${'*'.repeat(password.length)}<br>
+                       🛡️ Token Turnstile: ${turnstileToken.substring(0, 20)}...`, 'success');
+        });
+
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            showStatus('🔄 Carregando Cloudflare Turnstile...', 'info');
+            waitForTurnstile();
+        });
+
+        // Detectar erros de CSP
+        window.addEventListener('securitypolicyviolation', function(e) {
+            console.error('Violação de CSP detectada:', e);
+            showStatus(`❌ Erro de Content Security Policy: ${e.violatedDirective}`, 'error');
+        });
+    </script>
+</body>
+</html>

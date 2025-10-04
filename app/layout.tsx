@@ -15,11 +15,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR">
       <head>
-        {/* Cloudflare Turnstile - explicit render mode */}
-        <script
-          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
-          defer
-        ></script>
+        {/* Meta tags for better compatibility */}
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body className="min-h-screen bg-gray-950 text-gray-200">
         <AppHeader />
