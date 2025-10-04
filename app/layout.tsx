@@ -1,17 +1,26 @@
-import { ReactNode } from 'react'
+// app/layout.tsx
+import { headers } from 'next/headers'
+import Script from 'next/script'
 
-export const dynamic = 'force-dynamic' // ou remova se não usar
+export const dynamic = 'force-dynamic'
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = headers().get('x-nonce') || ''
+
   return (
     <html lang="pt-BR">
       <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        {/* adicione seus outros metadados / links / favicon aqui */}
+        {/* seu conteúdo */}
       </head>
-      <body className="bg-black text-white">
+      <body>
+        {/* se você precisa inserir algum script inline seu, faça: */}
+        <Script id="webpack-nonce" nonce={nonce} strategy="afterInteractive">
+          {`__webpack_nonce__ = ${JSON.stringify(nonce)}`}
+        </Script>
+
         {children}
+
+        {/* caso precise outros scripts News, Use nonce */}
       </body>
     </html>
   )
