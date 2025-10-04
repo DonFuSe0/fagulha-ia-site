@@ -1,40 +1,30 @@
-import type { Metadata } from 'next'
-import type { ReactNode } from 'react'
-import Link from 'next/link'
-import { headers } from 'next/headers'
-import './globals.css'
-import NavBarClient from './_components/NavBarClient'
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+import './globals.css';
+import type { Metadata } from 'next';
+import React from 'react';
+import AppHeader from '@/app/_components/AppHeader';
 
 export const metadata: Metadata = {
   title: 'Fagulha IA',
-  description: 'Gerador e galeria – Fagulha IA',
-}
+  description: 'Gere imagens com IA — rápido e simples.',
+};
 
-export default function RootLayout({ children }: { children: ReactNode }) {
-  // Captura a nonce enviada pelo middleware e injeta como <meta>
-  const nonce = headers().get('x-nonce') ?? undefined
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
       <head>
-        {nonce ? <meta name="csp-nonce" content={nonce} /> : null}
+        {/* Cloudflare Turnstile - explicit render mode */}
+        <script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          defer
+        ></script>
       </head>
-      <body className="min-h-screen flex flex-col bg-black text-white antialiased">
-        <header className="w-full">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 flex items-center">
-            <div className="mr-auto">
-              <Link href="/" className="text-lg font-semibold tracking-wide hover:opacity-80 transition" prefetch>
-                Fagulha<span className="text-orange-400">IA</span>
-              </Link>
-            </div>
-            <NavBarClient />
-          </div>
-        </header>
-        <main className="flex-1">{children}</main>
-        <footer className="w-full py-6 text-center text-xs text-white/60">
-          © {new Date().getFullYear()} Fagulha IA
-        </footer>
+      <body className="min-h-screen bg-gray-950 text-gray-200">
+        <AppHeader />
+        <main className="mx-auto max-w-6xl px-4 py-10">{children}</main>
       </body>
     </html>
-  )
+  );
 }
