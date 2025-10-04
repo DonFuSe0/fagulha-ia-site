@@ -11,14 +11,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-BR">
       <head>
-        {/* outros meta/tags */}
+        {/* outros meta tags */}
       </head>
       <body>
-        {/* script para definir nonce nos bundles / webpack */}
         <Script id="webpack-nonce" nonce={nonce} strategy="afterInteractive">
           {`__webpack_nonce__ = ${JSON.stringify(nonce)}`}
         </Script>
-
         {children}
       </body>
     </html>
