@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 declare global {
   interface Window {
@@ -18,47 +18,50 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
   const containerRef = useRef<HTMLDivElement | null>(null)
   const widgetIdRef = useRef<string | null>(null)
   const scriptInjectedRef = useRef<boolean>(false)
-  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     if (!sitekey) return
 
+    // injeta script apenas uma vez
     if (!scriptInjectedRef.current) {
       const s = document.createElement('script')
       s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-      // Não usar async ou defer no script
+      s.async = true
+      s.defer = true
       document.head.appendChild(s)
-      s.onload = () => {
-        setLoaded(true)
-      }
       scriptInjectedRef.current = true
-    } else {
-      setLoaded(true)
     }
-  }, [sitekey])
 
-  useEffect(() => {
-    if (!loaded) return
-    if (!containerRef.current) return
-    if (!window.turnstile) return
+    const render = () => {
+      if (!containerRef.current || !window.turnstile) return
+      // limpa widget anterior se existir
+      containerRef.current.innerHTML = ''
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey,
+        theme: 'auto',
+        callback: (token: string) => onVerify(token),
+        'error-callback': () => onError?.(),
+        'expired-callback': () => {
+          onExpire?.()
+          window.turnstile?.reset(widgetIdRef.current || undefined)
+        },
+      })
+    }
 
-    containerRef.current.innerHTML = ''
-    widgetIdRef.current = window.turnstile.render(containerRef.current, {
-      sitekey,
-      theme: 'auto',
-      callback: (token: string) => onVerify(token),
-      'error-callback': () => onError?.(),
-      'expired-callback': () => {
-        onExpire?.()
-        window.turnstile.reset(widgetIdRef.current || undefined)
-      },
-    })
-  }, [loaded, onVerify, onError, onExpire, sitekey])
+    const id = setInterval(() => {
+      if (window.turnstile) {
+        clearInterval(id)
+        window.turnstile.ready(render)
+      }
+    }, 50)
+
+    return () => clearInterval(id)
+  }, [onVerify, onError, onExpire, sitekey])
 
   if (!sitekey) {
     return (
       <div className="text-xs text-red-400">
-        Falta configurar <code>NEXT_PUBLIC_TURNSTILE_SITE_KEY</code> e reimplantar
+        Falta configurar <code>NEXT_PUBLIC_TURNSTILE_SITE_KEY</code> na Vercel e redeploy.
       </div>
     )
   }
