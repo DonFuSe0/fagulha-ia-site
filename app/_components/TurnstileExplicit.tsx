@@ -1,103 +1,72 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
 declare global {
   interface Window {
-    turnstile?: any
+    turnstile?: {
+      render: (el: HTMLElement | string, opts: any) => string
+      reset: (id: string) => void
+      remove: (id: string) => void
+      getResponse: (id: string) => string | undefined
+    }
   }
 }
 
 type Props = {
   onVerify: (token: string) => void
-  onError?: (err?: any) => void
+  onError?: (code?: string) => void
   onExpire?: () => void
 }
 
 export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props) {
   const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
-  const ref = useRef<HTMLDivElement | null>(null)
-  const [loaded, setLoaded] = useState(false)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const widgetIdRef = useRef<string | null>(null)
+  const renderedRef = useRef(false)
 
-  // Injeta o script do Turnstile com a mesma nonce aplicada no CSP
   useEffect(() => {
-    if (!sitekey) {
-      console.error('Turnstile sitekey não configurado')
-      return
-    }
-    if (window.turnstile) {
-      setLoaded(true)
-      return
-    }
-    const nonce = document.querySelector('meta[name="csp-nonce"]')?.getAttribute('content') || undefined
-    const s = document.createElement('script')
-    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-    if (nonce) s.setAttribute('nonce', nonce)
-    // Sem async/defer quando usamos turnstile.ready/render explícito
-    document.head.appendChild(s)
-    s.onload = () => setLoaded(true)
-    s.onerror = () => {
-      console.error('Falha ao carregar Turnstile script')
-      onError?.('load-failed')
-    }
-  }, [sitekey, onError])
+    if (!sitekey || !containerRef.current) return
 
-  // Render explícito somente quando visível e script carregado
-  useEffect(() => {
-    if (!loaded) return
-    if (!ref.current) return
-    if (!window.turnstile) return
-
-    const el = ref.current
-    if (el.offsetParent === null) {
-      // container invisível — evita crash; tente novamente quando ficar visível
-      const obs = new IntersectionObserver((entries) => {
-        const visible = entries.some((e) => e.isIntersecting)
-        if (visible) {
-          obs.disconnect()
-          if (!window.turnstile) return
-          el.innerHTML = ''
-          window.turnstile.render(el, {
-            sitekey,
-            theme: 'auto',
-            callback: (token: string) => onVerify(token),
-            'error-callback': (err: any) => {
-              console.error('Turnstile error:', err)
-              onError?.(err)
-              try { window.turnstile.reset() } catch {}
-            },
-            'expired-callback': () => {
-              onExpire?.()
-              try { window.turnstile.reset() } catch {}
-            },
-            retry: 'never'
-          })
-        }
+    let canceled = false
+    const tryRender = () => {
+      if (canceled || renderedRef.current) return
+      if (!window.turnstile) {
+        // Script ainda não carregou — tenta novamente em seguida
+        setTimeout(tryRender, 150)
+        return
+      }
+      // Renderiza apenas UMA vez por montagem
+      renderedRef.current = true
+      widgetIdRef.current = window.turnstile.render(containerRef.current!, {
+        sitekey,
+        theme: 'auto',
+        retry: 'auto', // mude para 'never' se quiser evitar tentativas automáticas
+        'error-callback': (code?: string) => onError?.(code),
+        'expired-callback': () => onExpire?.(),
+        callback: (token: string) => onVerify(token),
       })
-      obs.observe(el)
-      return () => obs.disconnect()
     }
 
-    el.innerHTML = ''
-    window.turnstile.render(el, {
-      sitekey,
-      theme: 'auto',
-      callback: (token: string) => onVerify(token),
-      'error-callback': (err: any) => {
-        console.error('Turnstile error:', err)
-        onError?.(err)
-        try { window.turnstile.reset() } catch {}
-      },
-      'expired-callback': () => {
-        onExpire?.()
-        try { window.turnstile.reset() } catch {}
-      },
-      retry: 'never'
-    })
-  }, [loaded, onVerify, onError, onExpire, sitekey])
+    tryRender()
+
+    // Cleanup remove o widget para evitar múltiplas instâncias/listeners
+    return () => {
+      canceled = true
+      if (widgetIdRef.current && window.turnstile) {
+        try {
+          window.turnstile.remove(widgetIdRef.current)
+        } catch {}
+      }
+    }
+  }, [sitekey, onVerify, onError, onExpire])
 
   if (!sitekey) {
-    return <div className="text-xs text-red-400">Falta configurar <code>NEXT_PUBLIC_TURNSTILE_SITE_KEY</code></div>
+    return (
+      <div className="text-xs text-red-400">
+        Falta configurar <code>NEXT_PUBLIC_TURNSTILE_SITE_KEY</code> na Vercel e fazer deploy.
+      </div>
+    )
   }
 
-  return <div ref={ref} />
+  return <div ref={containerRef} />
 }
