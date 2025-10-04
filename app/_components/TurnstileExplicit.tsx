@@ -3,11 +3,7 @@ import { useEffect, useRef } from 'react'
 
 declare global {
   interface Window {
-    turnstile?: {
-      ready: (cb: () => void) => void
-      render: (container: HTMLElement | string, opts: any) => string
-      reset: (widgetId?: string) => void
-    }
+    turnstile?: any
   }
 }
 
@@ -26,7 +22,7 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
   useEffect(() => {
     if (!sitekey) return
 
-    // inject script once
+    // injeta script apenas uma vez
     if (!scriptInjectedRef.current) {
       const s = document.createElement('script')
       s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
@@ -38,7 +34,7 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
 
     const render = () => {
       if (!containerRef.current || !window.turnstile) return
-      // clear previous widget if any
+      // limpa widget anterior se existir
       containerRef.current.innerHTML = ''
       widgetIdRef.current = window.turnstile.render(containerRef.current, {
         sitekey,
