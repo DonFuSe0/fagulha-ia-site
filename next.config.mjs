@@ -1,3 +1,4 @@
+// next.config.mjs
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async headers() {
@@ -8,7 +9,11 @@ const nextConfig = {
           {
             key: 'Content-Security-Policy',
             value:
-              "script-src 'self' https://challenges.cloudflare.com 'unsafe-inline'; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline';"
+              "default-src 'self'; " +
+              "script-src 'self' https://challenges.cloudflare.com 'nonce-*' 'unsafe-inline'; " +
+              "frame-src https://challenges.cloudflare.com; " +
+              "style-src 'self' 'unsafe-inline'; " +
+              "img-src 'self' data: blob:;"
           }
         ]
       }

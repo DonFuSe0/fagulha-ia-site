@@ -1,3 +1,4 @@
+// app/_components/TurnstileExplicit.tsx
 'use client'
 import { useEffect, useRef, useState } from 'react'
 
@@ -27,8 +28,14 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
 
     const script = document.createElement('script')
     script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-    // sem nonce
-    // sem async/defer
+
+    // pegar nonce que middleware inseriu no header e injetou no meta ou cabeçalho
+    const nonce = document.querySelector('meta[name="x-nonce"]')?.getAttribute('content')
+      || new URL(document.location.href).searchParams.get('x-nonce')
+    if (nonce) {
+      script.setAttribute('nonce', nonce)
+    }
+
     document.head.appendChild(script)
     script.onload = () => {
       setScriptLoaded(true)
