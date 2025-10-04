@@ -1,23 +1,30 @@
 // app/layout.tsx
 import { ReactNode } from 'react'
-import { headers } from 'next/headers'
-import Script from 'next/script'
+import Link from 'next/link'
+import './globals.css'  // seu CSS global
 
 export const dynamic = 'force-dynamic'
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  const nonce = headers().get('x-nonce') ?? ''
-
   return (
     <html lang="pt-BR">
       <head>
-        {/* outros meta tags */}
+        <meta charSet="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* outros meta ou links como favicon */}
       </head>
-      <body>
-        <Script id="webpack-nonce" nonce={nonce} strategy="afterInteractive">
-          {`__webpack_nonce__ = ${JSON.stringify(nonce)}`}
-        </Script>
-        {children}
+      <body className="bg-black text-white min-h-screen">
+        <header className="w-full p-4 bg-gray-900 flex justify-between items-center">
+          <Link href="/">Home</Link>
+          <nav className="space-x-4">
+            <Link href="/auth/login">Entrar</Link>
+            <Link href="/explorar">Explorar</Link>
+            <Link href="/planos">Planos</Link>
+          </nav>
+        </header>
+        <main>
+          {children}
+        </main>
       </body>
     </html>
   )
