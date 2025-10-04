@@ -27,12 +27,8 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
 
     const script = document.createElement('script')
     script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-    // injeta o nonce que o middleware enviou
-    const nonce = document.querySelector("meta[name='x-nonce']")?.getAttribute('content') 
-      || (document as any).querySelector?.('meta[http-equiv=x-nonce]')?.getAttribute('content')
-    if (nonce) {
-      script.setAttribute('nonce', nonce)
-    }
+    // sem nonce
+    // sem async/defer
     document.head.appendChild(script)
     script.onload = () => {
       setScriptLoaded(true)
@@ -60,7 +56,7 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
       'expired-callback': () => {
         onExpire?.()
         window.turnstile.reset()
-      },
+      }
     })
   }, [scriptLoaded, onVerify, onError, onExpire, sitekey])
 
