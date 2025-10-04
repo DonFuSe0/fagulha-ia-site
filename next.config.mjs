@@ -1,24 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    // outras flags que você já esteja usando
-  },
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: '/(.*)',   // aplica a todas as rotas
         headers: [
           {
             key: 'Content-Security-Policy',
-            value:
-              "script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; " +
-              // outras diretivas que você já use, por exemplo:
-              "style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
-          },
-        ],
-      },
-    ];
-  },
-};
+            value: [
+              "script-src 'self' https://challenges.cloudflare.com;",
+              "frame-src https://challenges.cloudflare.com;",
+              // mantenha outros que você já use
+            ].join(' ')
+          }
+        ]
+      }
+    ]
+  }
+}
 
-export default nextConfig;
+module.exports = nextConfig
