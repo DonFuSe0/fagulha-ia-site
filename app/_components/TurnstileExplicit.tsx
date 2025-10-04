@@ -1,3 +1,4 @@
+// app/_components/TurnstileExplicit.tsx
 'use client'
 import { useEffect, useRef, useState } from 'react'
 
@@ -16,21 +17,26 @@ type Props = {
 export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props) {
   const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const [scriptLoaded, setScriptLoaded] = useState(false)
+  const [scriptLoaded, setScriptLoaded] = useState<boolean>(false)
 
   useEffect(() => {
-    if (!sitekey) return
+    if (!sitekey) {
+      console.error('Turnstile sitekey não configurado')
+      return
+    }
     if (window.turnstile) {
       setScriptLoaded(true)
       return
     }
     const script = document.createElement('script')
     script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-    // sem async / defer
+    // não colocar async/defer (para que turnstile.ready funcione corretamente)
     document.head.appendChild(script)
-    script.onload = () => setScriptLoaded(true)
+    script.onload = () => {
+      setScriptLoaded(true)
+    }
     script.onerror = () => {
-      console.error('Falha ao carregar Turnstile script')
+      console.error('Falha ao carregar script Turnstile')
       onError?.('load-failed')
     }
   }, [sitekey, onError])
@@ -39,24 +45,14 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
     if (!scriptLoaded) return
     if (!containerRef.current) return
     if (!window.turnstile) {
-      console.warn('turnstile não definido ainda')
+      console.warn('window.turnstile não está definido')
       return
     }
 
-    // certificar que container está visível antes de renderizar
-    const container = containerRef.current
-    if (container.offsetParent === null) {
-      // container invisível (por exemplo dentro de modal fechado) → não renderizar agora
-      return
-    }
+    // limpar container existente
+    containerRef.current.innerHTML = ''
 
-    // evitar múltiplas renderizações
-    if (container.dataset.turnstileRendered === 'true') {
-      return
-    }
-    container.dataset.turnstileRendered = 'true'
-
-    window.turnstile.render(container, {
+    window.turnstile.render(containerRef.current, {
       sitekey,
       theme: 'auto',
       callback: (token: string) => {
