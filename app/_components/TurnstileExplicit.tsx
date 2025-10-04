@@ -20,14 +20,13 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
   const scriptInjectedRef = useRef<boolean>(false)
   const [loaded, setLoaded] = useState(false)
 
-  // injeta script apenas uma vez
   useEffect(() => {
     if (!sitekey) return
 
     if (!scriptInjectedRef.current) {
       const s = document.createElement('script')
       s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-      // NÃO usar async/defer para evitar conflito com turnstile.ready
+      // Não usar async ou defer no script
       document.head.appendChild(s)
       s.onload = () => {
         setLoaded(true)
@@ -38,13 +37,11 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
     }
   }, [sitekey])
 
-  // renderiza o widget quando script estiver carregado e window.turnstile existir
   useEffect(() => {
     if (!loaded) return
     if (!containerRef.current) return
     if (!window.turnstile) return
 
-    // limpa container
     containerRef.current.innerHTML = ''
     widgetIdRef.current = window.turnstile.render(containerRef.current, {
       sitekey,
