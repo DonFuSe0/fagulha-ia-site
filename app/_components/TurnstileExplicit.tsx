@@ -21,21 +21,25 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
   useEffect(() => {
     if (!sitekey) return
     if (window.turnstile) {
-      // Já existe, não recarregar
       setScriptLoaded(true)
       return
     }
 
     const script = document.createElement('script')
     script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-    // Não use async/defer aqui
+    // injeta o nonce que o middleware enviou
+    const nonce = document.querySelector("meta[name='x-nonce']")?.getAttribute('content') 
+      || (document as any).querySelector?.('meta[http-equiv=x-nonce]')?.getAttribute('content')
+    if (nonce) {
+      script.setAttribute('nonce', nonce)
+    }
     document.head.appendChild(script)
     script.onload = () => {
       setScriptLoaded(true)
     }
     script.onerror = () => {
       console.error('Falha ao carregar Turnstile script')
-      onError?.('load-failure')
+      onError?.('load-failed')
     }
   }, [sitekey, onError])
 
@@ -43,7 +47,7 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
     if (!scriptLoaded) return
     if (!containerRef.current) return
     if (!window.turnstile) {
-      console.warn('window.turnstile não existe depois do scriptLoaded')
+      console.warn('turnstile não inicializado')
       return
     }
 
@@ -56,7 +60,7 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
       'expired-callback': () => {
         onExpire?.()
         window.turnstile.reset()
-      }
+      },
     })
   }, [scriptLoaded, onVerify, onError, onExpire, sitekey])
 

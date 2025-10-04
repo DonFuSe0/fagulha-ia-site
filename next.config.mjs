@@ -1,3 +1,4 @@
+// next.config.mjs ou .js
 export default {
   async headers() {
     return [
@@ -6,11 +7,10 @@ export default {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value:
-              "script-src 'self' https://challenges.cloudflare.com 'unsafe-inline'; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline';"
-          },
-        ],
-      },
+            value: "script-src 'self' https://challenges.cloudflare.com 'nonce-*'; frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline';"
+          }
+        ]
+      }
     ]
   }
 }
