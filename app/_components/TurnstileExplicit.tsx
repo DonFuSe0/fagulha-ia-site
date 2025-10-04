@@ -24,14 +24,11 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
       setScriptLoaded(true)
       return
     }
-
     const script = document.createElement('script')
     script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
-    // sem async/defer
+    // sem async / defer
     document.head.appendChild(script)
-    script.onload = () => {
-      setScriptLoaded(true)
-    }
+    script.onload = () => setScriptLoaded(true)
     script.onerror = () => {
       console.error('Falha ao carregar Turnstile script')
       onError?.('load-failed')
@@ -42,14 +39,24 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
     if (!scriptLoaded) return
     if (!containerRef.current) return
     if (!window.turnstile) {
-      console.warn('turnstile não inicializado')
+      console.warn('turnstile não definido ainda')
       return
     }
 
-    // limpar render anterior (se houver)
-    containerRef.current.innerHTML = ''
+    // certificar que container está visível antes de renderizar
+    const container = containerRef.current
+    if (container.offsetParent === null) {
+      // container invisível (por exemplo dentro de modal fechado) → não renderizar agora
+      return
+    }
 
-    window.turnstile.render(containerRef.current, {
+    // evitar múltiplas renderizações
+    if (container.dataset.turnstileRendered === 'true') {
+      return
+    }
+    container.dataset.turnstileRendered = 'true'
+
+    window.turnstile.render(container, {
       sitekey,
       theme: 'auto',
       callback: (token: string) => {
@@ -58,7 +65,6 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
       'error-callback': (err: any) => {
         console.error('Turnstile error:', err)
         onError?.(err)
-        // reset após erro
         try {
           window.turnstile.reset()
         } catch (_) {}
@@ -69,7 +75,7 @@ export default function TurnstileExplicit({ onVerify, onError, onExpire }: Props
           window.turnstile.reset()
         } catch (_) {}
       },
-      retry: 'never'  // impede loop automático
+      retry: 'never'
     })
   }, [scriptLoaded, onVerify, onError, onExpire, sitekey])
 
