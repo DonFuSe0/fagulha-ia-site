@@ -27,7 +27,7 @@ export default function LoginPage() {
         <h2 className="text-2xl font-bold text-white">Entrar</h2>
 
         <Form {...form}>
-          <FormField
+          <FormField<LoginForm>
             name="email"
             render={({ field, error }) => (
               <>
@@ -37,7 +37,8 @@ export default function LoginPage() {
               </>
             )}
           />
-          <FormField
+
+          <FormField<LoginForm>
             name="password"
             render={({ field, error }) => (
               <>
@@ -47,7 +48,8 @@ export default function LoginPage() {
               </>
             )}
           />
-          <FormField
+
+          <FormField<LoginForm>
             name="captcha"
             render={({ field }) => (
               <TurnstileExplicit onVerify={(token: string) => field.onChange(token)} />

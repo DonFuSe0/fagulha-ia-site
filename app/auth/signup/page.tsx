@@ -16,7 +16,7 @@ type SignupForm = {
 
 export default function SignupPage() {
   const form = useForm<SignupForm>()
-  const { register, handleSubmit, formState: { errors } } = form
+  const { handleSubmit } = form
 
   async function onSubmit(data: SignupForm) {
     // lógica de cadastro
@@ -24,16 +24,13 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="w-full max-w-md bg-gray-800 p-8 rounded-lg space-y-6"
-      >
+      <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-md bg-gray-800 p-8 rounded-lg space-y-6">
         <h2 className="text-2xl font-bold text-white">Cadastrar</h2>
 
         <Form {...form}>
-          <FormField
+          <FormField<SignupForm>
             name="email"
-            render={({ field, error }: { field: any; error?: string }) => (
+            render={({ field, error }) => (
               <>
                 <label className="block text-sm text-gray-300">Email</label>
                 <Input {...field} type="email" />
@@ -42,9 +39,9 @@ export default function SignupPage() {
             )}
           />
 
-          <FormField
+          <FormField<SignupForm>
             name="password"
-            render={({ field, error }: { field: any; error?: string }) => (
+            render={({ field, error }) => (
               <>
                 <label className="block text-sm text-gray-300">Senha</label>
                 <Input {...field} type="password" />
@@ -53,9 +50,9 @@ export default function SignupPage() {
             )}
           />
 
-          <FormField
+          <FormField<SignupForm>
             name="confirmPassword"
-            render={({ field, error }: { field: any; error?: string }) => (
+            render={({ field, error }) => (
               <>
                 <label className="block text-sm text-gray-300">Confirmar senha</label>
                 <Input {...field} type="password" />
@@ -64,17 +61,15 @@ export default function SignupPage() {
             )}
           />
 
-          <FormField
+          <FormField<SignupForm>
             name="captcha"
-            render={({ field }: { field: any }) => (
+            render={({ field }) => (
               <TurnstileExplicit onVerify={(token: string) => field.onChange(token)} />
             )}
           />
         </Form>
 
-        <Button type="submit" className="w-full">
-          Cadastrar
-        </Button>
+        <Button type="submit" className="w-full">Cadastrar</Button>
 
         <div className="text-center text-gray-400 text-sm">
           Já tem conta? <a href="/auth/login" className="text-orange-400 hover:underline">Entrar</a>

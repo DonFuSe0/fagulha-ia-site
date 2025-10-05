@@ -10,8 +10,8 @@ interface TurnstileExplicitProps {
 export default function TurnstileExplicit({ onVerify }: TurnstileExplicitProps) {
   useEffect(() => {
     if (typeof window !== "undefined" && (window as any).turnstile) {
-      ;(window as any).turnstile.ready(() => {
-        ;(window as any).turnstile.render("#turnstile-explicit", {
+      (window as any).turnstile.ready(() => {
+        (window as any).turnstile.render("#turnstile-explicit", {
           sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY,
           callback: onVerify,
         })
