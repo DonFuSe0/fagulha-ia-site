@@ -1,9 +1,8 @@
-// app/layout.tsx
-
+// Caminho: app/layout.tsx
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "sonner";
-import { TurnstileFixed } from "./components/TurnstileFixed"; // Importe o componente
+import { TurnstileFixed } from "./components/TurnstileFixed";
 import "./globals.css";
 
 export const metadata = {
@@ -19,10 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Toaster richColors />
         <Analytics />
         <SpeedInsights />
-        {/* 
-          O componente TurnstileFixed cuidará de carregar o script 
-          e renderizar o widget apenas quando necessário.
-        */}
+        {/* O Turnstile é carregado uma vez aqui para todo o site */}
         <TurnstileFixed />
       </body>
     </html>
