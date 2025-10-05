@@ -1,26 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server'
+// /middleware.ts
+import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 
-export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+export function middleware(req: NextRequest) {
+  const res = NextResponse.next()
+  const nonce = Buffer.from(Date.now().toString()).toString("base64")
+  const csp = [
+    `default-src 'self'`,
+    `script-src 'nonce-${nonce}' 'strict-dynamic' https://challenges.cloudflare.com`,
+    `frame-src https://challenges.cloudflare.com`,
+    `connect-src 'self'`,
+    `style-src 'self' 'unsafe-inline'`,
+    `img-src 'self' data:`,
+    `base-uri 'self'`,
+    `form-action 'self'`
+  ].join("; ")
+
+  res.headers.set("Content-Security-Policy", csp)
+  res.headers.set("X-CSP-Nonce", nonce)
+  return res
 }
 
-export function middleware(request: NextRequest) {
-  // Nonce por requisição
-  const nonce = crypto.randomUUID()
-
-  const csp = [
-    "default-src 'self'",
-    // Usa nonce + strict-dynamic para liberar scripts com o mesmo nonce.
-    `script-src 'nonce-${nonce}' https://challenges.cloudflare.com 'strict-dynamic'`,
-    "frame-src https://challenges.cloudflare.com",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
-    "connect-src 'self' https://challenges.cloudflare.com"
-  ].join('; ')
-
-  const res = NextResponse.next()
-  res.headers.set('Content-Security-Policy', csp)
-  // Enviamos a nonce via header para o layout injetar em uma <meta>
-  res.headers.set('x-nonce', nonce)
-  return res
+export const config = {
+  matcher: ["/auth/login", "/auth/signup"]
 }
