@@ -1,17 +1,24 @@
-// caminho: app/api/auth/login/route.ts (ou seu equivalente backend)
-import { NextResponse } from "next/server"
-
-// … outras importações …
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: Request) {
-  const { email, password /*, captcha */ } = await req.json()
+  try {
+    const { email, password } = await req.json();
 
-  // Remover ou comentar a verificação do captcha:
-  // if (!captcha) {
-  //   return NextResponse.json({ error: "Captcha necessário" }, { status: 400 })
-  // }
-  // Código de verificação do token Turnstile removido
+    if (!email || !password) {
+      return NextResponse.json({ ok: false, error: 'Email e senha são obrigatórios.' }, { status: 400 });
+    }
 
-  // Continua lógica normal de login
-  // ...
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 401 });
+
+    return NextResponse.json({ ok: true, user: data.user });
+  } catch (err: any) {
+    return NextResponse.json({ ok: false, error: err.message || 'Erro inesperado.' }, { status: 500 });
+  }
 }

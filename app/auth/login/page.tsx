@@ -1,75 +1,89 @@
-// app/auth/login/page.tsx
-'use client'
+'use client';
 
-import { useForm } from 'react-hook-form'
-import { Button } from "@/app/_components/ui/button"
-import { Form, FormField } from "@/app/_components/ui/form"
-import { Input } from "@/app/_components/ui/input"
-import TurnstileExplicit from "@/app/_components/TurnstileExplicit"
+import { useState } from 'react';
+import Link from 'next/link';
 
 type LoginForm = {
-  email: string
-  password: string
-  captcha: string
-}
+  email: string;
+  password: string;
+};
 
 export default function LoginPage() {
-  const form = useForm<LoginForm>()
-  const { handleSubmit } = form
+  const [form, setForm] = useState<LoginForm>({ email: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function onSubmit(data: LoginForm) {
-    // lógica de login
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Falha ao entrar.');
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      setError(err.message || 'Erro inesperado.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="w-full max-w-md bg-gray-800 p-8 rounded-lg space-y-6"
-      >
-        <h2 className="text-2xl font-bold text-white">Entrar</h2>
+    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-gradient-to-b from-white/5 to-transparent p-6 shadow-2xl">
+        <h1 className="text-2xl font-semibold">Entrar</h1>
+        <p className="text-sm text-white/60 mt-1">Acesse sua conta para continuar.</p>
 
-        <Form {...form}>
-          <FormField<LoginForm>
-            name="email"
-            render={({ field, error }) => (
-              <>
-                <label className="block text-sm text-gray-300">Email</label>
-                <Input {...field} type="email" />
-                {error && <p className="text-red-500 text-xs">{error}</p>}
-              </>
-            )}
-          />
+        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <div>
+            <label className="block text-sm mb-1">Email</label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              required
+              className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 outline-none focus:ring-2 focus:ring-orange-500"
+              placeholder="voce@exemplo.com"
+              autoComplete="email"
+            />
+          </div>
 
-          <FormField<LoginForm>
-            name="password"
-            render={({ field, error }) => (
-              <>
-                <label className="block text-sm text-gray-300">Senha</label>
-                <Input {...field} type="password" />
-                {error && <p className="text-red-500 text-xs">{error}</p>}
-              </>
-            )}
-          />
+          <div>
+            <label className="block text-sm mb-1">Senha</label>
+            <input
+              type="password"
+              value={form.password}
+              onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+              required
+              className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 outline-none focus:ring-2 focus:ring-orange-500"
+              placeholder="••••••••"
+              autoComplete="current-password"
+            />
+          </div>
 
-          <FormField<LoginForm>
-            name="captcha"
-            render={({ field }) => (
-              <TurnstileExplicit
-                onVerify={(token: string) => {
-                  field.onChange({ target: { value: token } } as any)
-                }}
-              />
-            )}
-          />
-        </Form>
+          {error && <p className="text-sm text-red-400">{error}</p>}
 
-        <Button type="submit" className="w-full">Entrar</Button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-orange-500 hover:bg-orange-600 active:bg-orange-700 disabled:opacity-60 disabled:cursor-not-allowed px-4 py-2 font-medium transition-colors"
+          >
+            {loading ? 'Entrando...' : 'Entrar'}
+          </button>
+        </form>
 
-        <div className="text-center text-gray-400 text-sm">
-          Não tem conta? <a href="/auth/signup" className="text-orange-400 hover:underline">Cadastre-se</a>
+        <div className="mt-6 text-center text-sm text-white/70">
+          Não tem conta?{' '}
+          <Link href="/auth/signup" className="text-orange-400 hover:text-orange-300 underline underline-offset-4">
+            Criar conta
+          </Link>
         </div>
-      </form>
+      </div>
     </div>
-  )
+  );
 }
