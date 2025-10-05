@@ -23,7 +23,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-md bg-gray-800 p-8 rounded-lg space-y-6">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="w-full max-w-md bg-gray-800 p-8 rounded-lg space-y-6"
+      >
         <h2 className="text-2xl font-bold text-white">Entrar</h2>
 
         <Form {...form}>
@@ -37,6 +40,7 @@ export default function LoginPage() {
               </>
             )}
           />
+
           <FormField<LoginForm>
             name="password"
             render={({ field, error }) => (
@@ -47,15 +51,14 @@ export default function LoginPage() {
               </>
             )}
           />
+
           <FormField<LoginForm>
             name="captcha"
             render={({ field }) => (
               <TurnstileExplicit
-                onVerify={(token: string) =>
-                  field.onChange({
-                    target: { value: token }
-                  } as any)
-                }
+                onVerify={(token: string) => {
+                  field.onChange({ target: { value: token } } as any)
+                }}
               />
             )}
           />

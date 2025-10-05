@@ -64,7 +64,11 @@ export default function SignupPage() {
           <FormField<SignupForm>
             name="captcha"
             render={({ field }) => (
-              <TurnstileExplicit onVerify={(token: string) => field.onChange(token)} />
+              <TurnstileExplicit
+                onVerify={(token: string) => {
+                  field.onChange({ target: { value: token } } as any)
+                }}
+              />
             )}
           />
         </Form>
