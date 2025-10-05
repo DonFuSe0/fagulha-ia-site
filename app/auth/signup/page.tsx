@@ -1,108 +1,88 @@
-// Caminho: app/auth/signup/page.tsx
-"use client";
+// app/auth/signup/page.tsx
+'use client'
 
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { useForm } from 'react-hook-form'
+import { Button } from "@/app/_components/ui/button"
+import { Form, FormField } from "@/app/_components/ui/form"
+import { Input } from "@/app/_components/ui/input"
+import TurnstileExplicit from "@/app/_components/TurnstileExplicit"
 
-// O componente TurnstileFixed não precisa ser importado aqui,
-// pois ele já está sendo gerenciado globalmente no layout.tsx.
-
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "O nome deve ter pelo menos 2 caracteres.",
-  }),
-  email: z.string().email({
-    message: "Por favor, insira um endereço de e-mail válido.",
-  }),
-  password: z.string().min(6, {
-    message: "A senha deve ter pelo menos 6 caracteres.",
-  }),
-});
+type SignupForm = {
+  email: string
+  password: string
+  confirmPassword: string
+  captcha: string
+}
 
 export default function SignupPage() {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-    },
-  });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors }
+  } = useForm<SignupForm>()
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
-    // Lógica de cadastro aqui
+  async function onSubmit(data: SignupForm) {
+    // lógica de cadastro
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-8">
-      <div className="w-full max-w-md">
-        <h1 className="mb-6 text-center text-3xl font-bold">Cadastro</h1>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Seu Nome" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="seu@email.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Senha</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="******" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full">
-              Criar Conta
-            </Button>
-          </form>
+    <div className="min-h-screen flex items-center justify-center bg-gray-900">
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="w-full max-w-md bg-gray-800 p-8 rounded-lg space-y-6"
+      >
+        <h2 className="text-2xl font-bold text-white">Cadastrar</h2>
+
+        <Form>
+          <FormField
+            name="email"
+            render={({ field, error }: { field: any; error?: string }) => (
+              <>
+                <label className="block text-sm text-gray-300">Email</label>
+                <Input {...field} type="email" />
+                {error && <p className="text-red-500 text-xs">{error}</p>}
+              </>
+            )}
+          />
+
+          <FormField
+            name="password"
+            render={({ field, error }: { field: any; error?: string }) => (
+              <>
+                <label className="block text-sm text-gray-300">Senha</label>
+                <Input {...field} type="password" />
+                {error && <p className="text-red-500 text-xs">{error}</p>}
+              </>
+            )}
+          />
+
+          <FormField
+            name="confirmPassword"
+            render={({ field, error }: { field: any; error?: string }) => (
+              <>
+                <label className="block text-sm text-gray-300">Confirmar senha</label>
+                <Input {...field} type="password" />
+                {error && <p className="text-red-500 text-xs">{error}</p>}
+              </>
+            )}
+          />
+
+          <FormField
+            name="captcha"
+            render={({ field }: { field: any }) => (
+              <TurnstileExplicit onVerify={(token) => field.onChange(token)} />
+            )}
+          />
         </Form>
-        <p className="mt-6 text-center text-sm">
-          Já tem uma conta?{" "}
-          <Link href="/auth/login" className="font-semibold hover:underline">
-            Faça login
-          </Link>
-        </p>
-      </div>
+
+        <Button type="submit" className="w-full">
+          Cadastrar
+        </Button>
+
+        <div className="text-center text-gray-400 text-sm">
+          Já tem conta? <a href="/auth/login" className="text-orange-400 hover:underline">Entrar</a>
+        </div>
+      </form>
     </div>
-  );
+  )
 }
