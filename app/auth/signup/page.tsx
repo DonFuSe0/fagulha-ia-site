@@ -15,11 +15,8 @@ type SignupForm = {
 }
 
 export default function SignupPage() {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors }
-  } = useForm<SignupForm>()
+  const form = useForm<SignupForm>()
+  const { register, handleSubmit, formState: { errors } } = form
 
   async function onSubmit(data: SignupForm) {
     // lógica de cadastro
@@ -33,7 +30,7 @@ export default function SignupPage() {
       >
         <h2 className="text-2xl font-bold text-white">Cadastrar</h2>
 
-        <Form>
+        <Form {...form}>
           <FormField
             name="email"
             render={({ field, error }: { field: any; error?: string }) => (
@@ -70,7 +67,7 @@ export default function SignupPage() {
           <FormField
             name="captcha"
             render={({ field }: { field: any }) => (
-              <TurnstileExplicit onVerify={(token) => field.onChange(token)} />
+              <TurnstileExplicit onVerify={(token: string) => field.onChange(token)} />
             )}
           />
         </Form>

@@ -1,7 +1,7 @@
 // app/auth/login/page.tsx
 'use client'
 
-import { useForm } from 'react-hook-form'
+import { useForm, type UseFormReturn } from 'react-hook-form'
 import { Button } from "@/app/_components/ui/button"
 import { Form, FormField } from "@/app/_components/ui/form"
 import { Input } from "@/app/_components/ui/input"
@@ -14,14 +14,11 @@ type LoginForm = {
 }
 
 export default function LoginPage() {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors }
-  } = useForm<LoginForm>()
+  const form = useForm<LoginForm>()
+  const { register, handleSubmit, formState: { errors } } = form
 
   async function onSubmit(data: LoginForm) {
-    // lógica de login com data.email, data.password, data.captcha
+    // lógica de login com data
   }
 
   return (
@@ -32,7 +29,7 @@ export default function LoginPage() {
       >
         <h2 className="text-2xl font-bold text-white">Entrar</h2>
 
-        <Form>
+        <Form {...form}>
           <FormField
             name="email"
             render={({ field, error }: { field: any; error?: string }) => (
@@ -58,7 +55,7 @@ export default function LoginPage() {
           <FormField
             name="captcha"
             render={({ field }: { field: any }) => (
-              <TurnstileExplicit onVerify={(token) => field.onChange(token)} />
+              <TurnstileExplicit onVerify={(token: string) => field.onChange(token)} />
             )}
           />
         </Form>
