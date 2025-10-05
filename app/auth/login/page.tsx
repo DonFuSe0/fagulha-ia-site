@@ -37,7 +37,6 @@ export default function LoginPage() {
               </>
             )}
           />
-
           <FormField<LoginForm>
             name="password"
             render={({ field, error }) => (
@@ -48,11 +47,16 @@ export default function LoginPage() {
               </>
             )}
           />
-
           <FormField<LoginForm>
             name="captcha"
             render={({ field }) => (
-              <TurnstileExplicit onVerify={(token: string) => field.onChange(token)} />
+              <TurnstileExplicit
+                onVerify={(token: string) =>
+                  field.onChange({
+                    target: { value: token }
+                  } as any)
+                }
+              />
             )}
           />
         </Form>
