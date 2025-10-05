@@ -1,13 +1,13 @@
-// /middleware.ts
+// middleware.ts – versão modificada
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 export function middleware(req: NextRequest) {
   const res = NextResponse.next()
-  const nonce = Buffer.from(Date.now().toString()).toString("base64")
+  // Pode remover nonce ou strict-dynamic se estiver bloqueando
   const csp = [
     `default-src 'self'`,
-    `script-src 'nonce-${nonce}' 'strict-dynamic' https://challenges.cloudflare.com`,
+    `script-src 'self' https://challenges.cloudflare.com 'unsafe-inline'`,
     `frame-src https://challenges.cloudflare.com`,
     `connect-src 'self'`,
     `style-src 'self' 'unsafe-inline'`,
@@ -17,7 +17,6 @@ export function middleware(req: NextRequest) {
   ].join("; ")
 
   res.headers.set("Content-Security-Policy", csp)
-  res.headers.set("X-CSP-Nonce", nonce)
   return res
 }
 
