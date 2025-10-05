@@ -34,7 +34,15 @@ export default function LoginPage() {
       const json = await resp.json().catch(() => ({}))
       
       if (!resp.ok || json?.ok === false) {
-        setError(json?.error || 'Não foi possível entrar. Verifique suas credenciais.')
+        if (json?.error === 'captcha_failed') {
+          setError('Falha na verificação de segurança. Tente recarregar a página.')
+        } else if (json?.error?.includes('Invalid login credentials')) {
+          setError('E-mail ou senha incorretos. Verifique suas credenciais.')
+        } else if (json?.error?.includes('Email not confirmed')) {
+          setError('Confirme seu e-mail antes de fazer login. Verifique sua caixa de entrada.')
+        } else {
+          setError(json?.error || 'Não foi possível entrar. Verifique suas credenciais.')
+        }
       } else {
         router.push('/dashboard')
       }

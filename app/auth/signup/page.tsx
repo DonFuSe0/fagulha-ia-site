@@ -38,7 +38,17 @@ export default function SignupPage() {
       const json = await resp.json().catch(() => ({}))
       
       if (!resp.ok || json?.ok === false) {
-        setError(json?.error || 'Não foi possível criar sua conta. Tente novamente.')
+        if (json?.error === 'captcha_failed') {
+          setError('Falha na verificação de segurança. Tente recarregar a página.')
+        } else if (json?.error?.includes('User already registered')) {
+          setError('Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.')
+        } else if (json?.error?.includes('Password should be at least')) {
+          setError('A senha deve ter pelo menos 6 caracteres.')
+        } else if (json?.error?.includes('Unable to validate email address')) {
+          setError('E-mail inválido. Verifique o formato do e-mail.')
+        } else {
+          setError(json?.error || 'Não foi possível criar sua conta. Tente novamente.')
+        }
       } else {
         router.push('/auth/confirmar-email')
       }

@@ -29,7 +29,16 @@ export async function POST(req: Request) {
   })
 
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+    // Provide more specific error messages
+    let errorMessage = error.message
+    if (error.message.includes('User already registered')) {
+      errorMessage = 'User already registered'
+    } else if (error.message.includes('Password should be at least')) {
+      errorMessage = 'Password should be at least 6 characters'
+    } else if (error.message.includes('Unable to validate email address')) {
+      errorMessage = 'Unable to validate email address'
+    }
+    return NextResponse.json({ ok: false, error: errorMessage }, { status: 400 })
   }
 
   return NextResponse.json({ ok: true, needs_email_confirmation: true })

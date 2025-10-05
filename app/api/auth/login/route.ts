@@ -20,7 +20,16 @@ export async function POST(req: Request) {
 
   const supabase = supabaseRoute()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+  if (error) {
+    // Provide more specific error messages
+    let errorMessage = error.message
+    if (error.message.includes('Invalid login credentials')) {
+      errorMessage = 'Invalid login credentials'
+    } else if (error.message.includes('Email not confirmed')) {
+      errorMessage = 'Email not confirmed'
+    }
+    return NextResponse.json({ ok: false, error: errorMessage }, { status: 400 })
+  }
 
   return NextResponse.json({ ok: true })
 }

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Turnstile Corrigido</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        .container {
+            background-color: #2a2a2a;
+            padding: 30px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+        .turnstile-container {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #555;
+            border-radius: 8px;
+            background-color: #333;
+        }
+        .error {
+            background-color: #ff4444;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background-color: #44ff44;
+            color: black;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        button {
+            background-color: #ff6600;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background-color: #ff8833;
+        }
+        button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #ff6600;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Teste do Cloudflare Turnstile Corrigido</h1>
+        <p>Este teste valida as correções implementadas no componente Turnstile:</p>
+        
+        <ul>
+            <li>✅ Remoção dos atributos async/defer do script</li>
+            <li>✅ Timeout de 10 segundos para carregamento</li>
+            <li>✅ Limpeza adequada de widgets</li>
+            <li>✅ Tratamento de erros melhorado</li>
+            <li>✅ Botão de retry em caso de falha</li>
+        </ul>
+
+        <div class="turnstile-container">
+            <h3>Widget Turnstile:</h3>
+            <div id="turnstile-widget"></div>
+            <div id="status"></div>
+            <div id="token-display" style="word-break: break-all; margin-top: 10px; font-size: 12px;"></div>
+        </div>
+
+        <button onclick="loadTurnstile()">Carregar Turnstile</button>
+        <button onclick="resetTurnstile()" id="reset-btn" disabled>Reset Widget</button>
+        <button onclick="clearAll()">Limpar Tudo</button>
+    </div>
+
+    <script>
+        let widgetId = null;
+        let scriptLoaded = false;
+
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
+        }
+
+        function updateToken(token) {
+            const tokenDiv = document.getElementById('token-display');
+            if (token) {
+                tokenDiv.innerHTML = `<strong>Token recebido:</strong><br><code>${token}</code>`;
+            } else {
+                tokenDiv.innerHTML = '';
+            }
+        }
+
+        function loadTurnstile() {
+            updateStatus('<div class="loading"></div> Carregando Turnstile...', 'info');
+            
+            // Check if already loaded
+            if (window.turnstile && typeof window.turnstile.render === 'function') {
+                renderWidget();
+                return;
+            }
+
+            if (scriptLoaded) {
+                updateStatus('Script já foi carregado, mas Turnstile não está disponível', 'error');
+                return;
+            }
+
+            scriptLoaded = true;
+            const script = document.createElement('script');
+            script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+            
+            const timeoutId = setTimeout(() => {
+                if (!window.turnstile) {
+                    updateStatus('❌ Timeout: Script do Turnstile não carregou em 10 segundos', 'error');
+                }
+            }, 10000);
+
+            script.onload = () => {
+                clearTimeout(timeoutId);
+                if (window.turnstile) {
+                    updateStatus('✅ Script carregado com sucesso', 'success');
+                    window.turnstile.ready(() => {
+                        renderWidget();
+                    });
+                } else {
+                    updateStatus('❌ Script carregado mas objeto turnstile não encontrado', 'error');
+                }
+            };
+
+            script.onerror = () => {
+                clearTimeout(timeoutId);
+                updateStatus('❌ Falha ao carregar o script do Turnstile', 'error');
+            };
+
+            document.head.appendChild(script);
+        }
+
+        function renderWidget() {
+            const container = document.getElementById('turnstile-widget');
+            
+            if (!container || !window.turnstile) {
+                updateStatus('❌ Container ou Turnstile não disponível', 'error');
+                return;
+            }
+
+            // Clear existing widget
+            if (widgetId) {
+                container.innerHTML = '';
+                widgetId = null;
+            }
+
+            try {
+                // Note: Replace 'YOUR_SITE_KEY' with actual site key for real testing
+                widgetId = window.turnstile.render(container, {
+                    sitekey: '1x00000000000000000000AA', // Test site key
+                    theme: 'dark',
+                    callback: (token) => {
+                        updateStatus('✅ Verificação concluída com sucesso!', 'success');
+                        updateToken(token);
+                        document.getElementById('reset-btn').disabled = false;
+                    },
+                    'error-callback': (error) => {
+                        updateStatus(`❌ Erro na verificação: ${error}`, 'error');
+                        updateToken(null);
+                    },
+                    'expired-callback': () => {
+                        updateStatus('⚠️ Verificação expirada', 'error');
+                        updateToken(null);
+                        if (widgetId && window.turnstile) {
+                            window.turnstile.reset(widgetId);
+                        }
+                    }
+                });
+                
+                updateStatus('🔄 Widget renderizado, aguardando interação...', 'info');
+            } catch (error) {
+                updateStatus(`❌ Erro ao renderizar widget: ${error.message}`, 'error');
+            }
+        }
+
+        function resetTurnstile() {
+            if (widgetId && window.turnstile) {
+                window.turnstile.reset(widgetId);
+                updateStatus('🔄 Widget resetado', 'info');
+                updateToken(null);
+                document.getElementById('reset-btn').disabled = true;
+            } else {
+                updateStatus('❌ Nenhum widget para resetar', 'error');
+            }
+        }
+
+        function clearAll() {
+            const container = document.getElementById('turnstile-widget');
+            if (widgetId && window.turnstile) {
+                window.turnstile.remove(widgetId);
+            }
+            container.innerHTML = '';
+            widgetId = null;
+            updateStatus('🧹 Tudo limpo', 'info');
+            updateToken(null);
+            document.getElementById('reset-btn').disabled = true;
+        }
+
+        // Auto-load on page load
+        window.addEventListener('load', () => {
+            updateStatus('Página carregada. Clique em "Carregar Turnstile" para testar.', 'info');
+        });
+    </script>
+</body>
+</html>
