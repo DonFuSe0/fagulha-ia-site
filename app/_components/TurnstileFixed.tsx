@@ -1,3 +1,4 @@
+
 'use client'
 import { useEffect, useRef, useState } from 'react'
 
@@ -32,46 +33,6 @@ export default function TurnstileFixed({
       setHasError(true)
       setIsLoading(false)
       return
-    }
-
-    const loadTurnstile = async () => {
-      try {
-        // Check if script is already loaded
-        if (window.turnstile) {
-          renderWidget()
-          return
-        }
-
-        // Load script only once
-        if (!scriptLoadedRef.current) {
-          scriptLoadedRef.current = true
-          
-          const script = document.createElement('script')
-          script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
-          script.async = true
-          script.defer = true
-          
-          script.onload = () => {
-            if (window.turnstile) {
-              window.turnstile.ready(() => {
-                renderWidget()
-              })
-            }
-          }
-          
-          script.onerror = () => {
-            setHasError(true)
-            setIsLoading(false)
-            onError?.('Failed to load Turnstile script')
-          }
-          
-          document.head.appendChild(script)
-        }
-      } catch (error) {
-        setHasError(true)
-        setIsLoading(false)
-        onError?.(error)
-      }
     }
 
     const renderWidget = () => {
@@ -115,16 +76,62 @@ export default function TurnstileFixed({
       }
     }
 
-    loadTurnstile()
+    const loadTurnstile = () => {
+      if (window.turnstile && typeof window.turnstile.render === 'function') {
+        renderWidget();
+        return;
+      }
+
+      if (scriptLoadedRef.current) return;
+      scriptLoadedRef.current = true;
+
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      
+      const timeoutId = setTimeout(() => {
+        if (!window.turnstile) {
+          setHasError(true);
+          setIsLoading(false);
+          onError?.('Turnstile script did not load within expected time.');
+        }
+      }, 10000); // 10 seconds timeout
+
+      script.onload = () => {
+        clearTimeout(timeoutId);
+        if (window.turnstile) {
+          window.turnstile.ready(() => {
+            renderWidget();
+          });
+        } else {
+          setHasError(true);
+          setIsLoading(false);
+          onError?.('Turnstile script loaded but \'turnstile\' object not found.');
+        }
+      };
+
+      script.onerror = () => {
+        clearTimeout(timeoutId);
+        setHasError(true);
+        setIsLoading(false);
+        onError?.('Failed to load Turnstile script');
+      };
+
+      document.head.appendChild(script);
+    };
+
+    loadTurnstile();
 
     // Cleanup function
     return () => {
-      if (widgetIdRef.current && containerRef.current) {
-        containerRef.current.innerHTML = ''
-        widgetIdRef.current = null
+      if (widgetIdRef.current && window.turnstile) {
+        window.turnstile.remove(widgetIdRef.current);
       }
-    }
-  }, [sitekey, onVerify, onError, onExpire, theme])
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
+      }
+      widgetIdRef.current = null;
+    };
+  }, [sitekey, onVerify, onError, onExpire, theme]);
 
   if (!sitekey) {
     return (
@@ -145,9 +152,22 @@ export default function TurnstileFixed({
         <div className="text-xs text-red-400">
           ⚠️ Erro ao carregar verificação de segurança
         </div>
-        <div className="text-xs text-red-300 mt-1">
-          Verifique sua conexão e tente recarregar a página.
+        <div className="text-xs text-red-300 mt-1 mb-2">
+          Verifique sua conexão e tente novamente.
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            setHasError(false)
+            setIsLoading(true)
+            scriptLoadedRef.current = false
+            // Trigger a re-render by changing the key or forcing a reload
+            window.location.reload()
+          }}
+          className="px-3 py-1 text-xs rounded bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border border-orange-500/30 transition-colors"
+        >
+          Tentar novamente
+        </button>
       </div>
     )
   }
@@ -165,3 +185,4 @@ export default function TurnstileFixed({
     </div>
   )
 }
+
