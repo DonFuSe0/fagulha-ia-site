@@ -18,7 +18,7 @@ export default function LoginPage() {
   const { register, handleSubmit, formState: { errors } } = form
 
   async function onSubmit(data: LoginForm) {
-    // lógica de login com data
+    // lógica de login
   }
 
   return (
@@ -29,6 +29,7 @@ export default function LoginPage() {
       >
         <h2 className="text-2xl font-bold text-white">Entrar</h2>
 
+        {/* Passa o form como props para FormProvider */}
         <Form {...form}>
           <FormField
             name="email"
