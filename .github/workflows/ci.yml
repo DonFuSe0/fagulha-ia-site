@@ -77,6 +77,14 @@ jobs:
           fi
           echo "fallback=${FALLBACK}" >> $GITHUB_OUTPUT
 
+      # ====================================================================
+      # CORREÇÃO APLICADA AQUI
+      # O passo de verificação de tipos foi movido para ANTES do commit.
+      # Agora ele sempre será executado após a instalação das dependências.
+      # ====================================================================
+      - name: TypeScript noEmit
+        run: npx tsc --noEmit
+
       - name: Commit updated lockfile (if fallback used)
         if: steps.deps.outputs.fallback == '1'
         run: |
@@ -94,6 +102,3 @@ jobs:
           else
             echo "Lockfile not changed."
           fi
-
-      - name: TypeScript noEmit
-        run: npx tsc -noEmit
