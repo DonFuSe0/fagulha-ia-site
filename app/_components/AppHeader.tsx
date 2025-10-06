@@ -1,50 +1,83 @@
-import Link from "next/link";
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import UserMenu from "./UserMenu";
+'use client'
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { supabaseBrowser } from '@/lib/supabase/browserClient'
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export default function AppHeader() {
+  const [open, setOpen] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const pathname = usePathname()
+  const menuRef = useRef<HTMLDivElement>(null)
 
-function fallbackAvatarFor(userId: string) {
-  let h = 0; for (let i=0;i<userId.length;i++) h=((h<<5)-h)+userId.charCodeAt(i)|0;
-  const idx = Math.abs(h) % 4;
-  return `/avatars/fire-${idx+1}.png`;
-}
+  useEffect(() => {
+    const run = async () => {
+      const { data } = await supabaseBrowser.auth.getSession()
+      setUserId(data.session?.user?.id ?? null)
+    }
+    run()
+  }, [])
 
-export default async function AppHeader() {
-  const supabase = createServerComponentClient<any>({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
+  useEffect(() => { setOpen(false) }, [pathname])
 
-  let avatarUrl: string | null = null;
-  let nickname: string | null = null;
-  let credits: number | null = null;
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (!menuRef.current) return
+      if (!menuRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [])
 
-  if (user) {
-    const [{ data: profile }, { data: rpc }] = await Promise.all([
-      supabase.from("profiles").select("avatar_url, nickname, credits").eq("id", user.id).single(),
-      supabase.rpc("current_user_credits")
-    ]);
-    nickname = profile?.nickname ?? (user.email?.split("@")[0] ?? null);
-    const rawAvatar = profile?.avatar_url ?? null;
-    avatarUrl = rawAvatar ? `${rawAvatar}${rawAvatar.includes("?") ? "&" : "?"}v=${Date.now()}` : null;
-    credits = (typeof rpc === "number" ? rpc : null) ?? (profile?.credits ?? null);
-  }
-
-  const avatarSrc = avatarUrl || (user ? fallbackAvatarFor(user!.id) : "/avatars/fire-1.png");
+  const onSelect = () => setOpen(false)
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-[linear-gradient(180deg,rgba(6,6,6,.7),rgba(6,6,6,.5))] backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3">
-        <Link href="/" className="font-semibold tracking-tight text-white">Fagulha IA</Link>
-        <nav className="ml-auto flex items-center gap-3">
-          <Link href="/explorar" className="text-sm text-white/80 hover:text-white">Explorar</Link>
-          <Link href="/gallery" className="text-sm text-white/80 hover:text-white">Galeria</Link>
-          <Link href="/dashboard" className="text-sm text-white/80 hover:text-white">Dashboard</Link>
-          <UserMenu isLogged={!!user} avatarSrc={avatarSrc} nickname={nickname ?? undefined}
-            credits={typeof credits === "number" ? credits : undefined}/>
+    <header className="flex items-center gap-4 p-4 border-b border-white/10">
+      <Link href="/" className="font-bold">Fagulha</Link>
+
+      <div className="ml-auto flex items-center gap-2">
+        <nav className="flex items-center gap-2">
+          {userId
+            ? <Link href="/dashboard" className="px-3 py-2 rounded-lg hover:bg-white/10">Perfil</Link>
+            : <Link href="/auth/login" className="px-3 py-2 rounded-lg hover:bg-white/10">Entrar</Link>
+          }
+          <Link href="/explorar" className="px-3 py-2 rounded-lg hover:bg-white/10">Explorar</Link>
+          <Link href="/planos" className="px-3 py-2 rounded-lg hover:bg-white/10">Planos</Link>
         </nav>
+
+        {userId && (
+          <div className="relative" ref={menuRef}>
+            <button
+              aria-expanded={open}
+              aria-haspopup="menu"
+              onClick={() => setOpen(o => !o)}
+              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition"
+            >
+              Menu
+            </button>
+
+            {open && (
+              <div
+                role="menu"
+                className="absolute right-0 mt-2 w-56 rounded-xl bg-black/90 backdrop-blur border border-white/10 shadow-lg p-2"
+              >
+                <Link href="/gallery" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Minha galeria</Link>
+                <Link href="/settings?tab=perfil" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Editar perfil</Link>
+                <Link href="/settings?tab=seguranca" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Alterar senha</Link>
+                <Link href="/planos" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Adquirir tokens</Link>
+                <Link href="/auth/logout" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Sair</Link>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </header>
-  );
+  )
 }
