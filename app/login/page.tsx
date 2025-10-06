@@ -1,2 +1,2 @@
-// app/login/page.tsx — proxy para /auth/login (mantém rota antiga funcionando)
+// app/login/page.tsx — mantém a rota antiga
 export { default } from '@/app/auth/login/page'
