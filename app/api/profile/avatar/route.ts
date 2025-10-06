@@ -1,9 +1,11 @@
 // app/api/profile/avatar/route.ts
 import { NextResponse } from 'next/server'
-import supabase from '@/lib/supabase/routeClient' // default import
+import routeClient from '@/lib/supabase/routeClient' // default export is a factory that returns SupabaseClient
 
 export async function POST(req: Request) {
   try {
+    const supabase = routeClient() // obtain SupabaseClient
+
     const { data: { user }, error: userErr } = await supabase.auth.getUser()
     if (userErr || !user) {
       return NextResponse.json({ error: 'not_authenticated', details: userErr?.message }, { status: 401 })
