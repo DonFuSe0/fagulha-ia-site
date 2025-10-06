@@ -1,12 +1,24 @@
-// caminho: app/api/auth/signup/route.ts (ou seu equivalente)
-import { NextResponse } from "next/server"
+import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: Request) {
-  const { email, password, confirmPassword /*, captcha */ } = await req.json()
+  try {
+    const { email, password } = await req.json();
 
-  // Remover checagem do captcha
-  // if (!captcha) { ... }
+    if (!email || !password) {
+      return NextResponse.json({ ok: false, error: 'Email e senha são obrigatórios.' }, { status: 400 });
+    }
 
-  // Lógica normal de cadastro
-  // ...
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+
+    return NextResponse.json({ ok: true, user: data.user });
+  } catch (err: any) {
+    return NextResponse.json({ ok: false, error: err.message || 'Erro inesperado.' }, { status: 500 });
+  }
 }
