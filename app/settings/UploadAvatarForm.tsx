@@ -1,5 +1,6 @@
 
 "use client";
+import React from "react";
 import { useRef, useState, useMemo } from "react";
 
 export default function UploadAvatarForm() {
@@ -11,6 +12,13 @@ export default function UploadAvatarForm() {
   const [ok, setOk] = useState(false);
 
   const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  // Revoke preview URL to avoid memory leaks
+  React.useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,7 +46,7 @@ export default function UploadAvatarForm() {
       <div className="flex items-center gap-3">
         <input
           ref={inputRef}
-          type="file"
+          type="file" id="avatar" name="avatar"
           accept="image/png,image/jpeg,image/webp"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           className="hidden"

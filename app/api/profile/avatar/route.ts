@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   // Derivar extensão quando possível
   const original = (file as any).name ?? 'avatar.png'
   const ext = original.includes('.') ? original.split('.').pop() : 'png'
-  const key = `avatars/${user.id}-${Date.now()}.${ext}`
+  const key = `${user.id}/${Date.now()}.${ext}`
 
   // Upload
   const { error: upErr } = await supabase.storage.from('avatars').upload(key, file, {
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     upsert: true
   })
   if (upErr) {
-    return NextResponse.json({ ok: false, error: 'Falha ao enviar avatar: ' + upErr.message }, { status: 400 })
+    return NextResponse.json({ ok: false, error: 'Falha ao enviar avatar (storage): ' + upErr.message }, { status: 400 })
   }
 
   const pub = await supabase.storage.from('avatars').getPublicUrl(key)

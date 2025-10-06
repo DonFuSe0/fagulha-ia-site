@@ -4,7 +4,7 @@ const contentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
   style-src 'self' 'unsafe-inline';
-  img-src 'self' data: https:;
+  img-src 'self' data: https: blob:;
   font-src 'self' data: https:;
   connect-src 'self' https://*.supabase.co wss://*.supabase.co;
   media-src 'self' https:;
@@ -23,6 +23,15 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.supabase.co' },
+      { protocol: 'https', hostname: 'img.freepik.com' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      { protocol: 'https', hostname: 'avatars.githubusercontent.com' }
+    ],
+    formats: ['image/avif','image/webp']
+  },
   reactStrictMode: true,
   poweredByHeader: false,
   async headers() {
