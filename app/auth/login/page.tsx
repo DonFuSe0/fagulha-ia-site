@@ -1,4 +1,4 @@
-// app/auth/login/page.tsx — layout espelhado do signup
+// app/auth/login/page.tsx — same style as signup; uses cookie-based client
 'use client'
 
 import { useState } from 'react'
@@ -20,7 +20,6 @@ export default function LoginPage() {
       if (error) throw error
       router.replace('/perfil')
     } catch (err: any) {
-      console.error('login error:', err?.message || err)
       setError(err?.message || 'Falha ao entrar')
     } finally {
       setLoading(false)
@@ -85,10 +84,6 @@ export default function LoginPage() {
                 </div>
               )}
             </form>
-
-            <div className="text-center text-sm text-zinc-400">
-              Não tem conta? <a className="text-orange-400 hover:underline" href="/auth/signup">Criar agora</a>
-            </div>
           </div>
           <div className="h-1 w-full bg-gradient-to-r from-orange-600 via-orange-400 to-orange-600" />
         </div>

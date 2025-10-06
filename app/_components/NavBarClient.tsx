@@ -1,23 +1,23 @@
-"use client";
+'use client'
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase/client'
 
 type Session = {
   user: { id: string; email?: string | null } | null;
 } | null;
 
 export default function NavBarClient() {
-  const [session, setSession] = useState<Session>(null);
+  const [session, setSession] = useState<Session>(null)
 
   useEffect(() => {
-    let mounted = true;
+    let mounted = true
     supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setSession(data?.session ?? null);
-    });
-    return () => { mounted = false };
-  }, []);
+      if (mounted) setSession(data?.session ?? null)
+    })
+    return () => { mounted = false }
+  }, [])
 
   return (
     <nav className="w-full bg-black/60 backdrop-blur border-b border-zinc-800 text-zinc-100">
@@ -37,5 +37,5 @@ export default function NavBarClient() {
         </div>
       </div>
     </nav>
-  );
+  )
 }

@@ -1,26 +1,17 @@
-'use client';
+'use client'
 
-import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import type { Database } from '@/types/supabase' // ajuste/remova se não tiver os tipos
 
-let _supabase: SupabaseClient | null = null;
+// Singleton por módulo; auth-helpers gerenciam cookies automaticamente.
+const _supabase = createClientComponentClient<Database>()
 
-export function createClient(): SupabaseClient {
-  if (_supabase) return _supabase;
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-  _supabase = createSupabaseClient(url, anonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storageKey: 'sb-auth',
-    },
-  });
-
-  return _supabase;
+// Compat: muitos arquivos no projeto importam { createClient } de './client'.
+// Para evitar múltiplas instâncias, `createClient()` retorna o mesmo singleton.
+export function createClient() {
+  return _supabase
 }
 
-export const supabase = createClient();
-export type { SupabaseClient };
+// Exports originais/atuais
+export const supabase = _supabase
+export default _supabase
