@@ -1,21 +1,28 @@
-// lib/supabase/client.ts
-'use client';
+"use client";
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+let _client: SupabaseClient | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  // Fail fast in dev to avoid silent hangs
-  // In prod Vercel, ensure both envs are configured
-  console.warn('[supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+export function createClient(): SupabaseClient {
+  if (_client) return _client;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  // Evita acessar localStorage no server
+  const options: Parameters<typeof createSupabaseClient>[2] = {
+    auth: {
+      persistSession: true,
+      storage: typeof window !== "undefined" ? window.localStorage : undefined,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  };
+
+  _client = createSupabaseClient(url, key, options);
+  return _client;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-});
+// Conveniência: quem preferir pode importar { supabase } direto
+export const supabase = createClient();
