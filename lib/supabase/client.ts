@@ -1,22 +1,21 @@
 // lib/supabase/client.ts
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import type { SupabaseClient } from '@supabase/supabase-js'
+'use client';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-// compatível com projetos antigos e novos
-const key =
-  (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as string) ??
-  (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string)
+import { createClient } from '@supabase/supabase-js';
 
-if (!url || !key) {
-  // Ajuda a detectar em build/deploy se faltou variável
-  // (não joga erro aqui pra não quebrar o build local de tipagem)
-  // eslint-disable-next-line no-console
-  console.warn(
-    '[supabase] Verifique NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (ou ...ANON_KEY)'
-  )
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  // Fail fast in dev to avoid silent hangs
+  // In prod Vercel, ensure both envs are configured
+  console.warn('[supabase] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
 }
 
-export function createClient(): SupabaseClient {
-  return createSupabaseClient(url, key)
-}
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
