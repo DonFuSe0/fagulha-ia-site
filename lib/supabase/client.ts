@@ -1,22 +1,28 @@
-// lib/supabase/client.ts
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import type { SupabaseClient } from '@supabase/supabase-js'
+"use client";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-// compatível com projetos antigos e novos
-const key =
-  (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as string) ??
-  (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string)
+import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 
-if (!url || !key) {
-  // Ajuda a detectar em build/deploy se faltou variável
-  // (não joga erro aqui pra não quebrar o build local de tipagem)
-  // eslint-disable-next-line no-console
-  console.warn(
-    '[supabase] Verifique NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (ou ...ANON_KEY)'
-  )
-}
+let _client: SupabaseClient | null = null;
 
 export function createClient(): SupabaseClient {
-  return createSupabaseClient(url, key)
+  if (_client) return _client;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  // Evita acessar localStorage no server
+  const options: Parameters<typeof createSupabaseClient>[2] = {
+    auth: {
+      persistSession: true,
+      storage: typeof window !== "undefined" ? window.localStorage : undefined,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  };
+
+  _client = createSupabaseClient(url, key, options);
+  return _client;
 }
+
+// Conveniência: quem preferir pode importar { supabase } direto
+export const supabase = createClient();
