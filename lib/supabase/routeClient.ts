@@ -1,9 +1,8 @@
-'use server';
-
+import 'server-only';
 import { createClient as createServerClient } from './server';
 
 /**
- * Compat: usado como função em rotas API
+ * Compat: usado como função em rotas API:
  *   import { supabaseRoute } from '@/lib/supabase/routeClient'
  *   const supabase = supabaseRoute();
  */
