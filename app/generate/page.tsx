@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { supabaseServer } from '@/lib/supabase/serverClient';
+import Header from "@/components/Header"
 
 /**
  * Página de geração. Nesta primeira versão é apenas um placeholder para a
@@ -15,6 +16,7 @@ export default async function GeneratePage() {
     redirect('/auth/login');
   }
   return (
+    <Header />
     <div className="space-y-4">
       <h1 className="text-3xl font-bold text-white">Gerar Imagem</h1>
       <p className="text-gray-300">
