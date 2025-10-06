@@ -1,4 +1,4 @@
-// middleware.ts — CSP sem Cloudflare Turnstile
+// middleware.ts — CSP relax: permite inline scripts TEMPORARIAMENTE
 import { NextResponse, type NextRequest } from 'next/server'
 
 function createNonce() {
@@ -16,7 +16,8 @@ export function middleware(_req: NextRequest) {
 
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}'`,
+    // Permite inline scripts para não bloquear /login (remover depois)
+    `script-src 'self' 'unsafe-inline' 'nonce-${nonce}'`,
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
     "img-src 'self' data: blob: https://*.supabase.co",
     "style-src 'self' 'unsafe-inline'",
