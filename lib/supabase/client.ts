@@ -1,28 +1,19 @@
-"use client";
+'use client';
 
-import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from '@supabase/ssr';
 
-let _client: SupabaseClient | null = null;
-
-export function createClient(): SupabaseClient {
-  if (_client) return _client;
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-  // Evita acessar localStorage no server
-  const options: Parameters<typeof createSupabaseClient>[2] = {
-    auth: {
-      persistSession: true,
-      storage: typeof window !== "undefined" ? window.localStorage : undefined,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  };
-
-  _client = createSupabaseClient(url, key, options);
-  return _client;
+export function createClient() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          if (typeof document === 'undefined') return '';
+          const matches = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+          return matches ? matches[2] : '';
+        },
+      },
+    }
+  );
 }
-
-// Conveniência: quem preferir pode importar { supabase } direto
-export const supabase = createClient();
