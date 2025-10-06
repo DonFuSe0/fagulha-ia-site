@@ -23,7 +23,7 @@ type GenerationRow = {
   prompt: string | null
 }
 
-function clsx(...parts: (string | false | null | undefined)[]) { return parts.filter(Boolean).join(' ') }
+function cx(...p: (string | null | undefined | false)[]) { return p.filter(Boolean).join(' ') }
 
 function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string | null }) {
   const [open, setOpen] = useState(false)
@@ -31,7 +31,7 @@ function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: str
     <div className="relative">
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/70 px-2 py-1 hover:border-orange-500 transition-colors"
+        className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/70 px-2 py-1 hover:border-brand transition-colors"
       >
         <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center">
           {avatarUrl ? (
@@ -41,16 +41,16 @@ function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: str
           )}
         </div>
         <span className="text-sm text-zinc-200">{nickname}</span>
-        <svg className={clsx('w-4 h-4 text-zinc-400 transition-transform', open && 'rotate-180')} viewBox="0 0 20 20" fill="currentColor">
+        <svg className={cx('w-4 h-4 text-zinc-400 transition-transform', open && 'rotate-180')} viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" clipRule="evenodd" />
         </svg>
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900/95 shadow-xl backdrop-blur">
           <div className="py-2 text-sm">
-            <Link href="/app/gallery" className="block px-4 py-2 hover:bg-zinc-800">Sua Galeria</Link>
+            <Link href="/gallery" className="block px-4 py-2 hover:bg-zinc-800">Sua Galeria</Link>
             <Link href="/settings?tab=perfil" className="block px-4 py-2 hover:bg-zinc-800">Editar Perfil</Link>
-            <Link href="/tokens" className="block px-4 py-2 hover:bg-zinc-800">Comprar token</Link>
+            <Link href="/planos" className="block px-4 py-2 hover:bg-zinc-800">Comprar token</Link>
             <button
               onClick={async () => { await supabase.auth.signOut(); window.location.href = '/' }}
               className="w-full text-left px-4 py-2 hover:bg-zinc-800 text-red-400"
@@ -69,10 +69,10 @@ function TopNav({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string 
     <nav className="w-full bg-black/60 backdrop-blur border-b border-zinc-800 text-zinc-100">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link href="/" className="font-semibold">Fagulha<span className="text-orange-500">.</span></Link>
-          <Link href="/" className="hover:text-orange-400">Início</Link>
-          <Link href="/app/gallery" className="hover:text-orange-400">Sua Galeria</Link>
-          <Link href="/app/generate" className="hover:text-orange-400">Criação</Link>
+          <Link href="/" className="font-semibold">Fagulha<span className="text-brand">.</span></Link>
+          <Link href="/" className="hover:text-brand">Início</Link>
+          <Link href="/gallery" className="hover:text-brand">Sua Galeria</Link>
+          <Link href="/generate" className="hover:text-brand">Criação</Link>
         </div>
         <AvatarMenu nickname={nickname} avatarUrl={avatarUrl ?? undefined} />
       </div>
@@ -97,19 +97,15 @@ export default function DashboardPage() {
         const user = s?.session?.user
         if (!user) { router.replace('/auth/login'); return }
 
-        // nickname/avatar do perfil (public.profiles)
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('nickname, avatar_url')
-          .eq('id', user.id)
-          .maybeSingle()
+        // perfil
+        const { data: profile } = await supabase.from('profiles').select('nickname, avatar_url').eq('id', user.id).maybeSingle()
         const nick = (profile?.nickname) || (user.user_metadata?.nickname) || (user.email?.split('@')[0] ?? 'Você')
         if (mounted) {
           setNickname(nick)
           setAvatarUrl(profile?.avatar_url ?? user.user_metadata?.avatar_url ?? null)
         }
 
-        // Tokens (compras e gastos) — public.tokens
+        // tokens
         const { data: tokens } = await supabase
           .from('tokens')
           .select('*')
@@ -123,7 +119,7 @@ export default function DashboardPage() {
           setUsages(all.filter(t => (t.amount ?? 0) < 0).slice(0, 10))
         }
 
-        // Últimas 4 gerações — public.generations
+        // últimas 4 gerações
         const { data: g } = await supabase
           .from('generations')
           .select('id, created_at, image_url, thumb_url, prompt')
@@ -140,67 +136,61 @@ export default function DashboardPage() {
   }, [router])
 
   return (
-    <div className="min-h-screen bg-black text-zinc-200">
+    <div className="min-h-screen bg-background text-gray-200">
       <TopNav nickname={nickname} avatarUrl={avatarUrl} />
       <main className="max-w-6xl mx-auto px-4 py-8 space-y-8">
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Histórico de compras */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50">
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+          <div className="card">
+            <div className="card-header">
               <h2 className="font-semibold">Histórico de compras</h2>
-              <div className="text-xs text-zinc-400">últimas 10</div>
+              <div className="muted">últimas 10</div>
             </div>
-            <div className="p-4 space-y-3">
-              {loading && <div className="text-zinc-400 text-sm">Carregando…</div>}
-              {!loading && purchases.length === 0 && (
-                <div className="text-zinc-400 text-sm">Nenhuma compra encontrada.</div>
-              )}
+            <div className="card-body space-y-3">
+              {loading && <div className="muted">Carregando…</div>}
+              {!loading && purchases.length === 0 && <div className="muted">Nenhuma compra encontrada.</div>}
               {purchases.map((p) => (
-                <div key={p.id} className="flex items-center justify-between text-sm bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2">
+                <div key={p.id} className="item-row">
                   <div className="space-y-0.5">
-                    <div className="text-zinc-200">+{p.amount ?? 0} tokens</div>
-                    <div className="text-zinc-500">{p.created_at ? new Date(p.created_at).toLocaleString() : '—'}</div>
+                    <div className="text-gray-100">+{p.amount ?? 0} tokens</div>
+                    <div className="muted">{p.created_at ? new Date(p.created_at).toLocaleString() : '—'}</div>
                   </div>
-                  <div className="text-right text-zinc-400 text-xs">{p.description ?? '—'}</div>
+                  <div className="text-right muted text-xs">{p.description ?? '—'}</div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Gastos de tokens */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50">
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+          <div className="card">
+            <div className="card-header">
               <h2 className="font-semibold">Gastos de tokens</h2>
-              <div className="text-xs text-zinc-400">últimos 10</div>
+              <div className="muted">últimos 10</div>
             </div>
-            <div className="p-4 space-y-3">
-              {loading && <div className="text-zinc-400 text-sm">Carregando…</div>}
-              {!loading && usages.length === 0 && (
-                <div className="text-zinc-400 text-sm">Nenhum gasto encontrado.</div>
-              )}
+            <div className="card-body space-y-3">
+              {loading && <div className="muted">Carregando…</div>}
+              {!loading && usages.length === 0 && <div className="muted">Nenhum gasto encontrado.</div>}
               {usages.map((u) => (
-                <div key={u.id} className="flex items-center justify-between text-sm bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2">
+                <div key={u.id} className="item-row">
                   <div className="space-y-0.5">
-                    <div className="text-zinc-200">-{Math.abs(u.amount ?? 0)} tokens</div>
-                    <div className="text-zinc-500">{u.created_at ? new Date(u.created_at).toLocaleString() : '—'}</div>
+                    <div className="text-gray-100">-{Math.abs(u.amount ?? 0)} tokens</div>
+                    <div className="muted">{u.created_at ? new Date(u.created_at).toLocaleString() : '—'}</div>
                   </div>
-                  <div className="text-right text-zinc-400 text-xs">{u.description ?? '—'}</div>
+                  <div className="text-right muted text-xs">{u.description ?? '—'}</div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Últimas 4 gerações */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50">
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+          <div className="card">
+            <div className="card-header">
               <h2 className="font-semibold">Últimas gerações</h2>
-              <div className="text-xs text-zinc-400">4 mais recentes</div>
+              <div className="muted">4 mais recentes</div>
             </div>
             <div className="p-4 grid grid-cols-2 gap-3">
-              {loading && <div className="col-span-2 text-zinc-400 text-sm">Carregando…</div>}
-              {!loading && gens.length === 0 && (
-                <div className="col-span-2 text-zinc-400 text-sm">Nenhuma geração encontrada.</div>
-              )}
+              {loading && <div className="col-span-2 muted">Carregando…</div>}
+              {!loading && gens.length === 0 && <div className="col-span-2 muted">Nenhuma geração encontrada.</div>}
               {gens.map((g) => (
                 <div key={g.id} className="aspect-square relative rounded-xl overflow-hidden border border-zinc-800">
                   <Image
