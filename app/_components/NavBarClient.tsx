@@ -1,5 +1,5 @@
 'use client'
-// app/_components/NavBarClient.tsx — sem onAuthStateChange (evita listeners)
+// app/_components/NavBarClient.tsx — seguro: sem onAuthStateChange acumulando
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -18,14 +18,16 @@ export default function NavBarClient() {
   }, [supabase])
 
   return (
-    <nav className="w-full flex items-center justify-between p-3">
-      <Link href="/">Fagulha</Link>
-      <div className="flex items-center gap-3">
-        {session ? (
-          <Link href="/perfil">Meu Perfil</Link>
-        ) : (
-          <Link href="/auth/login">Entrar</Link>
-        )}
+    <nav className="w-full bg-black/60 backdrop-blur border-b border-gray-800 text-gray-100">
+      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+        <Link href="/" className="font-semibold">Fagulha<span className="text-orange-500">.</span></Link>
+        <div className="flex items-center gap-4">
+          {session ? (
+            <Link href="/perfil" className="hover:text-orange-400">Meu Perfil</Link>
+          ) : (
+            <Link href="/auth/login" className="hover:text-orange-400">Entrar</Link>
+          )}
+        </div>
       </div>
     </nav>
   )
