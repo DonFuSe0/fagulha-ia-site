@@ -1,3 +1,3 @@
-// lib/supabase/browser-client.ts
-export { createClient as getSupabaseBrowserClient } from './client'
-export { supabase as default } from './client'
+// lib/supabase/browser-client.ts — compat para imports antigos
+'use client'
+export { default as default, supabase as supabaseBrowser, supabase, createClient } from './client'

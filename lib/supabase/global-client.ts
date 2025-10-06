@@ -1,2 +1,4 @@
-// lib/supabase/global-client.ts
-export { supabase as default, createClient as getSupabase } from './client'
+// lib/supabase/global-client.ts — compat para imports antigos
+'use client'
+export { default as default, supabase, createClient } from './client'
+export const getSupabase = () => supabase
