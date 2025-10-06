@@ -1,9 +1,7 @@
-// app/page.tsx — Landing com top menu (Entrar / Explorar / Adquirir Tokens) + feed público
+// app/page.tsx — Landing com top menu + feed público (sem revalidate e sem @ts-expect-error)
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
-
-export const revalidate = 60
 
 async function PublicFeed() {
   const supabase = createClient()
@@ -79,7 +77,6 @@ export default async function Home() {
       {/* Public feed */}
       <main className="max-w-7xl mx-auto px-4 pb-16">
         <h2 className="text-lg font-semibold">Criações públicas</h2>
-        {/* @ts-expect-error Async Server Component */}
         {await PublicFeed()}
       </main>
     </div>
