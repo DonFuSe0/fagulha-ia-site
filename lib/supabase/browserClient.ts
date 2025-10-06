@@ -1,16 +1,10 @@
-// lib/supabase/browser-client.ts
-import { createClient } from '@supabase/supabase-js'
+// lib/supabase/browserClient.ts
+// Compat layer: mantém o antigo `supabaseBrowser` para código existente.
+// Passa a usar o singleton definido em './browser-client'.
+import { getSupabaseBrowserClient } from './browser-client'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Instância única para quem importava { supabaseBrowser }
+export const supabaseBrowser = getSupabaseBrowserClient()
 
-let client: ReturnType<typeof createClient> | undefined
-
-export function getSupabaseBrowserClient() {
-  if (!client) {
-    client = createClient(supabaseUrl, supabaseAnonKey, {
-      realtime: { params: { eventsPerSecond: 3 } }, // opcional
-    })
-  }
-  return client
-}
+// Também exporta a factory nova, caso queira migrar gradualmente
+export { getSupabaseBrowserClient }
