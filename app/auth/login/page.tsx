@@ -1,4 +1,4 @@
-// app/auth/login/page.tsx — layout e classes espelhando /auth/signup
+// app/auth/login/page.tsx — layout espelhado do signup
 'use client'
 
 import { useState } from 'react'
@@ -18,7 +18,7 @@ export default function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
-      router.push('/perfil')
+      router.replace('/perfil')
     } catch (err: any) {
       console.error('login error:', err?.message || err)
       setError(err?.message || 'Falha ao entrar')
