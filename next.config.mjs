@@ -1,8 +1,5 @@
-// next.config.mjs — CSP relax (TEMP): permite 'unsafe-inline' e 'unsafe-eval'
 /** @type {import('next').NextConfig} */
 
-// ⚠️ TEMP: Destrava bundles/terceiros que usam inline/eval enquanto removemos isso do código.
-// Depois de confirmar que o fluxo está ok, volte a endurecer (remover 'unsafe-inline' e 'unsafe-eval').
 const contentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
@@ -18,18 +15,10 @@ const contentSecurityPolicy = `
 `.replace(/\n/g, ' ').replace(/\s{2,}/g, ' ').trim();
 
 const securityHeaders = [
-  // CSP principal
-  {
-    key: 'Content-Security-Policy',
-    value: contentSecurityPolicy,
-  },
-  // XSS
+  { key: 'Content-Security-Policy', value: contentSecurityPolicy },
   { key: 'X-XSS-Protection', value: '1; mode=block' },
-  // Clickjacking
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-  // MIME sniffing
   { key: 'X-Content-Type-Options', value: 'nosniff' },
-  // Referrer
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
 ];
 
@@ -37,12 +26,7 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: securityHeaders,
-      },
-    ];
+    return [{ source: '/:path*', headers: securityHeaders }];
   },
 };
 

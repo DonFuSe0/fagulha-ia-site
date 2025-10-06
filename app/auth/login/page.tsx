@@ -1,87 +1,98 @@
-// app/auth/login/page.tsx — Dark (preto/cinza) + acentos laranja, acessível
+// app/auth/login/page.tsx — layout e classes espelhando /auth/signup
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase/client'
 
 export default function LoginPage() {
-  const supabase = createClient()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null); setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
-    if (error) setError(error.message)
-    else router.push('/perfil')
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
+      router.push('/perfil')
+    } catch (err: any) {
+      console.error('login error:', err?.message || err)
+      setError(err?.message || 'Falha ao entrar')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <main className="min-h-screen bg-black text-gray-100 flex items-center justify-center p-6">
+    <div className="min-h-[calc(100vh-56px)] bg-black text-zinc-200 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
-        <div className="rounded-2xl border border-gray-800 bg-gradient-to-b from-[#0b0b0b] to-[#131313] shadow-xl overflow-hidden">
-          <div className="p-6 sm:p-8">
-            <h1 className="text-2xl sm:text-3xl font-bold">
-              Entrar<span className="text-orange-500">.</span>
-            </h1>
-            <p className="mt-2 text-sm text-gray-400">
-              Acesse sua conta para gerar imagens com seus tokens.
-            </p>
+        <div className="rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 shadow-xl overflow-hidden">
+          <div className="p-6 sm:p-8 space-y-6">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold">Entrar</h1>
+              <p className="mt-1 text-sm text-zinc-400">
+                Use seu email e senha para acessar.
+              </p>
+            </div>
 
-            <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
+            <form onSubmit={onSubmit} className="space-y-4" noValidate>
               <div className="space-y-1">
-                <label htmlFor="email" className="block text-sm text-gray-300">Email</label>
+                <label htmlFor="email" className="block text-sm text-zinc-300">Email</label>
                 <input
                   id="email"
                   name="email"
                   type="email"
                   autoComplete="email"
                   inputMode="email"
-                  className="w-full rounded-xl bg-[#0f0f0f] border border-gray-800 focus:border-orange-500 focus:outline-none px-4 py-3 placeholder:text-gray-500"
+                  className="w-full h-11 rounded-lg bg-zinc-950 border border-zinc-800 focus:border-orange-500 focus:outline-none px-3 placeholder:text-zinc-500"
                   placeholder="voce@exemplo.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={e => setEmail(e.target.value)}
                   required
-                  aria-required="true"
                 />
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="password" className="block text-sm text-gray-300">Senha</label>
+                <label htmlFor="password" className="block text-sm text-zinc-300">Senha</label>
                 <input
                   id="password"
                   name="password"
                   type="password"
                   autoComplete="current-password"
-                  className="w-full rounded-xl bg-[#0f0f0f] border border-gray-800 focus:border-orange-500 focus:outline-none px-4 py-3 placeholder:text-gray-500"
+                  className="w-full h-11 rounded-lg bg-zinc-950 border border-zinc-800 focus:border-orange-500 focus:outline-none px-3 placeholder:text-zinc-500"
                   placeholder="Sua senha"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                   required
-                  aria-required="true"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full rounded-xl bg-orange-600 hover:bg-orange-500 transition-colors px-4 py-3 font-medium"
                 disabled={loading}
+                className="w-full h-11 rounded-lg bg-orange-600 hover:bg-orange-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors font-medium"
               >
-                {loading ? 'Entrando…' : 'Entrar'}
+                {loading ? 'Entrando...' : 'Entrar'}
               </button>
 
-              {error && <p className="text-red-500 text-sm" role="alert">{error}</p>}
+              {error && (
+                <div className="text-sm text-red-400 bg-red-500/10 border border-red-900 px-3 py-2 rounded-lg">
+                  {error}
+                </div>
+              )}
             </form>
+
+            <div className="text-center text-sm text-zinc-400">
+              Não tem conta? <a className="text-orange-400 hover:underline" href="/auth/signup">Criar agora</a>
+            </div>
           </div>
           <div className="h-1 w-full bg-gradient-to-r from-orange-600 via-orange-400 to-orange-600" />
         </div>
       </div>
-    </main>
+    </div>
   )
 }
