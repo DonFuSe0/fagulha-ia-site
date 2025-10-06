@@ -1,22 +1,9 @@
+// app/api/profile/avatar/route.ts
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/ssr';
+import { supabase } from '@/lib/supabase/routeClient'; // usa o helper já existente no projeto
 
 export async function POST(req: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-        },
-      }
-    );
-
     const { data: { user }, error: userErr } = await supabase.auth.getUser();
     if (userErr || !user) {
       return NextResponse.json({ error: 'not_authenticated', details: userErr?.message }, { status: 401 });
@@ -44,7 +31,7 @@ export async function POST(req: Request) {
     }
 
     const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(path);
-    const publicUrl = publicData?.publicUrl;
+    const publicUrl = publicData?.publicUrl ?? null;
 
     const { error: upProfileErr } = await supabase
       .from('profiles')
