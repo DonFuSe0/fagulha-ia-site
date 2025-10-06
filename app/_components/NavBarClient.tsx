@@ -1,5 +1,5 @@
 'use client'
-// app/_components/NavBarClient.tsx — versão segura sem onAuthStateChange
+// app/_components/NavBarClient.tsx — sem onAuthStateChange (evita listeners)
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -12,10 +12,8 @@ export default function NavBarClient() {
   useEffect(() => {
     let mounted = true
     supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return
-      setSession(data.session ?? null)
+      if (mounted) setSession(data.session ?? null)
     })
-    // Sem onAuthStateChange aqui para evitar listeners acumulando
     return () => { mounted = false }
   }, [supabase])
 
@@ -26,7 +24,7 @@ export default function NavBarClient() {
         {session ? (
           <Link href="/perfil">Meu Perfil</Link>
         ) : (
-          <Link href="/login">Entrar</Link>
+          <Link href="/auth/login">Entrar</Link>
         )}
       </div>
     </nav>
