@@ -1,9 +1,8 @@
-'use server';
-
+import 'server-only';
 import { createClient as createServerClient } from './server';
 
 /**
- * Compat: usado como função em server components/pages
+ * Compat: usado em server components/pages:
  *   import { supabaseServer } from '@/lib/supabase/serverClient'
  *   const supabase = supabaseServer();
  */
