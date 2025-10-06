@@ -2,24 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== Theme tokens (sem quebrar botões existentes) ===== */
-:root {
-  --bg: #0a0c10;          /* theme.background */
-  --card: #0f1117;
-  --card-border: #272a33;
-  --muted: #9aa3b2;
-}
-
-html, body {
+/* Global styles */
+html,
+body {
+  /* Use the dark background defined in Tailwind's custom colors. */
   @apply bg-background text-gray-200;
   min-height: 100vh;
 }
-
-/* Utilitários suaves para padronizar */
+/* === THEME UTILITIES (added) === */
+.muted { @apply text-sm text-zinc-400; }
+.btn-primary { @apply rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-2 font-medium text-white; }
 .card { @apply rounded-2xl border border-zinc-800 bg-zinc-900/50; }
 .card-header { @apply p-4 border-b border-zinc-800 flex items-center justify-between; }
 .card-body { @apply p-4; }
-.muted { @apply text-sm text-zinc-400; }
 .text-brand { color: theme('colors.brand.DEFAULT'); }
 .hover\:text-brand:hover { color: theme('colors.brand.DEFAULT'); }
 .border-brand { border-color: theme('colors.brand.DEFAULT'); }
