@@ -1,11 +1,13 @@
-'use client';
+// lib/supabase/browserClient.ts
+// Compat shim — mantém o caminho antigo esperado pelos componentes.
+// Reexporta a mesma instância global única criada em './client'.
+'use client'
 
-// Compat layer — aponta SEMPRE para a mesma instância global
-import { createClient, supabase as baseSupabase } from './client';
+import { supabase as baseSupabase, createClient } from './client'
 
-export const supabaseBrowser = baseSupabase;
-export const supabase = baseSupabase; // compat extra
+// API esperada pelo código existente
+export const supabaseBrowser = baseSupabase
+export const supabase = baseSupabase // extra de compat
+export { createClient }
 
-export { createClient };
-
-export default baseSupabase;
+export default baseSupabase
