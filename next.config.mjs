@@ -1,11 +1,11 @@
+// next.config.mjs — CSP relax (TEMP): permite 'unsafe-inline' e 'unsafe-eval'
 /** @type {import('next').NextConfig} */
 
-// ⚠️ Ajuste de CSP para permitir Supabase e WebSockets do Supabase.
-// Removemos 'strict-dynamic' e qualquer nonce para não bloquear bundles do Next.
-// Mantenha simples e segura.
+// ⚠️ TEMP: Destrava bundles/terceiros que usam inline/eval enquanto removemos isso do código.
+// Depois de confirmar que o fluxo está ok, volte a endurecer (remover 'unsafe-inline' e 'unsafe-eval').
 const contentSecurityPolicy = `
   default-src 'self';
-  script-src 'self';
+  script-src 'self' 'unsafe-inline' 'unsafe-eval';
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: https:;
   font-src 'self' data: https:;
@@ -19,19 +19,23 @@ const contentSecurityPolicy = `
 
 const securityHeaders = [
   // CSP principal
-  { key: 'Content-Security-Policy', value: contentSecurityPolicy },
-  // Endurecer navegação
-  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  {
+    key: 'Content-Security-Policy',
+    value: contentSecurityPolicy,
+  },
+  // XSS
+  { key: 'X-XSS-Protection', value: '1; mode=block' },
+  // Clickjacking
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-  { key: 'X-XSS-Protection', value: '0' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+  // MIME sniffing
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  // Referrer
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
 ];
 
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // Headers globais
   async headers() {
     return [
       {
