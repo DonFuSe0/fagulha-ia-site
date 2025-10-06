@@ -20,7 +20,8 @@ export default async function MyGalleryPage() {
     .limit(40);
 
   return (
-    <Header />
+    <>
+      <Header />
     <div className="mx-auto max-w-6xl p-6">
       <h1 className="mb-4 text-2xl font-semibold text-white">Minha galeria</h1>
       {error && (
@@ -44,5 +45,7 @@ export default async function MyGalleryPage() {
         ))}
       </div>
     </div>
+        
+    </>
   );
 }

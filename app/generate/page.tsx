@@ -16,7 +16,8 @@ export default async function GeneratePage() {
     redirect('/auth/login');
   }
   return (
-    <Header />
+    <>
+      <Header />
     <div className="space-y-4">
       <h1 className="text-3xl font-bold text-white">Gerar Imagem</h1>
       <p className="text-gray-300">
@@ -24,5 +25,7 @@ export default async function GeneratePage() {
         esta página é um espaço reservado para o recurso de geração.
       </p>
     </div>
+        
+    </>
   );
 }

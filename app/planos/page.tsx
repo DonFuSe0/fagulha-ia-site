@@ -5,7 +5,8 @@ export const revalidate = 0;
 
 export default function PlanosPage() {
   return (
-    <Header />
+    <>
+      <Header />
     <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
       <h1 className="text-2xl font-semibold text-white">Adquirir tokens</h1>
       <p className="text-white/80">Escolha um plano para continuar. (Em breve: checkout integrado)</p>
@@ -24,5 +25,7 @@ export default function PlanosPage() {
         </div>
       </div>
     </div>
+        
+    </>
   );
 }
