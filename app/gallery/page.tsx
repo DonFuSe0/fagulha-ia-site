@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import GalleryCard from "../components/gallery/GalleryCard";
-import Header from "@/components/Header"
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,8 +19,6 @@ export default async function MyGalleryPage() {
     .limit(40);
 
   return (
-    <>
-      <Header />
     <div className="mx-auto max-w-6xl p-6">
       <h1 className="mb-4 text-2xl font-semibold text-white">Minha galeria</h1>
       {error && (
@@ -45,7 +42,5 @@ export default async function MyGalleryPage() {
         ))}
       </div>
     </div>
-        
-    </>
   );
 }
