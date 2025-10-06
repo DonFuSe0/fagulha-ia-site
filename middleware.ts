@@ -1,4 +1,4 @@
-// middleware.ts — CSP sem Cloudflare Turnstile (desativado)
+// middleware.ts — CSP sem Cloudflare Turnstile
 import { NextResponse, type NextRequest } from 'next/server'
 
 function createNonce() {
@@ -16,13 +16,10 @@ export function middleware(_req: NextRequest) {
 
   const csp = [
     "default-src 'self'",
-    // sem challenges.cloudflare.com
     `script-src 'self' 'nonce-${nonce}'`,
-    // Supabase HTTP + WSS
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
     "img-src 'self' data: blob: https://*.supabase.co",
     "style-src 'self' 'unsafe-inline'",
-    // sem frame-src do CF
     "font-src 'self' data:",
     "form-action 'self'",
     "base-uri 'self'",
