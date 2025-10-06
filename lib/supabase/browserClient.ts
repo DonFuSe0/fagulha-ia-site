@@ -1,22 +1,10 @@
-'use client';
+// lib/supabase/browserClient.ts
+// Compat layer: mantém o antigo `supabaseBrowser` para código existente.
+// Passa a usar o singleton definido em './browser-client'.
+import { getSupabaseBrowserClient } from './browser-client'
 
-import {
-  supabase as baseSupabase,
-  createClient as baseCreateClient,
-} from './client';
+// Instância única para quem importava { supabaseBrowser }
+export const supabaseBrowser = getSupabaseBrowserClient()
 
-/**
- * No browser, normalmente usamos a instância única.
- * Compat com:
- *   import { supabaseBrowser } from '@/lib/supabase/browserClient'
- */
-export const supabaseBrowser = baseSupabase;
-
-/** Compat extra para quem importa { supabase } do browser */
-export const supabase = baseSupabase;
-
-/** Se alguém quiser fabricar outro client (raro no browser) */
-export const createClient = baseCreateClient;
-
-/** Default export */
-export default baseSupabase;
+// Também exporta a factory nova, caso queira migrar gradualmente
+export { getSupabaseBrowserClient }
