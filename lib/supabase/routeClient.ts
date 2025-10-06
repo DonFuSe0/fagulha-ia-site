@@ -1,16 +1,20 @@
 'use server';
 
-// Para Route Handlers (API do Next) reaproveitamos a mesma factory do server
 import { createClient as createServerClient } from './server';
 
 /**
- * Compat com imports antigos:
+ * Compat: usado como função em rotas API
  *   import { supabaseRoute } from '@/lib/supabase/routeClient'
+ *   const supabase = supabaseRoute();
  */
-export const supabaseRoute = createServerClient();
+export function supabaseRoute() {
+  return createServerClient();
+}
 
-/** Também expõe a factory */
+/** Factory explícita (se alguém importar) */
 export const createClient = createServerClient;
 
-/** Default export para compatibilidade */
-export default createServerClient;
+/** Default export como factory, caso alguém faça import default e chame */
+export default function getRouteClient() {
+  return createServerClient();
+}

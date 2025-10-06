@@ -1,22 +1,22 @@
 'use client';
 
-// Reaproveita o client já configurado em ./client
 import {
   supabase as baseSupabase,
   createClient as baseCreateClient,
 } from './client';
 
 /**
- * Compatibilidade com imports antigos:
+ * No browser, normalmente usamos a instância única.
+ * Compat com:
  *   import { supabaseBrowser } from '@/lib/supabase/browserClient'
  */
 export const supabaseBrowser = baseSupabase;
 
-/** Compat extra (se houver lugares usando { supabase }) */
+/** Compat extra para quem importa { supabase } do browser */
 export const supabase = baseSupabase;
 
-/** Reexport da factory do client do browser */
+/** Se alguém quiser fabricar outro client (raro no browser) */
 export const createClient = baseCreateClient;
 
-/** Default export para quem usava import default */
+/** Default export */
 export default baseSupabase;
