@@ -1,12 +1,21 @@
-// middleware.ts — adiciona CSP com nonce por request
-import { NextResponse } from 'next/server'
-import crypto from 'crypto'
+// middleware.ts — Edge-safe (sem 'import crypto from "crypto"')
+import { NextResponse, type NextRequest } from 'next/server'
 
-export function middleware(req: Request) {
-  const nonce = crypto.randomBytes(16).toString('base64')
-  const res = NextResponse.next({
-    request: { headers: new Headers(req.headers) }
-  })
+function createNonce() {
+  const arr = new Uint8Array(16)
+  crypto.getRandomValues(arr)
+  // base64-url encode
+  let str = ''
+  for (const b of arr) str += String.fromCharCode(b)
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'')
+}
+
+export function middleware(_req: NextRequest) {
+  const nonce = createNonce()
+
+  const res = NextResponse.next()
+
+  // envia o nonce para uso no layout via headers()
   res.headers.set('x-nonce', nonce)
 
   const csp = [
