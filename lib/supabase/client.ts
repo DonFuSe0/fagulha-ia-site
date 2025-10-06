@@ -1,28 +1,34 @@
-"use client";
+'use client';
 
-import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 
-let _client: SupabaseClient | null = null;
+let _supabase: SupabaseClient | null = null;
 
+/**
+ * Cria (uma única vez) o cliente do Supabase para uso no CLIENT (browser).
+ * Usa as envs públicas do Next:
+ *  - NEXT_PUBLIC_SUPABASE_URL
+ *  - NEXT_PUBLIC_SUPABASE_ANON_KEY
+ */
 export function createClient(): SupabaseClient {
-  if (_client) return _client;
+  if (_supabase) return _supabase;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  // Evita acessar localStorage no server
-  const options: Parameters<typeof createSupabaseClient>[2] = {
+  _supabase = createSupabaseClient(url, anonKey, {
     auth: {
       persistSession: true,
-      storage: typeof window !== "undefined" ? window.localStorage : undefined,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      storageKey: 'sb-auth', // chave de storage para não conflitar
     },
-  };
+  });
 
-  _client = createSupabaseClient(url, key, options);
-  return _client;
+  return _supabase;
 }
 
-// Conveniência: quem preferir pode importar { supabase } direto
+/**
+ * Export default “pronto” para quem importa direto { supabase }
+ */
 export const supabase = createClient();

@@ -1,6 +1,20 @@
-import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+'use server';
 
+import { createClient as createServerClient } from './server';
+
+/**
+ * Compat: usado como função em rotas API
+ *   import { supabaseRoute } from '@/lib/supabase/routeClient'
+ *   const supabase = supabaseRoute();
+ */
 export function supabaseRoute() {
-  return createRouteHandlerClient({ cookies });
+  return createServerClient();
+}
+
+/** Factory explícita (se alguém importar) */
+export const createClient = createServerClient;
+
+/** Default export como factory, caso alguém faça import default e chame */
+export default function getRouteClient() {
+  return createServerClient();
 }
