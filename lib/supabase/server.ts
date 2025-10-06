@@ -1,32 +1,22 @@
-// NUNCA use "use server" aqui.
-// Este arquivo deve ser carregado apenas no servidor.
-import 'server-only';
-
-import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
+// lib/supabase/server.ts
+// Uso exclusivo no servidor
+import 'server-only'
+import { cookies } from 'next/headers'
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+import type { SupabaseClient } from '@supabase/supabase-js'
+// import type { Database } from '@/types/supabase' // mantenha se você tiver os tipos
 
 /**
- * Cria um client do Supabase para uso no SERVIDOR.
- * Usa SERVICE_ROLE_KEY se existir (apenas no server), senão cai no ANON.
- * NÃO exponha SERVICE_ROLE_KEY em client code.
+ * Cria um client do Supabase para uso em Server Components,
+ * lendo/escrevendo os COOKIES de auth do usuário.
+ * Isso evita o loop para /auth/login nas páginas server-side (ex.: /generate).
  */
-export function createClient(): SupabaseClient {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  // Em produção, mantenha apenas SERVICE_ROLE_KEY no ambiente do servidor.
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-  return createSupabaseClient(url, key, {
-    auth: {
-      // No server não precisamos persistir sessão no storage
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  });
+export function createClient(): SupabaseClient /*<Database>*/ {
+  const c = cookies()
+  // @ts-ignore helpers inferem os tipos se Database existir
+  return createServerComponentClient({ cookies: () => c })
 }
 
-// Alias compatível com os outros helpers
-export { createClient as createServerClient };
-
-// Export default opcional
-export default createClient;
+// Alias compatível com importações antigas
+export { createClient as createServerClient }
+export default createClient
