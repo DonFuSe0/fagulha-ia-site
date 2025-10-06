@@ -1,19 +1,34 @@
 'use client';
 
-import { createBrowserClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 
-export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          if (typeof document === 'undefined') return '';
-          const matches = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-          return matches ? matches[2] : '';
-        },
-      },
-    }
-  );
+let _supabase: SupabaseClient | null = null;
+
+/**
+ * Cria (uma única vez) o cliente do Supabase para uso no CLIENT (browser).
+ * Usa as envs públicas do Next:
+ *  - NEXT_PUBLIC_SUPABASE_URL
+ *  - NEXT_PUBLIC_SUPABASE_ANON_KEY
+ */
+export function createClient(): SupabaseClient {
+  if (_supabase) return _supabase;
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+  _supabase = createSupabaseClient(url, anonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: 'sb-auth', // chave de storage para não conflitar
+    },
+  });
+
+  return _supabase;
 }
+
+/**
+ * Export default “pronto” para quem importa direto { supabase }
+ */
+export const supabase = createClient();

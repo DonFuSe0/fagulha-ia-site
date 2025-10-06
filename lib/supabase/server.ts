@@ -1,10 +1,15 @@
-// app/lib/supabase/server.ts
-// Fix: remove 'use server' so this helper is NOT treated as a Server Action.
-// It can be sync; Next 14 only requires async when it's a Server Action.
-import { cookies } from 'next/headers'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
+'use server';
 
-export function getServerClient() {
-  const cookieStore = cookies()
-  return createServerComponentClient<any>({ cookies: () => cookieStore })
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
+
+/**
+ * Cliente do Supabase para uso no SERVER (route handlers, actions).
+ * Se você tiver SUPABASE_SERVICE_ROLE_KEY no Vercel (Environment Variables),
+ * ele será usado no servidor; caso contrário cai no ANON_KEY.
+ * NÃO exponha o service role no client!
+ */
+export function createClient(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return createSupabaseClient(url, key);
 }
