@@ -2,33 +2,34 @@
 
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 
-let _supabase: SupabaseClient | null = null;
+// === SINGLETON GLOBAL ===
+// Garante uma ÚNICA instância no browser, mesmo com HMR/chunks/múltiplos imports.
+const g = globalThis as unknown as { __fagulhaSupabase?: SupabaseClient };
 
-/**
- * Cria (uma única vez) o cliente do Supabase para uso no CLIENT (browser).
- * Usa as envs públicas do Next:
- *  - NEXT_PUBLIC_SUPABASE_URL
- *  - NEXT_PUBLIC_SUPABASE_ANON_KEY
- */
-export function createClient(): SupabaseClient {
-  if (_supabase) return _supabase;
+function getOrCreateClient(): SupabaseClient {
+  if (g.__fagulhaSupabase) return g.__fagulhaSupabase;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  _supabase = createSupabaseClient(url, anonKey, {
+  g.__fagulhaSupabase = createSupabaseClient(url, anonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      storageKey: 'sb-auth', // chave de storage para não conflitar
+      // storageKey único/estável para evitar conflito entre instâncias
+      storageKey: 'fagulha-auth',
     },
   });
 
-  return _supabase;
+  return g.__fagulhaSupabase;
 }
 
-/**
- * Export default “pronto” para quem importa direto { supabase }
- */
-export const supabase = createClient();
+// Mantém API existente
+export function createClient(): SupabaseClient {
+  return getOrCreateClient();
+}
+
+export const supabase = getOrCreateClient();
+
+export type { SupabaseClient };

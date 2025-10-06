@@ -1,6 +1,11 @@
-// lib/supabase/browserClient.ts
-// Compat: mantém { supabaseBrowser } e reexporta factory a partir do singleton global
-export { getSupabase as getSupabaseBrowserClient } from './global-client'
-import client from './global-client'
-export const supabaseBrowser = client
-export default client
+'use client';
+
+// Compat layer — aponta SEMPRE para a mesma instância global
+import { createClient, supabase as baseSupabase } from './client';
+
+export const supabaseBrowser = baseSupabase;
+export const supabase = baseSupabase; // compat extra
+
+export { createClient };
+
+export default baseSupabase;
