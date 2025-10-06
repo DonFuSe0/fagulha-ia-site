@@ -1,4 +1,4 @@
-// middleware.ts — CSP relax: permite inline scripts TEMPORARIAMENTE
+// middleware.ts — CSP relax: adiciona 'unsafe-eval' e 'unsafe-inline' TEMPORARIAMENTE
 import { NextResponse, type NextRequest } from 'next/server'
 
 function createNonce() {
@@ -16,8 +16,8 @@ export function middleware(_req: NextRequest) {
 
   const csp = [
     "default-src 'self'",
-    // Permite inline scripts para não bloquear /login (remover depois)
-    `script-src 'self' 'unsafe-inline' 'nonce-${nonce}'`,
+    // TEMP: desbloqueia inline + eval até limparmos libs que usam isso
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval' 'nonce-${nonce}'`,
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
     "img-src 'self' data: blob: https://*.supabase.co",
     "style-src 'self' 'unsafe-inline'",

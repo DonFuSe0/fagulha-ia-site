@@ -1,4 +1,4 @@
-// app/layout.tsx — sem AuthWatcher para evitar duplicidade de listeners
+// app/layout.tsx — sem AuthWatcher
 import './globals.css'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
