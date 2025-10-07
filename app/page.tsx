@@ -51,7 +51,7 @@ export default async function Home() {
           </div>
           <div className="flex items-center gap-4">
             <Link href="/auth/login" className="hover:text-brand">Entrar</Link>
-            <Link href="/gallery" className="hover:text-brand">Explorar</Link>
+            <Link href="/explore" className="hover:text-brand">Explorar</Link>
             <Link href="/planos" className="rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-2 font-medium">Adquirir Tokens</Link>
           </div>
         </div>
@@ -69,7 +69,7 @@ export default async function Home() {
           </p>
           <div className="mt-6 flex gap-3">
             <Link href="/generate" className="rounded-xl bg-orange-600 hover:bg-orange-500 px-5 py-3 font-medium">Começar agora</Link>
-            <Link href="/gallery" className="rounded-xl border border-zinc-700 hover:border-brand px-5 py-3">Explorar</Link>
+            <Link href="/explore" className="rounded-xl border border-zinc-700 hover:border-brand px-5 py-3">Explorar</Link>
           </div>
         </div>
       </header>

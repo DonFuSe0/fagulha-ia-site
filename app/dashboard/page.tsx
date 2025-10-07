@@ -41,6 +41,7 @@ function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: str
           )}
         </div>
         <span className="text-sm text-zinc-200">{nickname}</span>
+        <span className="ml-2 text-xs text-white/80 bg-white/10 border border-white/10 rounded px-2 py-0.5">Saldo: <strong>{credits}</strong></span>
         <svg className={cx('w-4 h-4 text-zinc-400 transition-transform', open && 'rotate-180')} viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" clipRule="evenodd" />
         </svg>
@@ -97,7 +98,7 @@ export default function DashboardPage() {
         const user = s?.session?.user
         if (!user) { router.replace('/auth/login'); return }
 
-        const { data: profile } = await supabase.from('profiles').select('nickname, avatar_url').eq('id', user.id).maybeSingle()
+        const { data: profile } = await supabase.from('profiles').select('nickname, avatar_url, credits').eq('id', user.id).maybeSingle()
         const nick = (profile?.nickname) || (user.user_metadata?.nickname) || (user.email?.split('@')[0] ?? 'Você')
         if (mounted) {
           setNickname(nick)
