@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import routeClient from '@/lib/supabase/routeClient'
 
+// "Minha Galeria": lista APENAS imagens privadas do usuário no bucket gen-private/<user.id>/
 export async function GET() {
   const supabase = routeClient()
   const { data: { user }, error } = await supabase.auth.getUser()
@@ -18,12 +19,12 @@ export async function GET() {
     return NextResponse.json({ error: 'list_failed', details: listErr.message }, { status: 400 })
   }
 
+  // signed URLs (1h) para itens privados
   const items: any[] = []
   for (const obj of list || []) {
     if (!obj.name) continue
     const path = `${PREFIX}/${obj.name}`
-    const { data: signed, error: signErr } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60)
-    if (signErr) continue
+    const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60)
     items.push({ name: obj.name, path, url: signed?.signedUrl ?? null, created_at: obj.created_at })
   }
 
