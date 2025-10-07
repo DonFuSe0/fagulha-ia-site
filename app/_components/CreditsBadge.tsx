@@ -22,16 +22,10 @@ export default function CreditsBadge() {
     }
   }
 
-  React.useEffect(() => {
-    load()
-  }, [])
+  React.useEffect(() => { load() }, [])
 
-  if (loading) {
-    return <span className="text-xs text-zinc-400">carregando...</span>
-  }
-  if (err) {
-    return <span className="text-xs text-red-400">{err}</span>
-  }
+  if (loading) return <span className="text-xs text-zinc-400">carregando...</span>
+  if (err) return <span className="text-xs text-red-400">{err}</span>
   return (
     <span className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
