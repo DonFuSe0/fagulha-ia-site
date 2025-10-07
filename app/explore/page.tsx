@@ -1,9 +1,9 @@
-// app/gallery/page.tsx
+// app/explore/page.tsx
 'use client'
 
 import React from 'react'
 
-export default function PrivateGalleryPage() {
+export default function ExplorePage() {
   const [loading, setLoading] = React.useState(true)
   const [items, setItems] = React.useState<{name:string; path:string; url:string|null; created_at:string|null}[]>([])
   const [err, setErr] = React.useState<string|null>(null)
@@ -11,12 +11,12 @@ export default function PrivateGalleryPage() {
   async function load() {
     try {
       setLoading(true)
-      const res = await fetch('/api/gallery/list', { credentials: 'include' })
+      const res = await fetch('/api/explore/list')
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.details || data?.error || 'Falha ao carregar galeria')
+      if (!res.ok) throw new Error(data?.details || data?.error || 'Falha ao carregar explora')
       setItems(data.items || [])
     } catch (e:any) {
-      setErr(e?.message || 'Falha ao carregar galeria')
+      setErr(e?.message || 'Falha ao carregar explorar')
     } finally {
       setLoading(false)
     }
@@ -27,15 +27,15 @@ export default function PrivateGalleryPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Sua Galeria (Privada)</h1>
-        <a href="/dashboard" className="text-sm text-zinc-400 hover:text-zinc-200">Voltar ao dashboard</a>
+        <h1 className="text-xl font-semibold">Explorar (Público)</h1>
+        <a href="/" className="text-sm text-zinc-400 hover:text-zinc-200">Página inicial</a>
       </div>
 
       {loading && <p className="text-zinc-400">carregando...</p>}
       {err && <p className="text-red-400">{err}</p>}
 
       {!loading && !err && items.length === 0 && (
-        <p className="text-zinc-400">Você ainda não possui imagens privadas.</p>
+        <p className="text-zinc-400">Ainda não há imagens públicas.</p>
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">

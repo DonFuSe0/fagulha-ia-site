@@ -1,82 +1,29 @@
+// app/_components/AppHeader.tsx
 'use client'
-import { useEffect, useRef, useState } from 'react'
+
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { supabaseBrowser } from '@/lib/supabase/browserClient'
+import React from 'react'
+import CreditsBadge from '@/app/_components/CreditsBadge'
 
 export default function AppHeader() {
-  const [open, setOpen] = useState(false)
-  const [userId, setUserId] = useState<string | null>(null)
-  const pathname = usePathname()
-  const menuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const run = async () => {
-      const { data } = await supabaseBrowser.auth.getSession()
-      setUserId(data.session?.user?.id ?? null)
-    }
-    run()
-  }, [])
-
-  useEffect(() => { setOpen(false) }, [pathname])
-
-  useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      if (!menuRef.current) return
-      if (!menuRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('mousedown', onDocClick)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDocClick)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [])
-
-  const onSelect = () => setOpen(false)
-
   return (
-    <header className="flex items-center gap-4 p-4 border-b border-white/10">
-      <Link href="/" className="font-bold">Fagulha</Link>
+    <header className="sticky top-0 z-40 w-full border-b border-zinc-900 bg-zinc-950/80 backdrop-blur">
+      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard" className="font-semibold">Fagulha</Link>
+          <nav className="hidden md:flex items-center gap-3 text-sm text-zinc-300">
+            <Link href="/" className="hover:text-white">Início</Link>
+            <Link href="/gallery" className="hover:text-white">Sua Galeria</Link>
+            <Link href="/generate" className="hover:text-white">Criação</Link>
+            <Link href="/explore" className="hover:text-white">Explorar</Link>
+          </nav>
+        </div>
 
-      <div className="ml-auto flex items-center gap-2">
-        <nav className="flex items-center gap-2">
-          {userId
-            ? <Link href="/dashboard" className="px-3 py-2 rounded-lg hover:bg-white/10">Perfil</Link>
-            : <Link href="/auth/login" className="px-3 py-2 rounded-lg hover:bg-white/10">Entrar</Link>
-          }
-          <Link href="/explorar" className="px-3 py-2 rounded-lg hover:bg-white/10">Explorar</Link>
-          <Link href="/planos" className="px-3 py-2 rounded-lg hover:bg-white/10">Planos</Link>
-        </nav>
-
-        {userId && (
-          <div className="relative" ref={menuRef}>
-            <button
-              aria-expanded={open}
-              aria-haspopup="menu"
-              onClick={() => setOpen(o => !o)}
-              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition"
-            >
-              Menu
-            </button>
-
-            {open && (
-              <div
-                role="menu"
-                className="absolute right-0 mt-2 w-56 rounded-xl bg-black/90 backdrop-blur border border-white/10 shadow-lg p-2"
-              >
-                <Link href="/gallery" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Minha galeria</Link>
-                <Link href="/settings?tab=perfil" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Editar perfil</Link>
-                <Link href="/settings?tab=seguranca" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Alterar senha</Link>
-                <Link href="/planos" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Adquirir tokens</Link>
-                <Link href="/auth/logout" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Sair</Link>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <CreditsBadge />
+          {/* Avatar + Nick (seu dropdown atual permanece aqui) */}
+          <Link href="/settings?tab=perfil" className="rounded-full w-8 h-8 bg-zinc-800 grid place-items-center text-xs">ME</Link>
+        </div>
       </div>
     </header>
   )
