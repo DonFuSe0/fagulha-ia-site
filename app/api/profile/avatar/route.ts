@@ -1,10 +1,10 @@
 // app/api/profile/avatar/route.ts
 import { NextResponse } from 'next/server'
-import routeClient from '@/lib/supabase/routeClient' // default export is a factory that returns SupabaseClient
+import routeClient from '@/lib/supabase/routeClient'
 
 export async function POST(req: Request) {
   try {
-    const supabase = routeClient() // obtain SupabaseClient
+    const supabase = routeClient()
 
     const { data: { user }, error: userErr } = await supabase.auth.getUser()
     if (userErr || !user) {
@@ -41,7 +41,13 @@ export async function POST(req: Request) {
       .eq('id', user.id)
 
     if (upProfileErr) {
-      return NextResponse.json({ error: 'profile_update_failed', details: upProfileErr.message }, { status: 400 })
+      const { error: rpcErr } = await supabase.rpc('update_avatar_url', { new_url: publicUrl })
+      if (rpcErr) {
+        return NextResponse.json(
+          { error: 'profile_update_failed', details: upProfileErr.message || rpcErr.message },
+          { status: 400 }
+        )
+      }
     }
 
     return NextResponse.json({ ok: true, url: publicUrl }, { status: 200 })
