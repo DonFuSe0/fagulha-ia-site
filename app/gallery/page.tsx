@@ -1,46 +1,54 @@
-import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import GalleryCard from "../components/gallery/GalleryCard";
+// app/gallery/page.tsx
+'use client'
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+import React from 'react'
 
-export default async function MyGalleryPage() {
-  const supabase = createServerComponentClient<any>({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+export default function PrivateGalleryPage() {
+  const [loading, setLoading] = React.useState(true)
+  const [items, setItems] = React.useState<{name:string; path:string; url:string|null; created_at:string|null}[]>([])
+  const [err, setErr] = React.useState<string|null>(null)
 
-  const { data, error } = await supabase
-    .from("generations")
-    .select("id, image_url, thumb_url, is_public, public_at, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(40);
+  async function load() {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/gallery/list', { credentials: 'include' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.details || data?.error || 'Falha ao carregar galeria')
+      setItems(data.items || [])
+    } catch (e:any) {
+      setErr(e?.message || 'Falha ao carregar galeria')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  React.useEffect(()=>{ load() }, [])
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
-      <h1 className="mb-4 text-2xl font-semibold text-white">Minha galeria</h1>
-      {error && (
-        <div className="rounded-lg border border-red-900/40 bg-red-900/20 p-3 text-red-300">
-          Erro ao carregar: {error.message}
-        </div>
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Sua Galeria</h1>
+        <a href="/dashboard" className="text-sm text-zinc-400 hover:text-zinc-200">Voltar ao dashboard</a>
+      </div>
+
+      {loading && <p className="text-zinc-400">carregando...</p>}
+      {err && <p className="text-red-400">{err}</p>}
+
+      {!loading && !err && items.length === 0 && (
+        <p className="text-zinc-400">Você ainda não possui imagens privadas.</p>
       )}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-        {(data || []).map((g: any) => (
-          <GalleryCard
-            key={g.id}
-            id={g.id}
-            imageUrl={g.image_url}
-            thumbUrl={g.thumb_url}
-            isPublic={g.is_public}
-            publicAt={g.public_at}
-            createdAt={g.created_at}
-            onToggled={() => { if (typeof window !== "undefined") window.location.reload(); }}
-            showPublicTimer={true}
-          />
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+        {items.map((it) => (
+          <div key={it.path} className="group relative rounded-lg overflow-hidden border border-zinc-800 bg-zinc-950">
+            {it.url ? (
+              <img src={it.url} alt={it.name} className="w-full h-40 object-cover group-hover:opacity-90 transition" />
+            ) : (
+              <div className="w-full h-40 grid place-items-center text-xs text-zinc-500">sem preview</div>
+            )}
+          </div>
         ))}
       </div>
     </div>
-  );
+  )
 }
