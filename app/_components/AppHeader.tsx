@@ -8,19 +8,10 @@ export default function AppHeader() {
   const [open, setOpen] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const [credits, setCredits] = useState<number | null>(null)
-  const [nickname, setNickname] = useState<string>('')
-  const [avatarUrl, setAvatarUrl] = useState<string>('')
   const pathname = usePathname()
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/profile/credits', { credentials: 'include' });
-        const data = await res.json();
-        if (res.ok) { setCredits(data.credits ?? 0); setNickname(data.nickname || ''); setAvatarUrl(data.avatar_url || ''); }
-      } catch {}
-    })();
     const run = async () => {
       const { data } = await supabaseBrowser.auth.getSession()
       setUserId(data.session?.user?.id ?? null)
@@ -28,23 +19,9 @@ export default function AppHeader() {
     run()
   }, [])
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/profile/credits', { credentials: 'include' });
-        const data = await res.json();
-        if (res.ok) { setCredits(data.credits ?? 0); setNickname(data.nickname || ''); setAvatarUrl(data.avatar_url || ''); }
-      } catch {}
-    })(); setOpen(false) }, [pathname])
+  useEffect(() => { setOpen(false) }, [pathname])
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/profile/credits', { credentials: 'include' });
-        const data = await res.json();
-        if (res.ok) { setCredits(data.credits ?? 0); setNickname(data.nickname || ''); setAvatarUrl(data.avatar_url || ''); }
-      } catch {}
-    })();
     function onDocClick(e: MouseEvent) {
       if (!menuRef.current) return
       if (!menuRef.current.contains(e.target as Node)) setOpen(false)
@@ -82,19 +59,9 @@ export default function AppHeader() {
               aria-expanded={open}
               aria-haspopup="menu"
               onClick={() => setOpen(o => !o)}
-              className="flex items-center gap-2 rounded-full pl-2 pr-2.5 py-1 hover:bg-white/10"
+              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition"
             >
-              <span className="relative h-8 w-8 overflow-hidden rounded-full ring-2 ring-white/15">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={avatarUrl || '/avatars/fire-1.png'} alt="avatar" className="h-8 w-8 object-cover"/>
-              </span>
-              <span className="max-w-[140px] truncate text-sm text-white/90">{nickname || 'Perfil'}</span>
-              {typeof credits === "number" && (
-                <span className="ml-1 inline-flex items-center rounded-md border border-white/15 bg-white/10 px-2 py-[2px] text-[11px] text-white/80">
-                  {credits} <span className="ml-1 text-white/50">tokens</span>
-                </span>
-              )}
-              <svg viewBox="0 0 24 24" className="h-4 w-4 text-white/60"><path fill="currentColor" d="M7 10l5 5 5-5z"/></svg>
+              Menu
             </button>
 
             {open && (
