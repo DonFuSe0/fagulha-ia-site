@@ -18,11 +18,12 @@ export async function POST(req: Request) {
     }
 
     const ext = (file.name?.split('.').pop() || 'png').toLowerCase()
-    const path = `${user.id}/${Date.now()}.${ext}`
+    const filename = `${Date.now()}.${ext}`
+    const key = `${user.id}/${filename}`
 
     const { error: upErr } = await supabase.storage
       .from('avatars')
-      .upload(path, file, {
+      .upload(key, file, {
         upsert: true,
         contentType: file.type || 'image/png',
         cacheControl: '3600',
@@ -32,8 +33,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'upload_failed', details: upErr.message }, { status: 400 })
     }
 
-    const { data: publicData } = supabase.storage.from('avatars').getPublicUrl(path)
-    const publicUrl = publicData?.publicUrl ?? null
+    const { data: pub } = supabase.storage.from('avatars').getPublicUrl(key)
+    const publicUrl = pub?.publicUrl ?? null
 
     const { error: upProfileErr } = await supabase
       .from('profiles')
@@ -41,14 +42,20 @@ export async function POST(req: Request) {
       .eq('id', user.id)
 
     if (upProfileErr) {
-      const { error: rpcErr } = await supabase.rpc('update_avatar_url', { new_url: publicUrl })
-      if (rpcErr) {
-        return NextResponse.json(
-          { error: 'profile_update_failed', details: upProfileErr.message || rpcErr.message },
-          { status: 400 }
-        )
-      }
+      return NextResponse.json({ error: 'profile_update_failed', details: upProfileErr.message }, { status: 400 })
     }
+
+    // Cleanup antigos (best-effort)
+    try {
+      const { data: list, error: listErr } = await supabase.storage
+        .from('avatars')
+        .list(user.id, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } })
+
+      if (!listErr && Array.isArray(list) && list.length > 1) {
+        const toRemove = list.filter(obj => obj.name != filename).map(obj => `${user.id}/${obj.name}`)
+        if (toRemove.length) { await supabase.storage.from('avatars').remove(toRemove) }
+      }
+    } catch {}
 
     return NextResponse.json({ ok: true, url: publicUrl }, { status: 200 })
   } catch (e: any) {
