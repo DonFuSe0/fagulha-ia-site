@@ -9,15 +9,11 @@ export default function CreditsInline() {
     let alive = true
     ;(async () => {
       try {
-        setLoading(true)
         const res = await fetch('/api/profile/credits', { credentials: 'include' })
         const data = await res.json()
         if (alive && typeof data?.credits === 'number') setCredits(data.credits)
-      } catch {
-        // silencioso
-      } finally {
-        if (alive) setLoading(false)
-      }
+      } catch {}
+      finally { if (alive) setLoading(false) }
     })()
     return () => { alive = false }
   }, [])
