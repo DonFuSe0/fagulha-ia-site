@@ -27,22 +27,6 @@ type GenerationRow = {
 function cx(...p: (string | null | undefined | false)[]) { return p.filter(Boolean).join(' ') }
 
 function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string | null }) {
-  const [credits, setCredits] = useState<number | null>(null)
-  const [loadingCredits, setLoadingCredits] = useState(true)
-  useEffect(() => {
-    let alive = true
-    ;(async () => {
-      try {
-        setLoadingCredits(true)
-        const res = await fetch('/api/profile/credits', { credentials: 'include', headers: { 'cache-control': 'no-cache' } })
-        const data = await res.json()
-        if (alive && typeof data?.credits === 'number') setCredits(data.credits)
-      } catch {}
-      finally { if (alive) setLoadingCredits(false) }
-    })()
-    return () => { alive = false }
-  }, [])
-
   const [open, setOpen] = useState(false)
   return (
     <div className="relative">
@@ -57,8 +41,8 @@ function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: str
             <span className="text-xs text-zinc-400">AV</span>
           )}
         </div>
-        \1
-        <CreditsBadge />
+        
+        
         <svg className={cx('w-4 h-4 text-zinc-400 transition-transform', open && 'rotate-180')} viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" clipRule="evenodd" />
         </svg>
@@ -92,7 +76,7 @@ function TopNav({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string 
           <Link href="/gallery" className="hover:text-brand">Explorar</Link>
           <Link href="/generate" className="hover:text-brand">Criação</Link>
         </div>
-        <AvatarMenu nickname={nickname} avatarUrl={avatarUrl ?? undefined} />
+        <div className="flex items-center gap-2"><CreditsBadge /> <AvatarMenu nickname={nickname} avatarUrl={avatarUrl ?? undefined} /></div>
       </div>
     </nav>
   )
@@ -156,8 +140,7 @@ export default function DashboardPage() {
         {/* Header row */}
         <header className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Bem-vindo, <span className="text-brand">{nickname}</span>
-        <span className=\"ml-2 text-xs text-white/80 bg-white/10 border border-white/10 rounded px-2 py-0.5\">Saldo: <strong>{credits ?? 0}</strong></span></h1>
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Bem-vindo, <span className="text-brand">{nickname}</span></h1>
             <p className="text-zinc-400 mt-2">Acompanhe suas compras, consumo de tokens e últimas criações.</p>
           </div>
           <div className="hidden md:flex gap-3">
