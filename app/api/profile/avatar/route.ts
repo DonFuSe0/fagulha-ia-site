@@ -1,64 +1,61 @@
-// app/api/profile/avatar/route.ts
 import { NextResponse } from 'next/server'
-import routeClient from '@/lib/supabase/routeClient'
+import getRouteClient from '@/lib/supabase/routeClient'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
   try {
-    const supabase = routeClient()
+    const supabase = getRouteClient()
 
     const { data: { user }, error: userErr } = await supabase.auth.getUser()
     if (userErr || !user) {
-      return NextResponse.json({ error: 'not_authenticated', details: userErr?.message }, { status: 401 })
+      return NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
     }
 
     const form = await req.formData()
     const file = form.get('file') as File | null
-    if (!file || file.size === 0) {
-      return NextResponse.json({ error: 'no_file' }, { status: 400 })
+    if (!file) {
+      return NextResponse.json({ error: 'missing_file' }, { status: 400 })
     }
 
-    const ext = (file.name?.split('.').pop() || 'png').toLowerCase()
-    const filename = `${Date.now()}.${ext}`
-    const key = `${user.id}/${filename}`
+    const arrayBuffer = await file.arrayBuffer()
+    const bytes = new Uint8Array(arrayBuffer)
 
-    const { error: upErr } = await supabase.storage
+    const filename = `avatar_${Date.now()}.jpg`
+    const path = `${user.id}/${filename}`
+
+    const { error: upErr } = await supabase
+      .storage
       .from('avatars')
-      .upload(key, file, {
-        upsert: true,
-        contentType: file.type || 'image/png',
+      .upload(path, bytes, {
         cacheControl: '3600',
+        upsert: true,
+        contentType: 'image/jpeg',
       })
 
     if (upErr) {
       return NextResponse.json({ error: 'upload_failed', details: upErr.message }, { status: 400 })
     }
 
-    const { data: pub } = supabase.storage.from('avatars').getPublicUrl(key)
-    const publicUrl = pub?.publicUrl ?? null
+    const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path)
+    const publicUrl = pub?.publicUrl
 
-    const { error: upProfileErr } = await supabase
+    if (!publicUrl) {
+      return NextResponse.json({ error: 'public_url_failed' }, { status: 400 })
+    }
+
+    const { error: updErr } = await supabase
       .from('profiles')
       .update({ avatar_url: publicUrl })
       .eq('id', user.id)
+      .limit(1)
 
-    if (upProfileErr) {
-      return NextResponse.json({ error: 'profile_update_failed', details: upProfileErr.message }, { status: 400 })
+    if (updErr) {
+      return NextResponse.json({ error: 'profile_update_failed', details: updErr.message }, { status: 400 })
     }
 
-    // Cleanup antigos (best-effort)
-    try {
-      const { data: list, error: listErr } = await supabase.storage
-        .from('avatars')
-        .list(user.id, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } })
-
-      if (!listErr && Array.isArray(list) && list.length > 1) {
-        const toRemove = list.filter(obj => obj.name != filename).map(obj => `${user.id}/${obj.name}`)
-        if (toRemove.length) { await supabase.storage.from('avatars').remove(toRemove) }
-      }
-    } catch {}
-
-    return NextResponse.json({ ok: true, url: publicUrl }, { status: 200 })
+    return NextResponse.json({ ok: true, avatar_url: publicUrl })
   } catch (e: any) {
-    return NextResponse.json({ error: 'unexpected', details: String(e?.message || e) }, { status: 500 })
+    return NextResponse.json({ error: 'unexpected', details: e?.message ?? String(e) }, { status: 500 })
   }
 }

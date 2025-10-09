@@ -1,99 +1,222 @@
-import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import Toasts from "../_components/ui/Toasts";
-import UploadAvatarForm from "./UploadAvatarForm";
+'use client'
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+import Link from 'next/link'
+import { useEffect, useMemo, useState } from 'react'
+import AvatarCropper from './AvatarCropper'
 
-function toastFrom(code?: string) {
-  switch (code) {
-    case "perfil_ok": return { id: Date.now(), type: "success", message: "Apelido atualizado!" } as const;
-    case "nick_dup": return { id: Date.now(), type: "error", message: "Este apelido já existe." } as const;
-    case "nick_fail": return { id: Date.now(), type: "error", message: "Falha ao salvar apelido." } as const;
-    case "avatar_ok": return { id: Date.now(), type: "success", message: "Avatar atualizado!" } as const;
-    case "avatar_fail": return { id: Date.now(), type: "error", message: "Falha ao enviar avatar." } as const;
-    case "senha_ok": return { id: Date.now(), type: "success", message: "Senha alterada com sucesso." } as const;
-    case "senha_fail": return { id: Date.now(), type: "error", message: "Falha ao alterar senha." } as const;
-    default: return null;
-  }
+type SettingsPageProps = {
+  searchParams: { tab?: string }
 }
 
-export default async function SettingsPage({ searchParams }: { searchParams: { tab?: string, toast?: string } }) {
-  const supabase = createServerComponentClient<any>({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+type ProfileData = {
+  credits?: number
+  nickname?: string
+  avatar_url?: string | null
+}
 
-  const tab = (searchParams.tab || "perfil") as "perfil" | "seguranca" | "tokens";
-  const toast = toastFrom(searchParams.toast);
+export default function SettingsPage({ searchParams }: SettingsPageProps) {
+  const tab = useMemo<"perfil" | "seguranca">(() => {
+    return (searchParams?.tab === 'seguranca') ? 'seguranca' : 'perfil'
+  }, [searchParams?.tab])
 
-  const [{ data: profile }, { data: rpc }] = await Promise.all([
-    supabase.from("profiles").select("nickname, credits").eq("id", user.id).single(),
-    supabase.rpc("current_user_credits")
-  ]);
-  const credits = (typeof rpc === "number" ? rpc : null) ?? (profile?.credits ?? 0);
+  const [profile, setProfile] = useState<ProfileData>({})
+  const [loadingProfile, setLoadingProfile] = useState(true)
+
+  useEffect(() => {
+    let isMounted = true
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch('/api/profile/credits', { cache: 'no-store' })
+        const data = await res.json()
+        if (!isMounted) return
+        setProfile({ credits: data?.credits, nickname: data?.nickname, avatar_url: data?.avatar_url })
+      } catch {}
+      finally { if (isMounted) setLoadingProfile(false) }
+    }
+    fetchProfile()
+    return () => { isMounted = false }
+  }, [])
+
+  const [nickname, setNickname] = useState<string>('')
+  useEffect(() => {
+    setNickname(profile?.nickname ?? '')
+  }, [profile?.nickname])
+
+  const [savingNick, setSavingNick] = useState(false)
+  const saveNickname = async () => {
+    if (!nickname || nickname.trim().length < 2) return
+    setSavingNick(true)
+    try {
+      const res = await fetch('/api/profile/nickname', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j?.error || 'Falha ao salvar apelido')
+      }
+    } catch (e) {
+      console.error(e)
+      alert('Falha ao salvar apelido.')
+    } finally {
+      setSavingNick(false)
+    }
+  }
+
+  const [selectedUrl, setSelectedUrl] = useState<string | null>(null)
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    const url = URL.createObjectURL(f)
+    setSelectedUrl(url)
+    setCroppedBlob(null)
+  }
+
+  const uploadAvatar = async () => {
+    if (!croppedBlob) {
+      alert('Clique em "Aplicar recorte" antes de salvar.')
+      return
+    }
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', croppedBlob, 'avatar.jpg')
+      const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j?.error || 'Falha ao enviar avatar')
+      }
+      setSelectedUrl(null)
+      setCroppedBlob(null)
+      const p = await fetch('/api/profile/credits', { cache: 'no-store' }).then(r => r.json()).catch(() => ({}))
+      setProfile({ credits: p?.credits, nickname: p?.nickname, avatar_url: p?.avatar_url })
+      alert('Avatar atualizado!')
+    } catch (e) {
+      console.error(e)
+      alert('Falha ao enviar avatar.')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-6">
-      <Toasts initial={toast as any} />
-      <h1 className="text-2xl font-semibold text-white">Configurações</h1>
-
-      <nav className="flex gap-2">
-        <a href="/settings?tab=perfil" className={"px-3 py-2 rounded-lg border " + (tab==='perfil'?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Perfil</a>
-        <a href="/settings?tab=seguranca" className={"px-3 py-2 rounded-lg border " + (tab==='seguranca'?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Segurança</a>
-        <a href="/settings?tab=tokens" className={"px-3 py-2 rounded-lg border " + (tab==='tokens'?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Tokens</a>
+    <div className="min-h-[60vh] w-full">
+      <nav className="border-b border-white/10 bg-black/50 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
+          <Link href="/dashboard" className="text-sm text-zinc-300 hover:text-white">← Voltar</Link>
+          <div className="flex items-center gap-2 text-sm">
+            <Link
+              href="/settings?tab=perfil"
+              className={"px-3 py-1.5 rounded " + (tab === 'perfil' ? "bg-white/10 text-white" : "text-zinc-300 hover:text-white")}
+            >
+              Perfil
+            </Link>
+            <Link
+              href="/settings?tab=seguranca"
+              className={"px-3 py-1.5 rounded " + (tab === 'seguranca' ? "bg-white/10 text-white" : "text-zinc-300 hover:text-white")}
+            >
+              Segurança
+            </Link>
+          </div>
+        </div>
       </nav>
 
-      {tab === "perfil" && (
-        <section className="space-y-4">
-          <form action="/api/profile/nickname" method="POST" className="grid gap-3">
-            <div>
-              <label className="mb-1 block text-sm text-neutral-400">Apelido (único)</label>
-              <input name="nickname" defaultValue={profile?.nickname ?? ""} minLength={3} maxLength={20} pattern="[A-Za-z0-9_]+" className="w-full rounded-lg border border-neutral-800 bg-neutral-900/50 px-3 py-2 text-white" />
-              <p className="mt-1 text-xs text-neutral-500">3–20 caracteres • letras/números/underline</p>
+      <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
+        {tab === 'perfil' && (
+          <section className="space-y-6">
+            <h1 className="text-xl font-semibold">Editar Perfil</h1>
+
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+              <label className="block text-sm text-zinc-300 mb-1">Apelido (nickname)</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm flex-1"
+                  placeholder="Seu apelido"
+                />
+                <button
+                  type="button"
+                  onClick={saveNickname}
+                  disabled={savingNick}
+                  className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm disabled:opacity-50"
+                >
+                  {savingNick ? 'Salvando…' : 'Salvar'}
+                </button>
+              </div>
+              <p className="text-xs text-zinc-400 mt-2">Esse apelido aparece ao lado do seu avatar.</p>
             </div>
-            <button className="self-start rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-white hover:bg-white/15">Salvar apelido</button>
-          </form>
 
-          <div className="h-px bg-neutral-800" />
-          <UploadAvatarForm />
-        </section>
-      )}
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-3">
+              <label className="block text-sm text-zinc-300">Avatar</label>
+              <div className="flex items-center gap-4">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Avatar atual" className="h-16 w-16 rounded-full object-cover border border-white/10" />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-zinc-800 border border-white/10" />
+                )}
+                <input type="file" accept="image/*" onChange={onFileChange} className="text-sm text-zinc-300" />
+              </div>
 
-      {tab === "seguranca" && (
-        <section className="space-y-4">
-          <form action="/api/profile/password" method="POST" className="grid gap-3">
-            <div>
-              <label className="mb-1 block text-sm text-neutral-400">Nova senha</label>
-              <input type="password" name="password" minLength={8} required className="w-full rounded-lg border border-neutral-800 bg-neutral-900/50 px-3 py-2 text-white" />
+              {selectedUrl && (
+                <AvatarCropper
+                  src={selectedUrl}
+                  onCropped={(blob) => setCroppedBlob(blob)}
+                  size={384}
+                  className="mt-2"
+                />
+              )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={uploadAvatar}
+                  disabled={uploading || !croppedBlob}
+                  className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm disabled:opacity-50"
+                >
+                  {uploading ? 'Enviando…' : 'Salvar avatar'}
+                </button>
+                {selectedUrl && (
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedUrl(null); setCroppedBlob(null); }}
+                    className="px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-sm"
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-zinc-400">Ajuste o zoom entre 0.5× e 3.0× antes de salvar.</p>
             </div>
-            <button className="self-start rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-white hover:bg-white/15">Alterar senha</button>
-          </form>
+          </section>
+        )}
 
-          <div className="h-px bg-neutral-800" />
-
-          <form action="/api/profile/delete" method="POST" className="grid gap-3">
-            <div>
-              <label className="mb-1 block text-sm text-red-300">Excluir conta (digite EXCLUIR)</label>
-              <input name="confirm" placeholder="EXCLUIR" className="w-full rounded-lg border border-neutral-800 bg-neutral-900/50 px-3 py-2 text-white" />
+        {tab === 'seguranca' && (
+          <section className="space-y-4">
+            <h1 className="text-xl font-semibold">Segurança</h1>
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-zinc-300 space-y-3">
+              <form method="post" action="/api/auth/change-password" className="space-y-3">
+                <div className="grid gap-1.5">
+                  <label className="text-sm text-zinc-200">Senha atual</label>
+                  <input type="password" name="current_password" className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm" required />
+                </div>
+                <div className="grid gap-1.5">
+                  <label className="text-sm text-zinc-200">Nova senha</label>
+                  <input type="password" name="new_password" className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm" required />
+                </div>
+                <button type="submit" className="px-4 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm">
+                  Atualizar senha
+                </button>
+              </form>
             </div>
-            <button className="self-start rounded-lg border border-red-500/50 bg-red-500/20 px-4 py-2 text-red-200 hover:bg-red-500/30">Excluir conta</button>
-          </form>
-        </section>
-      )}
-
-      {tab === "tokens" && (
-        <section className="space-y-4">
-          <div className="rounded-xl border border-neutral-800 p-4">
-            <div className="text-sm text-neutral-400">Saldo atual</div>
-            <div className="text-3xl font-semibold text-white">{credits} <span className="text-sm font-normal text-neutral-400">tokens</span>
-      <div className="space-y-3"><p className="text-white/80">Para adquirir mais tokens, acesse a página de planos.</p><a href="/planos" className="inline-block rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-white hover:bg-white/15">Ir para planos</a></div>
-      </div>
-          </div>
-          <a href="/checkout" className="inline-block rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-white hover:bg-white/15">Comprar tokens</a>
-        </section>
-      )}
+          </section>
+        )}
+      </main>
     </div>
-  );
+  )
 }
