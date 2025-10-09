@@ -1,62 +1,103 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-type AvatarCropperProps = {
-  src: string
+type Props = {
+  src: string | null
   onCropped?: (blob: Blob) => void
+  size?: number // output square size (px)
   className?: string
 }
 
-/**
- * Versão mínima e estável do AvatarCropper para evitar erro TS1109.
- * Ela exibe a imagem e permite um "zoom" simples via range; o recorte real
- * pode ser feito no backend ao salvar. Mantém a API (onCropped opcional).
- */
-export default function AvatarCropper({ src, onCropped, className }: AvatarCropperProps) {
+export default function AvatarCropper({ src, onCropped, size = 384, className }: Props) {
   const imgRef = useRef<HTMLImageElement | null>(null)
-  const [zoom, setZoom] = useState(1)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [zoom, setZoom] = useState<number>(1) // 1x default
+  const min = 0.5
+  const max = 3.0
+  const step = 0.01
+
+  const canCrop = useMemo(() => !!src, [src])
 
   useEffect(() => {
-    // opcional: preparar canvas e gerar blob ao confirmar fora deste componente
-  }, [])
+    const canvas = canvasRef.current
+    if (!canvas) return
+    canvas.width = size
+    canvas.height = size
+  }, [size])
 
-  const handleFakeCrop = async () => {
-    // fallback: retorna o blob da imagem original (sem recorte) para não quebrar o fluxo
-    const res = await fetch(src)
-    const blob = await res.blob()
-    onCropped?.(blob)
+  const handleCrop = async () => {
+    if (!src) return
+    const img = imgRef.current
+    const canvas = canvasRef.current
+    if (!img || !canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.fillStyle = '#000'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+    const iw = img.naturalWidth
+    const ih = img.naturalHeight
+    if (!iw || !ih) return
+
+    const scale = zoom
+    const target = size
+
+    const baseScale = Math.max(target / iw, target / ih)
+    const s = baseScale * scale
+
+    const drawW = iw * s
+    const drawH = ih * s
+
+    const dx = (target - drawW) / 2
+    const dy = (target - drawH) / 2
+
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(img, dx, dy, drawW, drawH)
+
+    canvas.toBlob((blob) => {
+      if (blob) onCropped?.(blob)
+    }, 'image/jpeg', 0.92)
   }
 
   return (
-    <div className={className ?? ""}>
-      <div className="rounded-xl border border-white/10 bg-black/40 p-4">
-        <div className="flex items-center gap-4">
-          <img
-            ref={imgRef}
-            src={src}
-            alt="Preview do avatar"
-            className="h-32 w-32 rounded-full object-cover"
-            style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}
-          />
-          <div className="flex-1 space-y-2">
-            <label className="text-sm text-zinc-300">Zoom</label>
+    <div className={className}>
+      <div className="grid gap-3">
+        <div className="flex items-center gap-6">
+          <div className="size-40 rounded-full overflow-hidden bg-black/40 border border-white/10 flex items-center justify-center">
+            {src ? (
+              <img ref={imgRef} src={src} alt="Prévia do avatar" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-xs text-zinc-400">Selecione uma imagem…</span>
+            )}
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs text-zinc-400 mb-1">Zoom ({min}x – {max}x)</label>
             <input
               type="range"
-              min={1}
-              max={2}
-              step={0.01}
+              min={min}
+              max={max}
+              step={step}
               value={zoom}
               onChange={(e) => setZoom(parseFloat(e.target.value))}
               className="w-full"
             />
-            <div>
-              <button type="button" onClick={handleFakeCrop} className="mt-2 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm">
-                Aplicar recorte
-              </button>
-            </div>
+            <div className="mt-2 text-xs text-zinc-400">Zoom atual: {zoom.toFixed(2)}x</div>
+            <button
+              type="button"
+              onClick={handleCrop}
+              disabled={!canCrop}
+              className="mt-3 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm disabled:opacity-50"
+            >
+              Aplicar recorte
+            </button>
           </div>
         </div>
+        <canvas ref={canvasRef} className="hidden" />
       </div>
     </div>
   )

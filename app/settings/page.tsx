@@ -1,16 +1,107 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import AvatarCropper from './AvatarCropper'
 
 type SettingsPageProps = {
   searchParams: { tab?: string }
+}
+
+type ProfileData = {
+  credits?: number
+  nickname?: string
+  avatar_url?: string | null
 }
 
 export default function SettingsPage({ searchParams }: SettingsPageProps) {
   const tab = useMemo<"perfil" | "seguranca">(() => {
     return (searchParams?.tab === 'seguranca') ? 'seguranca' : 'perfil'
   }, [searchParams?.tab])
+
+  const [profile, setProfile] = useState<ProfileData>({})
+  const [loadingProfile, setLoadingProfile] = useState(true)
+
+  useEffect(() => {
+    let isMounted = true
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch('/api/profile/credits', { cache: 'no-store' })
+        const data = await res.json()
+        if (!isMounted) return
+        setProfile({ credits: data?.credits, nickname: data?.nickname, avatar_url: data?.avatar_url })
+      } catch {}
+      finally { if (isMounted) setLoadingProfile(false) }
+    }
+    fetchProfile()
+    return () => { isMounted = false }
+  }, [])
+
+  const [nickname, setNickname] = useState<string>('')
+  useEffect(() => {
+    setNickname(profile?.nickname ?? '')
+  }, [profile?.nickname])
+
+  const [savingNick, setSavingNick] = useState(false)
+  const saveNickname = async () => {
+    if (!nickname || nickname.trim().length < 2) return
+    setSavingNick(true)
+    try {
+      const res = await fetch('/api/profile/nickname', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j?.error || 'Falha ao salvar apelido')
+      }
+    } catch (e) {
+      console.error(e)
+      alert('Falha ao salvar apelido.')
+    } finally {
+      setSavingNick(false)
+    }
+  }
+
+  const [selectedUrl, setSelectedUrl] = useState<string | null>(null)
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    const url = URL.createObjectURL(f)
+    setSelectedUrl(url)
+    setCroppedBlob(null)
+  }
+
+  const uploadAvatar = async () => {
+    if (!croppedBlob) {
+      alert('Clique em "Aplicar recorte" antes de salvar.')
+      return
+    }
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', croppedBlob, 'avatar.jpg')
+      const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j?.error || 'Falha ao enviar avatar')
+      }
+      setSelectedUrl(null)
+      setCroppedBlob(null)
+      const p = await fetch('/api/profile/credits', { cache: 'no-store' }).then(r => r.json()).catch(() => ({}))
+      setProfile({ credits: p?.credits, nickname: p?.nickname, avatar_url: p?.avatar_url })
+      alert('Avatar atualizado!')
+    } catch (e) {
+      console.error(e)
+      alert('Falha ao enviar avatar.')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   return (
     <div className="min-h-[60vh] w-full">
@@ -34,15 +125,73 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         </div>
       </nav>
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
         {tab === 'perfil' && (
-          <section className="space-y-4">
+          <section className="space-y-6">
             <h1 className="text-xl font-semibold">Editar Perfil</h1>
-            {/* Mantém seu formulário/UX atual de perfil.
-               Se você tiver um componente específico (ex: <ProfilePanel />),
-               pode trocar o conteúdo abaixo por ele sem mudar a rota. */}
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-zinc-300">
-              <p>Aqui fica o painel de edição de perfil (avatar, nickname, etc.).</p>
+
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+              <label className="block text-sm text-zinc-300 mb-1">Apelido (nickname)</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm flex-1"
+                  placeholder="Seu apelido"
+                />
+                <button
+                  type="button"
+                  onClick={saveNickname}
+                  disabled={savingNick}
+                  className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm disabled:opacity-50"
+                >
+                  {savingNick ? 'Salvando…' : 'Salvar'}
+                </button>
+              </div>
+              <p className="text-xs text-zinc-400 mt-2">Esse apelido aparece ao lado do seu avatar.</p>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-3">
+              <label className="block text-sm text-zinc-300">Avatar</label>
+              <div className="flex items-center gap-4">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Avatar atual" className="h-16 w-16 rounded-full object-cover border border-white/10" />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-zinc-800 border border-white/10" />
+                )}
+                <input type="file" accept="image/*" onChange={onFileChange} className="text-sm text-zinc-300" />
+              </div>
+
+              {selectedUrl && (
+                <AvatarCropper
+                  src={selectedUrl}
+                  onCropped={(blob) => setCroppedBlob(blob)}
+                  size={384}
+                  className="mt-2"
+                />
+              )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={uploadAvatar}
+                  disabled={uploading || !croppedBlob}
+                  className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm disabled:opacity-50"
+                >
+                  {uploading ? 'Enviando…' : 'Salvar avatar'}
+                </button>
+                {selectedUrl && (
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedUrl(null); setCroppedBlob(null); }}
+                    className="px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-sm"
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-zinc-400">Ajuste o zoom entre 0.5× e 3.0× antes de salvar.</p>
             </div>
           </section>
         )}
@@ -51,7 +200,6 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
           <section className="space-y-4">
             <h1 className="text-xl font-semibold">Segurança</h1>
             <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-zinc-300 space-y-3">
-              {/* Apenas alterar senha — "Excluir conta" removido conforme solicitado */}
               <form method="post" action="/api/auth/change-password" className="space-y-3">
                 <div className="grid gap-1.5">
                   <label className="text-sm text-zinc-200">Senha atual</label>

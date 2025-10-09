@@ -1,18 +1,31 @@
-// Correção: usar supabaseRoute() com policy RLS para update do próprio perfil
 import { NextResponse } from 'next/server'
-import { supabaseRoute } from '@/lib/supabase/routeClient'
+import getRouteClient from '@/lib/supabase/routeClient'
 
 export async function POST(req: Request) {
-  const supabase = supabaseRoute()
-  const body = await req.json()
-  const { nickname } = body
+  try {
+    const { nickname } = await req.json()
+    if (!nickname || typeof nickname !== 'string' || nickname.trim().length < 2) {
+      return NextResponse.json({ error: 'Nickname inválido' }, { status: 400 })
+    }
 
-  const { data: userRes } = await supabase.auth.getUser()
-  const user = userRes?.user
-  if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    const supabase = getRouteClient()
+    const { data: { user }, error: userErr } = await supabase.auth.getUser()
+    if (userErr || !user) {
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+    }
 
-  const { error } = await supabase.from('profiles').update({ nickname }).eq('id', user.id)
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+    const { error } = await supabase
+      .from('profiles')
+      .update({ nickname: nickname.trim() })
+      .eq('id', user.id)
+      .limit(1)
 
-  return NextResponse.json({ ok: true })
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'Erro inesperado' }, { status: 500 })
+  }
 }
