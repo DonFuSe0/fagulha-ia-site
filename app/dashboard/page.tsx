@@ -6,7 +6,8 @@ import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import CreditsBadge from '@/app/_components/CreditsBadge'\n
+import CreditsBadge from '@/app/_components/CreditsBadge'
+
 type TokenRow = {
   id: string
   user_id: string
@@ -26,6 +27,22 @@ type GenerationRow = {
 function cx(...p: (string | null | undefined | false)[]) { return p.filter(Boolean).join(' ') }
 
 function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string | null }) {
+  const [credits, setCredits] = useState<number | null>(null)
+  const [loadingCredits, setLoadingCredits] = useState(true)
+  useEffect(() => {
+    let alive = true
+    ;(async () => {
+      try {
+        setLoadingCredits(true)
+        const res = await fetch('/api/profile/credits', { credentials: 'include', headers: { 'cache-control': 'no-cache' } })
+        const data = await res.json()
+        if (alive && typeof data?.credits === 'number') setCredits(data.credits)
+      } catch {}
+      finally { if (alive) setLoadingCredits(false) }
+    })()
+    return () => { alive = false }
+  }, [])
+
   const [open, setOpen] = useState(false)
   return (
     <div className="relative">
@@ -139,7 +156,8 @@ export default function DashboardPage() {
         {/* Header row */}
         <header className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Bem-vindo, <span className="text-brand">{nickname}</span></h1>
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Bem-vindo, <span className="text-brand">{nickname}</span>
+        <span className=\"ml-2 text-xs text-white/80 bg-white/10 border border-white/10 rounded px-2 py-0.5\">Saldo: <strong>{credits ?? 0}</strong></span></h1>
             <p className="text-zinc-400 mt-2">Acompanhe suas compras, consumo de tokens e últimas criações.</p>
           </div>
           <div className="hidden md:flex gap-3">
