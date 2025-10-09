@@ -43,17 +43,16 @@ export default function AvatarCropper({ src, onCropped, size = 384, className }:
     const ih = img.naturalHeight
     if (!iw || !ih) return
 
-    const scale = zoom
-    const target = size
-
-    const baseScale = Math.max(target / iw, target / ih)
-    const s = baseScale * scale
+    // Base scale para preencher o quadrado com zoom=1
+    const baseScale = Math.max(size / iw, size / ih)
+    const s = baseScale * zoom
 
     const drawW = iw * s
     const drawH = ih * s
 
-    const dx = (target - drawW) / 2
-    const dy = (target - drawH) / 2
+    // Centraliza
+    const dx = (size - drawW) / 2
+    const dy = (size - drawH) / 2
 
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
@@ -65,12 +64,19 @@ export default function AvatarCropper({ src, onCropped, size = 384, className }:
   }
 
   return (
-    <div className={className}>
+    <div className={className ?? ""}>
       <div className="grid gap-3">
         <div className="flex items-center gap-6">
-          <div className="size-40 rounded-full overflow-hidden bg-black/40 border border-white/10 flex items-center justify-center">
+          {/* Preview com zoom ao vivo via CSS transform */}
+          <div className="h-40 w-40 rounded-full overflow-hidden bg-black/40 border border-white/10 flex items-center justify-center">
             {src ? (
-              <img ref={imgRef} src={src} alt="Prévia do avatar" className="h-full w-full object-cover" />
+              <img
+                ref={imgRef}
+                src={src}
+                alt="Prévia do avatar"
+                className="h-full w-full object-cover"
+                style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}
+              />
             ) : (
               <span className="text-xs text-zinc-400">Selecione uma imagem…</span>
             )}
@@ -78,6 +84,7 @@ export default function AvatarCropper({ src, onCropped, size = 384, className }:
           <div className="flex-1">
             <label className="block text-xs text-zinc-400 mb-1">Zoom ({min}x – {max}x)</label>
             <input
+              aria-label="Ajustar zoom do avatar"
               type="range"
               min={min}
               max={max}
