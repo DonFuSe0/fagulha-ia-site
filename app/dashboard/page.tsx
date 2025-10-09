@@ -76,7 +76,7 @@ function TopNav({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string 
           <Link href="/gallery" className="hover:text-brand">Explorar</Link>
           <Link href="/generate" className="hover:text-brand">Criação</Link>
         </div>
-        <div className="flex items-center gap-2"><CreditsBadge /> <AvatarMenu nickname={nickname} avatarUrl={avatarUrl ?? undefined} /></div>
+        <div className="flex items-center gap-3"><CreditsBadge /> <span className="text-sm text-zinc-200">{nickname || \'Seu perfil\'}</span> <AvatarMenu nickname={nickname} avatarUrl={avatarUrl ?? undefined} /></div>
       </div>
     </nav>
   )
