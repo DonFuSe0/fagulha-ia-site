@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import CreditsBadge from '@/app/_components/CreditsBadge'
 
 type TokenRow = {
   id: string
@@ -40,7 +41,8 @@ function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: str
             <span className="text-xs text-zinc-400">AV</span>
           )}
         </div>
-        <span className="text-sm text-zinc-200">{nickname}</span>
+        
+        
         <svg className={cx('w-4 h-4 text-zinc-400 transition-transform', open && 'rotate-180')} viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 10.94l3.71-3.71a.75.75 0 1 1 1.06 1.06l-4.24 4.24a.75.75 0 0 1-1.06 0L5.21 8.29a.75.75 0 0 1 .02-1.08z" clipRule="evenodd" />
         </svg>
@@ -74,7 +76,7 @@ function TopNav({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string 
           <Link href="/gallery" className="hover:text-brand">Explorar</Link>
           <Link href="/generate" className="hover:text-brand">Criação</Link>
         </div>
-        <AvatarMenu nickname={nickname} avatarUrl={avatarUrl ?? undefined} />
+        <div className="flex items-center gap-2"><CreditsBadge /> <AvatarMenu nickname={nickname} avatarUrl={avatarUrl ?? undefined} /></div>
       </div>
     </nav>
   )
