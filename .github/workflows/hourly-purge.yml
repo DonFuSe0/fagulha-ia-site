@@ -1,13 +1,26 @@
-name: hourly-purge
+name: Hourly Purge (Gallery)
 
 on:
   schedule:
-    - cron: "0 * * * *"   # a cada hora (UTC)
+    - cron: '0 * * * *'   # every hour, GitHub Actions (free) allows this
   workflow_dispatch:
 
 jobs:
   purge:
     runs-on: ubuntu-latest
     steps:
-      - name: No-op purge placeholder
-        run: echo "Executando tarefa horária de limpeza (configure aqui seus scripts)."
+      - name: Call purge endpoint
+        env:
+          PURGE_URL: ${{ secrets.PURGE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$PURGE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Missing secrets PURGE_URL or CRON_SECRET"
+            exit 1
+          fi
+          # If PURGE_URL already has query params, append with '&', otherwise '?'
+          SEP='?'
+          if echo "$PURGE_URL" | grep -q '\?'; then SEP='&'; fi
+          URL="${PURGE_URL}${SEP}secret=${CRON_SECRET}"
+          echo "GET $URL"
+          curl -fsSL "$URL" -H "User-Agent: github-actions-hourly-purge" -m 30 -o /dev/null

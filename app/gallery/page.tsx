@@ -27,7 +27,7 @@ export default function PrivateGalleryPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Sua Galeria (Privada)</h1>
+        <h1 className="text-xl font-semibold">Sua Galeria</h1>
         <a href="/dashboard" className="text-sm text-zinc-400 hover:text-zinc-200">Voltar ao dashboard</a>
       </div>
 
@@ -42,7 +42,6 @@ export default function PrivateGalleryPage() {
         {items.map((it) => (
           <div key={it.path} className="group relative rounded-lg overflow-hidden border border-zinc-800 bg-zinc-950">
             {it.url ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img src={it.url} alt={it.name} className="w-full h-40 object-cover group-hover:opacity-90 transition" />
             ) : (
               <div className="w-full h-40 grid place-items-center text-xs text-zinc-500">sem preview</div>
