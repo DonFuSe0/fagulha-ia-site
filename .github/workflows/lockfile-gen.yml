@@ -1,50 +1,32 @@
-name: Generate full package-lock.json
+name: lockfile-gen
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ desenvolvimento ]
-    paths:
-      - 'package.json'
-
-permissions:
-  contents: write
+  schedule:
+    - cron: "0 6 * * 1"   # toda segunda 06:00 UTC
 
 jobs:
   lockfile:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      # Remove lock antigo para evitar divergência
-      - name: Remove old lockfile (if any)
+          cache: 'npm'
+      - run: npm ci
+      - run: npm cache clean --force
+      - run: npm i --package-lock-only
+      - name: Commit lockfile changes
         run: |
-          rm -f package-lock.json
-
-      # Instala para resolver TODAS as subdependências e gerar lockfile completo
-      - name: npm install (resolve full lockfile)
-        run: npm install --no-audit --no-fund
-
-      # Remove node_modules para não "sujar" o working tree do repositório
-      - name: Cleanup node_modules
-        run: rm -rf node_modules
-
-      - name: Commit & push lockfile if changed
-        run: |
-          if git status --porcelain | grep -q "package-lock.json"; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.email "actions@github.com"
+            git config user.name "GitHub Actions"
             git add package-lock.json
-            git commit -m "chore(ci): generate full package-lock.json (resolved)"
+            git commit -m "chore: regenerate lockfile"
             git push
           else
-            echo "package-lock.json is up to date. Nothing to commit."
+            echo "Sem mudanças no lockfile."
           fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
