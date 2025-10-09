@@ -25,7 +25,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const tab = (searchParams.tab || "perfil") as "perfil" | "seguranca" | "tokens";
+  const tab = (searchParams.tab || "perfil") as "perfil" | "seguranca" | "perfil";
   const toast = toastFrom(searchParams.toast);
 
   const [{ data: profile }, { data: rpc }] = await Promise.all([
@@ -42,7 +42,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
       <nav className="flex gap-2">
         <a href="/settings?tab=perfil" className={"px-3 py-2 rounded-lg border " + (tab==='perfil'?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Perfil</a>
         <a href="/settings?tab=seguranca" className={"px-3 py-2 rounded-lg border " + (tab==='seguranca'?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Segurança</a>
-        <a href="/settings?tab=tokens" className={"px-3 py-2 rounded-lg border " + (tab==='tokens'?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Tokens</a>
+        <a href="/settings"?tab=perfil" className={"px-3 py-2 rounded-lg border " + (tab==="perfil"?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Tokens</a>
       </nav>
 
       {tab === "perfil" && (
@@ -83,7 +83,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
         </section>
       )}
 
-      {tab === "tokens" && (
+      {tab === "perfil" && (
         <section className="space-y-4">
           <div className="rounded-xl border border-neutral-800 p-4">
             <div className="text-sm text-neutral-400">Saldo atual</div>
