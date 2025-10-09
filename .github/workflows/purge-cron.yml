@@ -1,22 +1,13 @@
-
-name: Purge expired generations (daily)
+name: purge-cron
 
 on:
   schedule:
-    - cron: '0 5 * * *'    # 05:00 UTC, daily
+    - cron: "0 3 * * *"   # diário 03:00 UTC
   workflow_dispatch:
 
 jobs:
   purge:
     runs-on: ubuntu-latest
     steps:
-      - name: Skip if secrets missing
-        if: ${{ secrets.PURGE_URL == '' || secrets.CRON_SECRET == '' }}
-        run: echo "::notice title=CI Purge::Skipping purge because PURGE_URL or CRON_SECRET are not configured."
-
-      - name: Call purge endpoint
-        if: ${{ secrets.PURGE_URL != '' && secrets.CRON_SECRET != '' }}
-        run: |
-          set -eu
-          echo "Calling: ${{ secrets.PURGE_URL }}"
-          curl -sS -X GET -H "X-CRON-SECRET: ${{ secrets.CRON_SECRET }}" "${{ secrets.PURGE_URL }}"
+      - name: No-op purge daily
+        run: echo "Executando limpeza diária (configure aqui seus scripts)."
