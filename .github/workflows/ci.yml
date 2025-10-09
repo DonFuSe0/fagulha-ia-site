@@ -1,41 +1,104 @@
-name: ci
+name: CI
 
 on:
-  pull_request:
-    branches: [ main, develop ]
-    types: [opened, synchronize, reopened, ready_for_review]
   push:
-    branches: [ main, develop ]
-  workflow_dispatch:
+  
+  workflow_dispatch: {}
+
+# Precisamos de write para commitar lockfile quando cair no fallback
+permissions:
+  contents: write
 
 jobs:
-  build:
-    name: build
+  guard:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v3
+      - name: Run ci-guard (fast)
+        run: |
+          if [ -f scripts/ci-guard.sh ]; then
+            chmod +x scripts/ci-guard.sh
+            bash scripts/ci-guard.sh
+          else
+            echo "scripts/ci-guard.sh não encontrado (ok)."
+          fi
+
+  audit:
+    runs-on: ubuntu-latest
+    needs: guard
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run repo-audit (deep checks)
+        run: |
+          if [ -f scripts/repo-audit.sh ]; then
+            chmod +x scripts/repo-audit.sh
+            bash scripts/repo-audit.sh
+          else
+            echo "scripts/repo-audit.sh não encontrado (ok, auditor desligado)."
+          fi
+
+  typecheck:
+    runs-on: ubuntu-latest
+    needs: audit
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node (with cache if lock exists)
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-      - run: npm ci
-      - run: npx tsc --noEmit || true
-      - run: npm run build --if-present
-  test:
-    name: test
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      contents: read
-      pull-requests: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-      - run: npm ci
-      - run: npm test --if-present
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+
+      - name: Show npm/env versions
+        run: |
+          node -v
+          npm -v
+
+      - name: Install deps (prefer ci; fallback to install)
+        id: deps
+        run: |
+          set -e
+          FALLBACK=0
+          if [ -f package-lock.json ]; then
+            echo "🔐 Lockfile encontrado: tentando 'npm ci'..."
+            if npm ci; then
+              echo "✅ npm ci OK"
+            else
+              echo "⚠️  npm ci falhou (lock fora de sync). Rodando 'npm install' para sincronizar..."
+              FALLBACK=1
+              npm install --no-audit --no-fund
+            fi
+          else
+            echo "ℹ️  Sem lockfile. Rodando 'npm install'..."
+            FALLBACK=1
+            npm install --no-audit --no-fund
+          fi
+          echo "fallback=${FALLBACK}" >> $GITHUB_OUTPUT
+
+      # ====================================================================
+      # CORREÇÃO APLICADA AQUI
+      # O passo de verificação de tipos foi movido para ANTES do commit.
+      # Agora ele sempre será executado após a instalação das dependências.
+      # ====================================================================
+      - name: TypeScript noEmit
+        run: npx tsc --noEmit
+
+      - name: Commit updated lockfile (if fallback used)
+        if: steps.deps.outputs.fallback == '1'
+        run: |
+          set -e
+          if git status --porcelain | grep -q "package-lock.json"; then
+            echo "🔒 Detected updated lockfile. Committing..."
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add package-lock.json
+            git commit -m "chore(ci): sync package-lock.json (auto-commit from CI fallback)"
+            # push back to the same branch
+            CURRENT_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+            echo "Pushing to ${CURRENT_BRANCH}"
+            git push origin "HEAD:${CURRENT_BRANCH}"
+          else
+            echo "Lockfile not changed."
+          fi

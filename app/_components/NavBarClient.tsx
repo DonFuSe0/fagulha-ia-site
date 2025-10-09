@@ -1,33 +1,41 @@
-// app/_components/NavbarClient.tsx
 'use client'
 
 import Link from 'next/link'
-import React from 'react'
-import CreditsBadge from '@/app/_components/CreditsBadge'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase/client'
 
-export default function NavbarClient() {
+type Session = {
+  user: { id: string; email?: string | null } | null;
+} | null;
+
+export default function NavBarClient() {
+  const [session, setSession] = useState<Session>(null)
+
+  useEffect(() => {
+    let mounted = true
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setSession(data?.session ?? null)
+    })
+    return () => { mounted = false }
+  }, [])
+
   return (
-    <div className="sticky top-0 z-40 w-full border-b border-zinc-900 bg-zinc-950/80 backdrop-blur">
+    <nav className="w-full bg-black/60 backdrop-blur border-b border-zinc-800 text-zinc-100">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+        <Link href="/" className="font-semibold">
+          Fagulha<span className="text-orange-500">.</span>
+        </Link>
         <div className="flex items-center gap-4">
-          <Link href="/" className="font-semibold">Fagulha</Link>
-          <nav className="hidden md:flex items-center gap-3 text-sm text-zinc-300">
-            <Link href="/" className="hover:text-white">Início</Link>
-            <Link href="/gallery" className="hover:text-white">Sua Galeria</Link>
-            <Link href="/generate" className="hover:text-white">Criação</Link>
-            <Link href="/explore" className="hover:text-white">Explorar</Link>
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Saldo atual (profiles.credits) */}
-          <CreditsBadge />
-          {/* Avatar + Nick: mantém seu dropdown atual */}
-          <Link href="/settings?tab=perfil" className="rounded-full w-8 h-8 bg-zinc-800 grid place-items-center text-xs">
-            ME
-          </Link>
+          {session ? (
+            <>
+              <Link href="/perfil" className="hover:text-orange-400">Meu Perfil</Link>
+              <Link href="/auth/logout" className="hover:text-orange-400">Sair</Link>
+            </>
+          ) : (
+            <Link href="/auth/login" className="hover:text-orange-400">Entrar</Link>
+          )}
         </div>
       </div>
-    </div>
+    </nav>
   )
 }

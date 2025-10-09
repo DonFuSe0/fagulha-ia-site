@@ -7,7 +7,6 @@ import { supabaseBrowser } from '@/lib/supabase/browserClient'
 export default function AppHeader() {
   const [open, setOpen] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
-  const [credits, setCredits] = useState<number | null>(null)
   const pathname = usePathname()
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -49,7 +48,7 @@ export default function AppHeader() {
             ? <Link href="/dashboard" className="px-3 py-2 rounded-lg hover:bg-white/10">Perfil</Link>
             : <Link href="/auth/login" className="px-3 py-2 rounded-lg hover:bg-white/10">Entrar</Link>
           }
-          <Link href="/explore" className="px-3 py-2 rounded-lg hover:bg-white/10">Explorar</Link>
+          <Link href="/explorar" className="px-3 py-2 rounded-lg hover:bg-white/10">Explorar</Link>
           <Link href="/planos" className="px-3 py-2 rounded-lg hover:bg-white/10">Planos</Link>
         </nav>
 
@@ -76,14 +75,7 @@ export default function AppHeader() {
                 <Link href="/auth/logout" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Sair</Link>
               </div>
             )}
-          <div className="hidden sm:flex items-center gap-2 pr-2">
-            {typeof credits === 'number' && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/90">
-                Saldo: <strong className="ml-1">{credits}</strong>
-              </span>
-            )}
           </div>
-        </div>
         )}
       </div>
     </header>
