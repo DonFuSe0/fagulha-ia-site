@@ -25,7 +25,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login");
 
-  const tab = (searchParams.tab || "perfil") as "perfil" | "seguranca" | "perfil";
+  const tab = (searchParams.tab || "perfil") as "perfil" | "seguranca";
   const toast = toastFrom(searchParams.toast);
 
   const [{ data: profile }, { data: rpc }] = await Promise.all([
@@ -42,7 +42,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
       <nav className="flex gap-2">
         <a href="/settings?tab=perfil" className={"px-3 py-2 rounded-lg border " + (tab==='perfil'?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Perfil</a>
         <a href="/settings?tab=seguranca" className={"px-3 py-2 rounded-lg border " + (tab==='seguranca'?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Segurança</a>
-        <a href="/settings"?tab=perfil" className={"px-3 py-2 rounded-lg border " + (tab==="perfil"?'bg-white/10 border-white/20 text-white':'bg-transparent border-white/10 text-white/70 hover:text-white')}>Tokens</a>
+        <a href="/settings?tab=tokens" className=>Tokens</a>
       </nav>
 
       {tab === "perfil" && (
@@ -83,17 +83,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: { t
         </section>
       )}
 
-      {tab === "perfil" && (
-        <section className="space-y-4">
-          <div className="rounded-xl border border-neutral-800 p-4">
-            <div className="text-sm text-neutral-400">Saldo atual</div>
-            <div className="text-3xl font-semibold text-white">{credits} <span className="text-sm font-normal text-neutral-400">tokens</span>
-      <div className="space-y-3"><p className="text-white/80">Para adquirir mais tokens, acesse a página de planos.</p><a href="/planos" className="inline-block rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-white hover:bg-white/15">Ir para planos</a></div>
-      </div>
-          </div>
-          <a href="/checkout" className="inline-block rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-white hover:bg-white/15">Comprar tokens</a>
-        </section>
-      )}
     </div>
   );
 }

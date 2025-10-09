@@ -150,7 +150,8 @@ export default function AvatarCropper({
   return (
     <div className="rounded-xl border border-white/15 bg-neutral-950/80 p-4 select-none">
       <div className="text-white/90 font-medium mb-3">Ajustar avatar</div>
-      {error && <div className="mb-3 text-sm text-red-300">{error}</div>}
+      {error &&
+}
 
       <div className="flex items-start gap-5">
         <div
