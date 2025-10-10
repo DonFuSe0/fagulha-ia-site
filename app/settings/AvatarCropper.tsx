@@ -24,6 +24,7 @@ export default function AvatarCropper({
   const [imageUrl, setImageUrl] = useState<string | null>(currentUrl ?? null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
+  // Quando um arquivo é escolhido
   useEffect(() => {
     if (!file) return
     const url = URL.createObjectURL(file)
@@ -35,6 +36,7 @@ export default function AvatarCropper({
     return () => URL.revokeObjectURL(url)
   }, [file])
 
+  // Quando muda zoom, atualiza prévia de cima
   useEffect(() => {
     if (!imageUrl) return
     const dataUrl = renderPreview(imageUrl, zoom, size, canvasRef)
@@ -53,7 +55,12 @@ export default function AvatarCropper({
       <div className="w-full flex items-center justify-center">
         {imageUrl ? (
           <div className="relative rounded-full overflow-hidden" style={{ width: size, height: size }}>
-            <img src={imageUrl} alt="Prévia do avatar" className="object-cover w-full h-full" style={{ transform: \`scale(\${zoom})\` }} />
+            <img
+              src={imageUrl}
+              alt="Prévia do avatar"
+              className="object-cover w-full h-full"
+              style={{ transform: `scale(${zoom})` }}
+            />
           </div>
         ) : (
           <div className="text-sm text-muted-foreground">Selecione uma imagem para pré-visualizar</div>
@@ -62,12 +69,25 @@ export default function AvatarCropper({
 
       <div className="flex items-center gap-3">
         <span className="text-xs opacity-70">Zoom</span>
-        <input type="range" min={0.5} max={3} step={0.01} value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-full" aria-label="Zoom do avatar" />
-        <span className="text-xs w-10 text-right">{zoom.toFixed(2)}x</span>
+        <input
+          type="range"
+          min={0.5}
+          max={3}
+          step={0.01}
+          value={zoom}
+          onChange={(e) => setZoom(parseFloat(e.target.value))}
+          className="w-full"
+          aria-label="Zoom do avatar"
+        />
+        <span className="text-xs w-12 text-right">{zoom.toFixed(2)}x</span>
       </div>
 
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={handleConfirm} className="px-3 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90">
+        <button
+          type="button"
+          onClick={handleConfirm}
+          className="px-3 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90"
+        >
           Confirmar recorte
         </button>
       </div>
