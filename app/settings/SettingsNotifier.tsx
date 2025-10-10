@@ -11,7 +11,6 @@ export default function SettingsNotifier() {
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  // Programmatic notifications (apelido/avatar)
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as { kind: Kind; message: string }
@@ -26,7 +25,6 @@ export default function SettingsNotifier() {
     return () => window.removeEventListener('notify', handler as EventListener)
   }, [])
 
-  // Password feedback via query params
   useEffect(() => {
     const pwd = searchParams?.get('pwd')
     const perr = searchParams?.get('pwd_error')

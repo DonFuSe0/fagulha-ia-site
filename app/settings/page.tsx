@@ -94,7 +94,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
 
   const uploadAvatar = async () => {
     if (!croppedBlob) {
-      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'error', message: 'Clique em “Aplicar recorte” antes de salvar.' } }))
+      alert('Clique em "Aplicar recorte" antes de salvar.')
       return
     }
     setUploading(true)
