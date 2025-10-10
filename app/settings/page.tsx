@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import AvatarCropper from './AvatarCropper'
 
+import SettingsNotifier from './SettingsNotifier'
 type SettingsPageProps = {
   searchParams: { tab?: string }
 }
@@ -57,6 +58,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         throw new Error(j?.error || 'Falha ao salvar apelido')
       }
       // opcional: feedback visual
+      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Apelido atualizado com sucesso.' } }))
     } catch (e) {
       console.error(e)
       alert('Falha ao salvar apelido.')
@@ -146,6 +148,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
           </div>
         </div>
       </nav>
+        <SettingsNotifier />
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
         {tab === 'perfil' && (
