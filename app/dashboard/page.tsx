@@ -73,7 +73,7 @@ function TopNav({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string 
         <div className="flex items-center gap-6">
           <Link href="/" className="font-semibold text-lg tracking-tight">Fagulha<span className="text-brand">.</span></Link>
           <Link href="/" className="hover:text-brand">Início</Link>
-          <Link href="/gallery" className="hover:text-brand">Explorar</Link>
+          <Link href="/explorar" className="hover:text-brand">Explorar</Link>
           <Link href="/generate" className="hover:text-brand">Criação</Link>
         </div>
         <div className="flex items-center gap-3">
