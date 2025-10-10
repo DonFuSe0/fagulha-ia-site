@@ -222,7 +222,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
           <section className="space-y-4">
             <h1 className="text-xl font-semibold">Segurança</h1>
             <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-zinc-300 space-y-3">
-              <form method="post" action="/api/auth/change-password" className="space-y-3">
+              <form method="post" action="/api/profile/password" className="space-y-3">
                 <div className="grid gap-1.5">
                   <label className="text-sm text-zinc-200">Senha atual</label>
                   <input type="password" name="current_password" className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm" required />
