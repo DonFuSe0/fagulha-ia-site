@@ -85,21 +85,34 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
     try {
       const fd = new FormData()
       fd.append('file', croppedBlob, 'avatar.jpg')
-      const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
+      
+const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
+const j = await res.json().catch(() => ({}))
+if (!res.ok || !j?.avatar_url) {
+  throw new Error(j?.error || 'Falha ao enviar avatar')
+}
+))
         throw new Error(j?.error || 'Falha ao enviar avatar')
       }
       setSelectedUrl(null)
-      setCroppedBlob(null)
-      const p = await fetch('/api/profile/credits', { cache: 'no-store' }).then(r => r.json()).catch(() => ({}))
-      setProfile({ credits: p?.credits, nickname: p?.nickname, avatar_url: p?.avatar_url })
-      alert('Avatar atualizado!')
-    } catch (e) {
-      console.error(e)
-      alert('Falha ao enviar avatar.')
-    } finally {
-      setUploading(false)
+  setCroppedBlob(null)
+  // Atualiza apenas o que precisamos (mantendo credits atualizados):
+  let creditsJson: any = {}
+  try {
+    creditsJson = await fetch('/api/profile/credits', { cache: 'no-store' }).then(r => r.json())
+  } catch {}
+  setProfile(p => ({ 
+    credits: creditsJson?.credits ?? p?.credits ?? 0,
+    nickname: p?.nickname ?? '',
+    avatar_url: j.avatar_url
+  }))
+  alert('Avatar atualizado!')
+} catch (e) {
+  console.error(e)
+  alert('Falha ao enviar avatar.')
+} finally {
+  setUploading(false)
+}
     }
   }
 
@@ -154,13 +167,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
 
             <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-3">
               <label className="block text-sm text-zinc-300">Avatar</label>
-              <div className="flex items-center gap-4">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Avatar atual" className="h-16 w-16 rounded-full object-cover border border-white/10" />
-                ) : (
-                  <div className="h-16 w-16 rounded-full bg-zinc-800 border border-white/10" />
-                )}
-                <input type="file" accept="image/*" onChange={onFileChange} className="text-sm text-zinc-300" />
+              <div                 {(() => {\n                  // Prioridade: prévia cortada > arquivo selecionado > avatar atual do perfil\n                  const [thumbUrl, revoke] = (() => {\n                    if (croppedBlob) {\n                      const u = URL.createObjectURL(croppedBlob)\n                      return [u, () => URL.revokeObjectURL(u)] as const\n                    }\n                    if (selectedUrl) return [selectedUrl, () => {}] as const\n                    return [profile?.avatar_url ?? null, () => {}] as const\n                  })()\n                  // Cleanup se for blob local\n                  useEffect(() => revoke, [revoke])\n                \n                  return thumbUrl ? (\n                    <img src={thumbUrl} alt="Avatar (prévia)" className="h-16 w-16 rounded-full object-cover border border-white/10" />\n                  ) : (\n                    <div className="h-16 w-16 rounded-full bg-zinc-800 border border-white/10" />\n                  )\n                })()}\n<input type="file" accept="image/*" onChange={onFileChange} className="text-sm text-zinc-300" />
               </div>
 
               {selectedUrl && (
