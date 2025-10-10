@@ -1,7 +1,17 @@
+import { useRouter, useSearchParams } from 'next/navigation'
 'use client'
 
+
+function Banner({ kind, children }: { kind: 'success' | 'error'; children: React.ReactNode }) {
+  const base = 'mt-3 text-sm rounded-md border px-3 py-2';
+  const ok = 'border-green-500 text-green-400 bg-green-500/10';
+  const bad = 'border-red-500 text-red-400 bg-red-500/10';
+  return <div className={\`\${base} \${kind === 'success' ? ok : bad}\`}>{children}</div>;
+}
+
+
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState , useCallback } from 'react'
 import AvatarCropper from './AvatarCropper'
 
 type SettingsPageProps = {
@@ -14,9 +24,33 @@ type ProfileData = {
   avatar_url?: string | null
 }
 
-export default function SettingsPage({ searchParams }: SettingsPageProps) {
+export default function SettingsPage({
+const router = useRouter();
+const searchParams = useSearchParams();
+const [banner, setBanner] = useState<{ kind: 'success' | 'error'; msg: string } | null>(null);
+
+// Handle password feedback via querystring (?pwd=ok | ?pwd_error=...)
+useEffect(() => {
+  const pwd = searchParams?.get('pwd');
+  const perr = searchParams?.get('pwd_error');
+  if (pwd === 'ok') {
+    setBanner({ kind: 'success', msg: 'Senha atualizada com sucesso.' });
+    // Remove params from URL to avoid persistent banner
+    router.replace('/settings?tab=seguranca');
+  } else if (perr) {
+    const msg =
+      perr === 'invalid' ? 'Dados inválidos para alterar a senha.' :
+      perr === 'method_not_allowed' ? 'Método não permitido.' :
+      'Não foi possível atualizar a senha.';
+    setBanner({ kind: 'error', msg });
+    router.replace('/settings?tab=seguranca');
+  }
+}, [searchParams, router]);
+ searchParams }: SettingsPageProps) {
   const tab = useMemo<"perfil" | "seguranca">(() => {
-    return (searchParams?.tab === 'seguranca') ? 'seguranca' : 'perfil'
+    return (
+        {banner && <Banner kind={banner.kind}>{banner.msg}</Banner>}
+searchParams?.tab === 'seguranca') ? 'seguranca' : 'perfil'
   }, [searchParams?.tab])
 
   const [profile, setProfile] = useState<ProfileData>({})
@@ -53,11 +87,13 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         body: JSON.stringify({ nickname }),
       })
       if (!res.ok) {
+        setBanner({ kind: 'success', msg: 'Apelido atualizado com sucesso.' });
+
         const j = await res.json().catch(() => ({}))
         throw new Error(j?.error || 'Falha ao salvar apelido')
       }
       // opcional: feedback visual
-    } catch (e) {
+    } catch (e) { setBanner({ kind: 'error', msg: 'Não foi possível concluir a operação.' });
       console.error(e)
       alert('Falha ao salvar apelido.')
     } finally {
@@ -100,6 +136,8 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       fd.append('file', croppedBlob, 'avatar.jpg')
       const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
       if (!res.ok) {
+        setBanner({ kind: 'success', msg: 'Avatar atualizado com sucesso.' });
+
         const j = await res.json().catch(() => ({}))
         throw new Error(j?.error || 'Falha ao enviar avatar')
       }
@@ -111,7 +149,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       setCroppedBlob(null)
       setCroppedPreviewUrl(null)
       alert('Avatar atualizado!')
-    } catch (e) {
+    } catch (e) { setBanner({ kind: 'error', msg: 'Não foi possível concluir a operação.' });
       console.error(e)
       alert('Falha ao enviar avatar.')
     } finally {
