@@ -31,17 +31,27 @@ export default function SettingsPage() {
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [topPreviewUrl, setTopPreviewUrl] = useState<string | null>(null)
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)
   const [savingAvatar, setSavingAvatar] = useState(false)
   const [avatarOk, setAvatarOk] = useState<string | null>(null)
   const [avatarErr, setAvatarErr] = useState<string | null>(null)
 
+  // ----- SEGURANCA -----
+  const [passOld, setPassOld] = useState('')
+  const [passNew, setPassNew] = useState('')
+  const [passConfirm, setPassConfirm] = useState('')
+  const [savingPass, setSavingPass] = useState(false)
+  const [passOk, setPassOk] = useState<string | null>(null)
+  const [passErr, setPassErr] = useState<string | null>(null)
+
   useEffect(() => {
-    // TODO: carregue nickname e avatar_url atuais do Supabase
+    // TODO: carregar nickname e avatar_url atuais do Supabase (se necessário)
   }, [])
 
   function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] || null
     setSelectedFile(f)
+    setCroppedBlob(null)
     if (f) {
       const url = URL.createObjectURL(f)
       setTopPreviewUrl(url)
@@ -50,6 +60,11 @@ export default function SettingsPage() {
 
   const handlePreviewChange = useCallback((dataUrl: string) => {
     setTopPreviewUrl(dataUrl)
+  }, [])
+
+  const handleCropReady = useCallback((blob: Blob, dataUrl: string) => {
+    setCroppedBlob(blob)
+    setTopPreviewUrl(dataUrl) // sincroniza prévia fixa
   }, [])
 
   async function saveNickname() {
@@ -75,31 +90,63 @@ export default function SettingsPage() {
     }
   }
 
-  async function saveAvatar(blob: Blob) {
+  async function saveAvatar() {
+    if (!croppedBlob) return
     try {
       setAvatarOk(null); setAvatarErr(null); setSavingAvatar(true)
       const form = new FormData()
-      form.append('file', blob, `avatar_${Date.now()}.jpg`)
+      form.append('file', croppedBlob, `avatar_${Date.now()}.jpg`)
       const res = await fetch('/api/profile/avatar', { method: 'POST', body: form })
       if (!res.ok) {
         const j = await res.json().catch(() => ({} as any))
         throw new Error(j?.error || 'profile_update_failed')
       }
-      setAvatarOk('Avatar atualizado com sucesso!')
-      setTimeout(() => setAvatarOk(null), 3000)
+      let publicUrl: string | null = null
       try {
         const j = await res.json()
-        if ((j as any)?.publicUrl) {
-          setCurrentAvatarUrl((j as any).publicUrl)
-          setTopPreviewUrl((j as any).publicUrl)
-        }
+        publicUrl = (j as any)?.publicUrl || null
       } catch {}
+      if (publicUrl) {
+        setCurrentAvatarUrl(publicUrl)
+        setTopPreviewUrl(publicUrl)
+      }
+      setAvatarOk('Avatar atualizado com sucesso!')
+      setTimeout(() => setAvatarOk(null), 3000)
+      setCroppedBlob(null)
+      setSelectedFile(null)
     } catch (e: any) {
       console.error(e)
       setAvatarErr('Falha ao enviar avatar.')
       setTimeout(() => setAvatarErr(null), 4000)
     } finally {
       setSavingAvatar(false)
+    }
+  }
+
+  async function savePassword() {
+    try {
+      setPassOk(null); setPassErr(null); setSavingPass(true)
+      if (passNew !== passConfirm) {
+        throw new Error('Nova senha e confirmação não conferem.')
+      }
+      const res = await fetch('/api/profile/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: passOld, newPassword: passNew }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({} as any))
+        throw new Error(j?.error || 'password_update_failed')
+      }
+      setPassOk('Senha atualizada com sucesso!')
+      setTimeout(() => setPassOk(null), 3000)
+      setPassOld(''); setPassNew(''); setPassConfirm('')
+    } catch (e: any) {
+      console.error(e)
+      setPassErr(e?.message === 'Nova senha e confirmação não conferem.' ? e.message : 'Falha ao alterar senha.')
+      setTimeout(() => setPassErr(null), 4000)
+    } finally {
+      setSavingPass(false)
     }
   }
 
@@ -171,10 +218,20 @@ export default function SettingsPage() {
               file={selectedFile || undefined}
               currentUrl={currentAvatarUrl ?? undefined}
               initialZoom={1}
-              onPreviewChange={(d) => handlePreviewChange(d)}
-              onCropped={(blob) => saveAvatar(blob)}
               size={256}
+              onPreviewChange={handlePreviewChange}
+              onCropReady={handleCropReady}
             />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={saveAvatar}
+                disabled={!croppedBlob || savingAvatar}
+                className="px-3 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {savingAvatar ? 'Enviando...' : 'Salvar avatar'}
+              </button>
+            </div>
             {avatarOk && <InlineNotice kind="success">{avatarOk}</InlineNotice>}
             {avatarErr && <InlineNotice kind="error">{avatarErr}</InlineNotice>}
           </div>
@@ -182,9 +239,49 @@ export default function SettingsPage() {
       )}
 
       {tab === 'seguranca' && (
-        <div className="space-y-3">
-          {/* Exemplo: quando você integrar a mudança de senha, reaproveite o mesmo componente */}
-          <InlineNotice kind="info">Use o mesmo padrão de aviso aqui após alterar a senha.</InlineNotice>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Senha atual</label>
+            <input
+              type="password"
+              value={passOld}
+              onChange={(e) => setPassOld(e.target.value)}
+              className="w-full px-3 py-2 rounded border bg-background"
+              placeholder="Sua senha atual"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Nova senha</label>
+            <input
+              type="password"
+              value={passNew}
+              onChange={(e) => setPassNew(e.target.value)}
+              className="w-full px-3 py-2 rounded border bg-background"
+              placeholder="Nova senha"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Confirmar nova senha</label>
+            <input
+              type="password"
+              value={passConfirm}
+              onChange={(e) => setPassConfirm(e.target.value)}
+              className="w-full px-3 py-2 rounded border bg-background"
+              placeholder="Confirme a nova senha"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={savePassword}
+              disabled={savingPass}
+              className="px-3 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            >
+              {savingPass ? 'Salvando...' : 'Alterar senha'}
+            </button>
+          </div>
+          {passOk && <InlineNotice kind="success">{passOk}</InlineNotice>}
+          {passErr && <InlineNotice kind="error">{passErr}</InlineNotice>}
         </div>
       )}
     </div>
