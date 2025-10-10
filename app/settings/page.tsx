@@ -61,7 +61,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Apelido atualizado com sucesso.' } }))
     } catch (e) {
       console.error(e)
-      alert('Falha ao salvar apelido.')
+      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'error', message: 'Não foi possível atualizar o apelido.' } }))
     } finally {
       setSavingNick(false)
     }
@@ -93,7 +93,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
 
   const uploadAvatar = async () => {
     if (!croppedBlob) {
-      alert('Clique em "Aplicar recorte" antes de salvar.')
+      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'error', message: 'Clique em “Aplicar recorte” antes de salvar.' } }))
       return
     }
     setUploading(true)
@@ -112,10 +112,10 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       setSelectedUrl(null)
       setCroppedBlob(null)
       setCroppedPreviewUrl(null)
-      alert('Avatar atualizado!')
+      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Avatar atualizado com sucesso.' } }))
     } catch (e) {
       console.error(e)
-      alert('Falha ao enviar avatar.')
+      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'error', message: 'Não foi possível atualizar o avatar.' } }))
     } finally {
       setUploading(false)
     }
