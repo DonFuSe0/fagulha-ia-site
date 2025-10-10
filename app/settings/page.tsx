@@ -30,8 +30,8 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         const data = await res.json()
         if (!isMounted) return
         setProfile({ credits: data?.credits, nickname: data?.nickname, avatar_url: data?.avatar_url })
-      } catch {}
-      finally { if (isMounted) setLoadingProfile(false) }
+      } catch {
+      } finally { if (isMounted) setLoadingProfile(false) }
     }
     fetchProfile()
     return () => { isMounted = false }
@@ -56,6 +56,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         const j = await res.json().catch(() => ({}))
         throw new Error(j?.error || 'Falha ao salvar apelido')
       }
+      // opcional: feedback visual
     } catch (e) {
       console.error(e)
       alert('Falha ao salvar apelido.')
@@ -64,8 +65,10 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
     }
   }
 
-  const [selectedUrl, setSelectedUrl] = useState<string | null>(null)
-  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)
+  // ---- Avatar ----
+  const [selectedUrl, setSelectedUrl] = useState<string | null>(null) // arquivo escolhido (prévia)
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)     // blob recortado pronto para upload
+  const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null) // preview local do recorte
   const [uploading, setUploading] = useState(false)
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,6 +77,16 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
     const url = URL.createObjectURL(f)
     setSelectedUrl(url)
     setCroppedBlob(null)
+    setCroppedPreviewUrl(null)
+  }
+
+  // receber blob do cropper e gerar preview imediato
+  const onCropped = (blob: Blob) => {
+    setCroppedBlob(blob)
+    try {
+      const url = URL.createObjectURL(blob)
+      setCroppedPreviewUrl(url)
+    } catch {}
   }
 
   const uploadAvatar = async () => {
@@ -90,10 +103,13 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         const j = await res.json().catch(() => ({}))
         throw new Error(j?.error || 'Falha ao enviar avatar')
       }
+      const j = await res.json()
+      // Atualiza avatar atual imediatamente com o retornado pela API
+      setProfile(p => ({ ...p, avatar_url: j?.avatar_url ?? p?.avatar_url }))
+      // limpa estados locais
       setSelectedUrl(null)
       setCroppedBlob(null)
-      const p = await fetch('/api/profile/credits', { cache: 'no-store' }).then(r => r.json()).catch(() => ({}))
-      setProfile({ credits: p?.credits, nickname: p?.nickname, avatar_url: p?.avatar_url })
+      setCroppedPreviewUrl(null)
       alert('Avatar atualizado!')
     } catch (e) {
       console.error(e)
@@ -102,6 +118,12 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       setUploading(false)
     }
   }
+
+  // fonte do preview pequeno (miniatura):
+  // 1) se já existe recorte, usa-o;
+  // 2) senão, se há arquivo selecionado, usa-o;
+  // 3) senão, usa avatar atual do perfil;
+  const smallPreviewSrc = croppedPreviewUrl || selectedUrl || profile?.avatar_url || null
 
   return (
     <div className="min-h-[60vh] w-full">
@@ -155,8 +177,8 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
             <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-3">
               <label className="block text-sm text-zinc-300">Avatar</label>
               <div className="flex items-center gap-4">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Avatar atual" className="h-16 w-16 rounded-full object-cover border border-white/10" />
+                {smallPreviewSrc ? (
+                  <img src={smallPreviewSrc} alt="Prévia" className="h-16 w-16 rounded-full object-cover border border-white/10" />
                 ) : (
                   <div className="h-16 w-16 rounded-full bg-zinc-800 border border-white/10" />
                 )}
@@ -166,7 +188,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
               {selectedUrl && (
                 <AvatarCropper
                   src={selectedUrl}
-                  onCropped={(blob) => setCroppedBlob(blob)}
+                  onCropped={onCropped}
                   size={384}
                   className="mt-2"
                 />
@@ -184,7 +206,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
                 {selectedUrl && (
                   <button
                     type="button"
-                    onClick={() => { setSelectedUrl(null); setCroppedBlob(null); }}
+                    onClick={() => { setSelectedUrl(null); setCroppedBlob(null); setCroppedPreviewUrl(null); }}
                     className="px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-sm"
                   >
                     Cancelar
