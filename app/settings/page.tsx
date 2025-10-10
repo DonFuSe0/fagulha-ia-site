@@ -1,292 +1,222 @@
-// app/settings/page.tsx
 'use client'
 
-import React, { useCallback, useMemo, useRef, useState } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import AvatarCropper, { AvatarCropperHandle } from './AvatarCropper'
+import Link from 'next/link'
+import { useEffect, useMemo, useState } from 'react'
+import AvatarCropper from './AvatarCropper'
 
-type Tab = 'perfil' | 'seguranca'
-
-function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      className={
-        'px-3 py-1 rounded-md text-sm border ' +
-        (active
-          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-          : 'bg-background text-foreground border-border hover:bg-muted')
-      }
-    >
-      {children}
-    </button>
-  )
+type SettingsPageProps = {
+  searchParams: { tab?: string }
 }
 
-function InlineNotice({ kind = 'success', children }: { kind?: 'success'|'error'|'info', children: React.ReactNode }) {
-  const colors = kind === 'success'
-    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-    : kind === 'error'
-    ? 'bg-red-50 text-red-800 border-red-200'
-    : 'bg-blue-50 text-blue-800 border-blue-200'
-  return <div className={'border rounded-md px-3 py-2 text-sm ' + colors}>{children}</div>
+type ProfileData = {
+  credits?: number
+  nickname?: string
+  avatar_url?: string | null
 }
 
-export default function SettingsPage() {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
+export default function SettingsPage({ searchParams }: SettingsPageProps) {
+  const tab = useMemo<"perfil" | "seguranca">(() => {
+    return (searchParams?.tab === 'seguranca') ? 'seguranca' : 'perfil'
+  }, [searchParams?.tab])
 
-  const activeTab = useMemo<Tab>(() => {
-    const t = (searchParams.get('tab') || 'perfil').toLowerCase()
-    return (t === 'seguranca' ? 'seguranca' : 'perfil')
-  }, [searchParams])
+  const [profile, setProfile] = useState<ProfileData>({})
+  const [loadingProfile, setLoadingProfile] = useState(true)
 
-  const setTab = useCallback((t: Tab) => {
-    const params = new URLSearchParams(searchParams.toString())
-    params.set('tab', t)
-    router.push(`${pathname}?${params.toString()}`)
-  }, [router, pathname, searchParams])
-
-  // ----- PERFIL -----
-  const [nickname, setNickname] = useState('')
-  const [savingNick, setSavingNick] = useState(false)
-  const [nickOk, setNickOk] = useState<string | null>(null)
-  const [nickErr, setNickErr] = useState<string | null>(null)
-
-  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [topPreviewUrl, setTopPreviewUrl] = useState<string | null>(null)
-  const [savingAvatar, setSavingAvatar] = useState(false)
-  const [avatarOk, setAvatarOk] = useState<string | null>(null)
-  const [avatarErr, setAvatarErr] = useState<string | null>(null)
-  const cropperRef = useRef<AvatarCropperHandle | null>(null)
-
-  // ----- SEGURANCA -----
-  const [passOld, setPassOld] = useState('')
-  const [passNew, setPassNew] = useState('')
-  const [passConfirm, setPassConfirm] = useState('')
-  const [savingPass, setSavingPass] = useState(false)
-  const [passOk, setPassOk] = useState<string | null>(null)
-  const [passErr, setPassErr] = useState<string | null>(null)
-
-  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0] || null
-    setSelectedFile(f)
-  }
-
-  const handlePreviewChange = useCallback((dataUrl: string) => {
-    setTopPreviewUrl(dataUrl)
+  useEffect(() => {
+    let isMounted = true
+    const fetchProfile = async () => {
+      try {
+        const res = await fetch('/api/profile/credits', { cache: 'no-store' })
+        const data = await res.json()
+        if (!isMounted) return
+        setProfile({ credits: data?.credits, nickname: data?.nickname, avatar_url: data?.avatar_url })
+      } catch {}
+      finally { if (isMounted) setLoadingProfile(false) }
+    }
+    fetchProfile()
+    return () => { isMounted = false }
   }, [])
 
-  async function saveNickname() {
+  const [nickname, setNickname] = useState<string>('')
+  useEffect(() => {
+    setNickname(profile?.nickname ?? '')
+  }, [profile?.nickname])
+
+  const [savingNick, setSavingNick] = useState(false)
+  const saveNickname = async () => {
+    if (!nickname || nickname.trim().length < 2) return
+    setSavingNick(true)
     try {
-      setNickOk(null); setNickErr(null); setSavingNick(true)
       const res = await fetch('/api/profile/nickname', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nickname }),
       })
       if (!res.ok) {
-        const j = await res.json().catch(() => ({} as any))
-        throw new Error(j?.error || 'profile_update_failed')
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j?.error || 'Falha ao salvar apelido')
       }
-      setNickOk('Apelido atualizado com sucesso!')
-      setTimeout(() => setNickOk(null), 3000)
-    } catch (e: any) {
+    } catch (e) {
       console.error(e)
-      setNickErr('Falha ao salvar apelido.')
-      setTimeout(() => setNickErr(null), 4000)
+      alert('Falha ao salvar apelido.')
     } finally {
       setSavingNick(false)
     }
   }
 
-  async function saveAvatarSingleStep() {
-    try {
-      setAvatarOk(null); setAvatarErr(null); setSavingAvatar(true)
-      if (!cropperRef.current) throw new Error('no_cropper')
-      const blob = await cropperRef.current.getCroppedBlob()
-      if (!blob) throw new Error('no_image')
-      const form = new FormData()
-      form.append('file', blob, `avatar_${Date.now()}.jpg`)
-      const res = await fetch('/api/profile/avatar', { method: 'POST', body: form })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({} as any))
-        throw new Error(j?.error || 'profile_update_failed')
-      }
-      let publicUrl: string | null = null
-      try {
-        const j = await res.json()
-        publicUrl = (j as any)?.publicUrl || null
-      } catch {}
-      if (publicUrl) {
-        setCurrentAvatarUrl(publicUrl)
-        setTopPreviewUrl(publicUrl)
-      }
-      setAvatarOk('Avatar atualizado com sucesso!')
-      setTimeout(() => setAvatarOk(null), 3000)
-      setSelectedFile(null)
-    } catch (e: any) {
-      console.error(e)
-      setAvatarErr('Falha ao enviar avatar.')
-      setTimeout(() => setAvatarErr(null), 4000)
-    } finally {
-      setSavingAvatar(false)
-    }
+  const [selectedUrl, setSelectedUrl] = useState<string | null>(null)
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    const url = URL.createObjectURL(f)
+    setSelectedUrl(url)
+    setCroppedBlob(null)
   }
 
-  async function savePassword() {
+  const uploadAvatar = async () => {
+    if (!croppedBlob) {
+      alert('Clique em "Aplicar recorte" antes de salvar.')
+      return
+    }
+    setUploading(true)
     try {
-      setPassOk(null); setPassErr(null); setSavingPass(true)
-      if (passNew !== passConfirm) {
-        throw new Error('Nova senha e confirmação não conferem.')
-      }
-      const res = await fetch('/api/profile/password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword: passOld, newPassword: passNew }),
-      })
+      const fd = new FormData()
+      fd.append('file', croppedBlob, 'avatar.jpg')
+      const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
       if (!res.ok) {
-        const j = await res.json().catch(() => ({} as any))
-        throw new Error(j?.error || 'password_update_failed')
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j?.error || 'Falha ao enviar avatar')
       }
-      setPassOk('Senha atualizada com sucesso!')
-      setTimeout(() => setPassOk(null), 3000)
-      setPassOld(''); setPassNew(''); setPassConfirm('')
-    } catch (e: any) {
+      setSelectedUrl(null)
+      setCroppedBlob(null)
+      const p = await fetch('/api/profile/credits', { cache: 'no-store' }).then(r => r.json()).catch(() => ({}))
+      setProfile({ credits: p?.credits, nickname: p?.nickname, avatar_url: p?.avatar_url })
+      alert('Avatar atualizado!')
+    } catch (e) {
       console.error(e)
-      setPassErr(e?.message === 'Nova senha e confirmação não conferem.' ? e.message : 'Falha ao alterar senha.')
-      setTimeout(() => setPassErr(null), 4000)
+      alert('Falha ao enviar avatar.')
     } finally {
-      setSavingPass(false)
+      setUploading(false)
     }
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
-      {/* Tabs with URL sync */}
-      <nav className="mb-6 flex gap-3">
-        <TabButton active={activeTab==='perfil'} onClick={() => setTab('perfil')}>Perfil</TabButton>
-        <TabButton active={activeTab==='seguranca'} onClick={() => setTab('seguranca')}>Segurança</TabButton>
+    <div className="min-h-[60vh] w-full">
+      <nav className="border-b border-white/10 bg-black/50 backdrop-blur">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
+          <Link href="/dashboard" className="text-sm text-zinc-300 hover:text-white">← Voltar</Link>
+          <div className="flex items-center gap-2 text-sm">
+            <Link
+              href="/settings?tab=perfil"
+              className={"px-3 py-1.5 rounded " + (tab === 'perfil' ? "bg-white/10 text-white" : "text-zinc-300 hover:text-white")}
+            >
+              Perfil
+            </Link>
+            <Link
+              href="/settings?tab=seguranca"
+              className={"px-3 py-1.5 rounded " + (tab === 'seguranca' ? "bg-white/10 text-white" : "text-zinc-300 hover:text-white")}
+            >
+              Segurança
+            </Link>
+          </div>
+        </div>
       </nav>
 
-      {activeTab === 'perfil' && (
-        <div className="space-y-8">
-          {/* Pré-visualização fixa */}
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-full overflow-hidden border">
-              <img
-                src={topPreviewUrl || currentAvatarUrl || '/avatar-placeholder.png'}
-                alt="Avatar atual"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div>
-              <div className="text-sm opacity-70">Pré-visualização</div>
-              <div className="text-xs text-muted-foreground">
-                Atualiza automaticamente ao ajustar o zoom.
+      <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
+        {tab === 'perfil' && (
+          <section className="space-y-6">
+            <h1 className="text-xl font-semibold">Editar Perfil</h1>
+
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+              <label className="block text-sm text-zinc-300 mb-1">Apelido (nickname)</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm flex-1"
+                  placeholder="Seu apelido"
+                />
+                <button
+                  type="button"
+                  onClick={saveNickname}
+                  disabled={savingNick}
+                  className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm disabled:opacity-50"
+                >
+                  {savingNick ? 'Salvando…' : 'Salvar'}
+                </button>
               </div>
+              <p className="text-xs text-zinc-400 mt-2">Esse apelido aparece ao lado do seu avatar.</p>
             </div>
-          </div>
 
-          {/* Nickname */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Apelido</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                className="flex-1 px-3 py-2 rounded border bg-background"
-                placeholder="Seu apelido"
-              />
-              <button
-                onClick={saveNickname}
-                disabled={savingNick}
-                className="px-3 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                {savingNick ? 'Salvando...' : 'Salvar'}
-              </button>
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-3">
+              <label className="block text-sm text-zinc-300">Avatar</label>
+              <div className="flex items-center gap-4">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Avatar atual" className="h-16 w-16 rounded-full object-cover border border-white/10" />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-zinc-800 border border-white/10" />
+                )}
+                <input type="file" accept="image/*" onChange={onFileChange} className="text-sm text-zinc-300" />
+              </div>
+
+              {selectedUrl && (
+                <AvatarCropper
+                  src={selectedUrl}
+                  onCropped={(blob) => setCroppedBlob(blob)}
+                  size={384}
+                  className="mt-2"
+                />
+              )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={uploadAvatar}
+                  disabled={uploading || !croppedBlob}
+                  className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm disabled:opacity-50"
+                >
+                  {uploading ? 'Enviando…' : 'Salvar avatar'}
+                </button>
+                {selectedUrl && (
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedUrl(null); setCroppedBlob(null); }}
+                    className="px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-sm"
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-zinc-400">Ajuste o zoom entre 0.5× e 3.0× antes de salvar.</p>
             </div>
-            {nickOk && <InlineNotice kind="success">{nickOk}</InlineNotice>}
-            {nickErr && <InlineNotice kind="error">{nickErr}</InlineNotice>}
-          </div>
+          </section>
+        )}
 
-          {/* Avatar */}
-          <div className="space-y-3">
-            <label className="text-sm font-medium">Avatar</label>
-            <input type="file" accept="image/*" onChange={onPickFile} />
-            <AvatarCropper
-              ref={cropperRef}
-              file={selectedFile || undefined}
-              currentUrl={currentAvatarUrl ?? undefined}
-              initialZoom={1}
-              size={256}
-              onPreviewChange={handlePreviewChange}
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={saveAvatarSingleStep}
-                disabled={savingAvatar || !selectedFile}
-                className="px-3 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                {savingAvatar ? 'Enviando...' : 'Salvar avatar'}
-              </button>
+        {tab === 'seguranca' && (
+          <section className="space-y-4">
+            <h1 className="text-xl font-semibold">Segurança</h1>
+            <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-zinc-300 space-y-3">
+              <form method="post" action="/api/auth/change-password" className="space-y-3">
+                <div className="grid gap-1.5">
+                  <label className="text-sm text-zinc-200">Senha atual</label>
+                  <input type="password" name="current_password" className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm" required />
+                </div>
+                <div className="grid gap-1.5">
+                  <label className="text-sm text-zinc-200">Nova senha</label>
+                  <input type="password" name="new_password" className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm" required />
+                </div>
+                <button type="submit" className="px-4 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm">
+                  Atualizar senha
+                </button>
+              </form>
             </div>
-            {avatarOk && <InlineNotice kind="success">{avatarOk}</InlineNotice>}
-            {avatarErr && <InlineNotice kind="error">{avatarErr}</InlineNotice>}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'seguranca' && (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Senha atual</label>
-            <input
-              type="password"
-              value={passOld}
-              onChange={(e) => setPassOld(e.target.value)}
-              className="w-full px-3 py-2 rounded border bg-background"
-              placeholder="Sua senha atual"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Nova senha</label>
-            <input
-              type="password"
-              value={passNew}
-              onChange={(e) => setPassNew(e.target.value)}
-              className="w-full px-3 py-2 rounded border bg-background"
-              placeholder="Nova senha"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Confirmar nova senha</label>
-            <input
-              type="password"
-              value={passConfirm}
-              onChange={(e) => setPassConfirm(e.target.value)}
-              className="w-full px-3 py-2 rounded border bg-background"
-              placeholder="Confirme a nova senha"
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={savePassword}
-              disabled={savingPass}
-              className="px-3 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
-            >
-              {savingPass ? 'Salvando...' : 'Alterar senha'}
-            </button>
-          </div>
-          {passOk && <InlineNotice kind="success">{passOk}</InlineNotice>}
-          {passErr && <InlineNotice kind="error">{passErr}</InlineNotice>}
-        </div>
-      )}
+          </section>
+        )}
+      </main>
     </div>
   )
 }
