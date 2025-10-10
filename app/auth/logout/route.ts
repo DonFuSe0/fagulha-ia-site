@@ -1,13 +1,15 @@
-// Force dynamic to silence SSG warning and allow cookies/session usage
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
-
+// app/auth/logout/route.ts
+import supabaseRoute from '@/lib/supabase/routeClient'
 import { NextResponse } from 'next/server'
-import { supabaseRoute } from '@/lib/supabase/routeClient'
 
-export async function GET() {
+export async function POST() {
   const supabase = supabaseRoute()
-  await supabase.auth.signOut()
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
-  return NextResponse.redirect(new URL('/', site))
+
+  const { error } = await supabase.auth.signOut()
+  if (error) {
+    console.error(error)
+    return NextResponse.json({ error: error.message }, { status: 400 })
+  }
+
+  return NextResponse.redirect(new URL('/', process.env.NEXT_PUBLIC_SITE_URL))
 }
