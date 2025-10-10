@@ -1,10 +1,27 @@
 // app/settings/page.tsx
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
-import AvatarCropper from './AvatarCropper'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import AvatarCropper, { AvatarCropperHandle } from './AvatarCropper'
 
 type Tab = 'perfil' | 'seguranca'
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={
+        'px-3 py-1 rounded-md text-sm border ' +
+        (active
+          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+          : 'bg-background text-foreground border-border hover:bg-muted')
+      }
+    >
+      {children}
+    </button>
+  )
+}
 
 function InlineNotice({ kind = 'success', children }: { kind?: 'success'|'error'|'info', children: React.ReactNode }) {
   const colors = kind === 'success'
@@ -12,15 +29,24 @@ function InlineNotice({ kind = 'success', children }: { kind?: 'success'|'error'
     : kind === 'error'
     ? 'bg-red-50 text-red-800 border-red-200'
     : 'bg-blue-50 text-blue-800 border-blue-200'
-  return (
-    <div className={`border rounded-md px-3 py-2 text-sm ${colors}`}>
-      {children}
-    </div>
-  )
+  return <div className={'border rounded-md px-3 py-2 text-sm ' + colors}>{children}</div>
 }
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState<Tab>('perfil')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const activeTab = useMemo<Tab>(() => {
+    const t = (searchParams.get('tab') || 'perfil').toLowerCase()
+    return (t === 'seguranca' ? 'seguranca' : 'perfil')
+  }, [searchParams])
+
+  const setTab = useCallback((t: Tab) => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.set('tab', t)
+    router.push(`${pathname}?${params.toString()}`)
+  }, [router, pathname, searchParams])
 
   // ----- PERFIL -----
   const [nickname, setNickname] = useState('')
@@ -31,10 +57,10 @@ export default function SettingsPage() {
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [topPreviewUrl, setTopPreviewUrl] = useState<string | null>(null)
-  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)
   const [savingAvatar, setSavingAvatar] = useState(false)
   const [avatarOk, setAvatarOk] = useState<string | null>(null)
   const [avatarErr, setAvatarErr] = useState<string | null>(null)
+  const cropperRef = useRef<AvatarCropperHandle | null>(null)
 
   // ----- SEGURANCA -----
   const [passOld, setPassOld] = useState('')
@@ -44,27 +70,13 @@ export default function SettingsPage() {
   const [passOk, setPassOk] = useState<string | null>(null)
   const [passErr, setPassErr] = useState<string | null>(null)
 
-  useEffect(() => {
-    // TODO: carregar nickname e avatar_url atuais do Supabase (se necessário)
-  }, [])
-
   function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] || null
     setSelectedFile(f)
-    setCroppedBlob(null)
-    if (f) {
-      const url = URL.createObjectURL(f)
-      setTopPreviewUrl(url)
-    }
   }
 
   const handlePreviewChange = useCallback((dataUrl: string) => {
     setTopPreviewUrl(dataUrl)
-  }, [])
-
-  const handleCropReady = useCallback((blob: Blob, dataUrl: string) => {
-    setCroppedBlob(blob)
-    setTopPreviewUrl(dataUrl) // sincroniza prévia fixa
   }, [])
 
   async function saveNickname() {
@@ -90,12 +102,14 @@ export default function SettingsPage() {
     }
   }
 
-  async function saveAvatar() {
-    if (!croppedBlob) return
+  async function saveAvatarSingleStep() {
     try {
       setAvatarOk(null); setAvatarErr(null); setSavingAvatar(true)
+      if (!cropperRef.current) throw new Error('no_cropper')
+      const blob = await cropperRef.current.getCroppedBlob()
+      if (!blob) throw new Error('no_image')
       const form = new FormData()
-      form.append('file', croppedBlob, `avatar_${Date.now()}.jpg`)
+      form.append('file', blob, `avatar_${Date.now()}.jpg`)
       const res = await fetch('/api/profile/avatar', { method: 'POST', body: form })
       if (!res.ok) {
         const j = await res.json().catch(() => ({} as any))
@@ -112,7 +126,6 @@ export default function SettingsPage() {
       }
       setAvatarOk('Avatar atualizado com sucesso!')
       setTimeout(() => setAvatarOk(null), 3000)
-      setCroppedBlob(null)
       setSelectedFile(null)
     } catch (e: any) {
       console.error(e)
@@ -152,23 +165,13 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      {/* Tabs */}
+      {/* Tabs with URL sync */}
       <nav className="mb-6 flex gap-3">
-        <button
-          className={`px-3 py-1 rounded ${tab==='perfil' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-          onClick={() => setTab('perfil')}
-        >
-          Perfil
-        </button>
-        <button
-          className={`px-3 py-1 rounded ${tab==='seguranca' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
-          onClick={() => setTab('seguranca')}
-        >
-          Segurança
-        </button>
+        <TabButton active={activeTab==='perfil'} onClick={() => setTab('perfil')}>Perfil</TabButton>
+        <TabButton active={activeTab==='seguranca'} onClick={() => setTab('seguranca')}>Segurança</TabButton>
       </nav>
 
-      {tab === 'perfil' && (
+      {activeTab === 'perfil' && (
         <div className="space-y-8">
           {/* Pré-visualização fixa */}
           <div className="flex items-center gap-4">
@@ -182,7 +185,7 @@ export default function SettingsPage() {
             <div>
               <div className="text-sm opacity-70">Pré-visualização</div>
               <div className="text-xs text-muted-foreground">
-                Atualiza ao escolher/cortar a imagem.
+                Atualiza automaticamente ao ajustar o zoom.
               </div>
             </div>
           </div>
@@ -215,18 +218,18 @@ export default function SettingsPage() {
             <label className="text-sm font-medium">Avatar</label>
             <input type="file" accept="image/*" onChange={onPickFile} />
             <AvatarCropper
+              ref={cropperRef}
               file={selectedFile || undefined}
               currentUrl={currentAvatarUrl ?? undefined}
               initialZoom={1}
               size={256}
               onPreviewChange={handlePreviewChange}
-              onCropReady={handleCropReady}
             />
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                onClick={saveAvatar}
-                disabled={!croppedBlob || savingAvatar}
+                onClick={saveAvatarSingleStep}
+                disabled={savingAvatar || !selectedFile}
                 className="px-3 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
                 {savingAvatar ? 'Enviando...' : 'Salvar avatar'}
@@ -238,7 +241,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {tab === 'seguranca' && (
+      {activeTab === 'seguranca' && (
         <div className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Senha atual</label>

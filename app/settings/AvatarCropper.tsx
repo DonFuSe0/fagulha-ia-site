@@ -1,7 +1,11 @@
 // app/settings/AvatarCropper.tsx
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react'
+
+export type AvatarCropperHandle = {
+  getCroppedBlob: () => Promise<Blob | null>
+}
 
 type Props = {
   file?: File | null
@@ -9,57 +13,53 @@ type Props = {
   initialZoom?: number
   size?: number
   onPreviewChange?: (dataUrl: string) => void
-  onCropReady?: (blob: Blob, dataUrl: string) => void
 }
 
-export default function AvatarCropper({
-  file,
-  currentUrl,
-  initialZoom = 1,
-  size = 256,
-  onPreviewChange,
-  onCropReady,
-}: Props) {
+const AvatarCropper = forwardRef<AvatarCropperHandle, Props>(function AvatarCropper(
+  { file, currentUrl, initialZoom = 1, size = 256, onPreviewChange },
+  ref
+) {
   const [zoom, setZoom] = useState(initialZoom)
   const [imageUrl, setImageUrl] = useState<string | null>(currentUrl ?? null)
-  const [busy, setBusy] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  // quando escolhe arquivo, atualiza imagem e prévia de cima
-  useEffect(() => {
-    if (!file) return
-    const url = URL.createObjectURL(file)
-    setImageUrl(url)
-    queueMicrotask(() => {
-      const dataUrl = renderPreview(url, zoom, size, canvasRef)
-      if (dataUrl && onPreviewChange) onPreviewChange(dataUrl)
-    })
-    return () => URL.revokeObjectURL(url)
-  }, [file])
+  // Track current object URL to revoke later
+  const objectUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
 
-  // quando muda zoom, atualiza prévia de cima
+  useEffect(() => {
+    if (objectUrl) setImageUrl(objectUrl)
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [objectUrl])
+
+  useEffect(() => {
+    // also reflect server avatar if there is no selected file
+    if (!file && currentUrl) setImageUrl(currentUrl)
+  }, [file, currentUrl])
+
+  // Re-render hidden canvas and emit preview when zoom or image changes
   useEffect(() => {
     if (!imageUrl) return
-    const dataUrl = renderPreview(imageUrl, zoom, size, canvasRef)
+    const dataUrl = renderToCanvas(imageUrl, zoom, size, canvasRef)
     if (dataUrl && onPreviewChange) onPreviewChange(dataUrl)
-  }, [zoom, imageUrl, size, onPreviewChange])
+  }, [imageUrl, zoom, size, onPreviewChange])
 
-  function handleApplyCrop() {
-    if (!imageUrl) return
-    setBusy(true)
-    const dataUrl = renderPreview(imageUrl, zoom, size, canvasRef)
-    if (!dataUrl) { setBusy(false); return }
-    fetch(dataUrl)
-      .then(r => r.blob())
-      .then(blob => onCropReady?.(blob, dataUrl))
-      .finally(() => setBusy(false))
-  }
+  useImperativeHandle(ref, () => ({
+    async getCroppedBlob() {
+      if (!imageUrl) return null
+      const dataUrl = renderToCanvas(imageUrl, zoom, size, canvasRef)
+      if (!dataUrl) return null
+      const res = await fetch(dataUrl)
+      return await res.blob()
+    }
+  }), [imageUrl, zoom, size])
 
   return (
     <div className="space-y-3">
       <div className="w-full flex items-center justify-center">
         {imageUrl ? (
-          <div className="relative rounded-full overflow-hidden" style={{ width: size, height: size }}>
+          <div className="relative rounded-full overflow-hidden border" style={{ width: size, height: size }}>
             <img
               src={imageUrl}
               alt="Prévia do avatar"
@@ -87,23 +87,14 @@ export default function AvatarCropper({
         <span className="text-xs w-12 text-right">{zoom.toFixed(2)}x</span>
       </div>
 
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={handleApplyCrop}
-          className="px-3 py-2 rounded-md bg-muted hover:bg-muted/80"
-          disabled={!imageUrl || busy}
-        >
-          {busy ? 'Processando…' : 'Aplicar recorte'}
-        </button>
-      </div>
-
       <canvas ref={canvasRef} className="hidden" width={size} height={size} />
     </div>
   )
-}
+})
 
-function renderPreview(src: string, zoom: number, size: number, canvasRef: React.RefObject<HTMLCanvasElement>) {
+export default AvatarCropper
+
+function renderToCanvas(src: string, zoom: number, size: number, canvasRef: React.RefObject<HTMLCanvasElement>) {
   const canvas = canvasRef.current
   if (!canvas) return null
   const ctx = canvas.getContext('2d')
@@ -113,24 +104,27 @@ function renderPreview(src: string, zoom: number, size: number, canvasRef: React
   img.crossOrigin = 'anonymous'
   img.src = src
 
-  ;(renderPreview as any)._lastDataUrl = (renderPreview as any)._lastDataUrl || null
+  let dataUrl: string | null = null
 
-  img.onload = () => {
+  const draw = () => {
     ctx.clearRect(0, 0, size, size)
     const iw = img.width
     const ih = img.height
-    const scale = zoom * Math.max(size / iw, size / ih)
+    const baseScale = Math.max(size / iw, size / ih)
+    const scale = zoom * baseScale
     const dw = iw * scale
     const dh = ih * scale
     const dx = (size - dw) / 2
     const dy = (size - dh) / 2
     ctx.drawImage(img, dx, dy, dw, dh)
-    ;(renderPreview as any)._lastDataUrl = canvas.toDataURL('image/jpeg', 0.9)
-  }
-  if ((img as any).complete && img.naturalWidth > 0) {
-    // se já carregou do cache
-    img.onload!(null as any)
+    dataUrl = canvas.toDataURL('image/jpeg', 0.9)
   }
 
-  return (renderPreview as any)._lastDataUrl
+  if (img.complete && img.naturalWidth > 0) {
+    draw()
+    return dataUrl
+  } else {
+    img.onload = () => draw()
+    return null
+  }
 }
