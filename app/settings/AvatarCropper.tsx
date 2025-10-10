@@ -12,21 +12,19 @@ type Props = {
 export default function AvatarCropper({ src, onCropped, size = 384, className }: Props) {
   const imgRef = useRef<HTMLImageElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const [zoom, setZoom] = useState<number>(1) // 1x default
+
+  const [zoom, setZoom] = useState(1.0)
   const min = 0.5
   const max = 3.0
   const step = 0.01
+  const canCrop = !!src
 
-  const canCrop = useMemo(() => !!src, [src])
-
+  // sempre que trocar a imagem, reseta o zoom
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    canvas.width = size
-    canvas.height = size
-  }, [size])
+    setZoom(1.0)
+  }, [src])
 
-  const handleCrop = async () => {
+  const handleCrop = () => {
     if (!src) return
     const img = imgRef.current
     const canvas = canvasRef.current
@@ -35,22 +33,22 @@ export default function AvatarCropper({ src, onCropped, size = 384, className }:
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.fillStyle = '#000'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    canvas.width = size
+    canvas.height = size
+    ctx.clearRect(0, 0, size, size)
 
     const iw = img.naturalWidth
     const ih = img.naturalHeight
     if (!iw || !ih) return
 
-    // Base scale para preencher o quadrado com zoom=1
+    // escala base para preencher o quadrado em zoom=1
     const baseScale = Math.max(size / iw, size / ih)
     const s = baseScale * zoom
 
     const drawW = iw * s
     const drawH = ih * s
 
-    // Centraliza
+    // centraliza a imagem recortada
     const dx = (size - drawW) / 2
     const dy = (size - drawH) / 2
 
@@ -59,12 +57,12 @@ export default function AvatarCropper({ src, onCropped, size = 384, className }:
     ctx.drawImage(img, dx, dy, drawW, drawH)
 
     canvas.toBlob((blob) => {
-      if (blob) onCropped?.(blob)
+      if (blob && onCropped) onCropped(blob)
     }, 'image/jpeg', 0.92)
   }
 
   return (
-    <div className={className ?? ""}>
+    <div className={"rounded-xl border border-white/10 bg-black/30 p-3 " + (className ?? '')}>
       <div className="grid gap-3">
         <div className="flex items-center gap-6">
           {/* Preview com zoom ao vivo via CSS transform */}
