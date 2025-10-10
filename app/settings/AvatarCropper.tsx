@@ -7,24 +7,25 @@ type Props = {
   file?: File | null
   currentUrl?: string | null
   initialZoom?: number
-  onPreviewChange?: (dataUrl: string) => void
-  onCropped?: (blob: Blob, dataUrl: string) => void
   size?: number
+  onPreviewChange?: (dataUrl: string) => void
+  onCropReady?: (blob: Blob, dataUrl: string) => void
 }
 
 export default function AvatarCropper({
   file,
   currentUrl,
   initialZoom = 1,
-  onPreviewChange,
-  onCropped,
   size = 256,
+  onPreviewChange,
+  onCropReady,
 }: Props) {
   const [zoom, setZoom] = useState(initialZoom)
   const [imageUrl, setImageUrl] = useState<string | null>(currentUrl ?? null)
+  const [busy, setBusy] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  // Quando um arquivo é escolhido
+  // quando escolhe arquivo, atualiza imagem e prévia de cima
   useEffect(() => {
     if (!file) return
     const url = URL.createObjectURL(file)
@@ -36,18 +37,22 @@ export default function AvatarCropper({
     return () => URL.revokeObjectURL(url)
   }, [file])
 
-  // Quando muda zoom, atualiza prévia de cima
+  // quando muda zoom, atualiza prévia de cima
   useEffect(() => {
     if (!imageUrl) return
     const dataUrl = renderPreview(imageUrl, zoom, size, canvasRef)
     if (dataUrl && onPreviewChange) onPreviewChange(dataUrl)
   }, [zoom, imageUrl, size, onPreviewChange])
 
-  function handleConfirm() {
+  function handleApplyCrop() {
     if (!imageUrl) return
+    setBusy(true)
     const dataUrl = renderPreview(imageUrl, zoom, size, canvasRef)
-    if (!dataUrl) return
-    fetch(dataUrl).then(r => r.blob()).then(blob => onCropped?.(blob, dataUrl))
+    if (!dataUrl) { setBusy(false); return }
+    fetch(dataUrl)
+      .then(r => r.blob())
+      .then(blob => onCropReady?.(blob, dataUrl))
+      .finally(() => setBusy(false))
   }
 
   return (
@@ -85,10 +90,11 @@ export default function AvatarCropper({
       <div className="flex justify-end gap-2">
         <button
           type="button"
-          onClick={handleConfirm}
-          className="px-3 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90"
+          onClick={handleApplyCrop}
+          className="px-3 py-2 rounded-md bg-muted hover:bg-muted/80"
+          disabled={!imageUrl || busy}
         >
-          Confirmar recorte
+          {busy ? 'Processando…' : 'Aplicar recorte'}
         </button>
       </div>
 
@@ -109,23 +115,22 @@ function renderPreview(src: string, zoom: number, size: number, canvasRef: React
 
   ;(renderPreview as any)._lastDataUrl = (renderPreview as any)._lastDataUrl || null
 
-  try {
-    img.onload = () => {
-      ctx.clearRect(0, 0, size, size)
-      const iw = img.width
-      const ih = img.height
-      const scale = zoom * Math.max(size / iw, size / ih)
-      const dw = iw * scale
-      const dh = ih * scale
-      const dx = (size - dw) / 2
-      const dy = (size - dh) / 2
-      ctx.drawImage(img, dx, dy, dw, dh)
-      ;(renderPreview as any)._lastDataUrl = canvas.toDataURL('image/jpeg', 0.9)
-    }
-    if (img.complete && img.naturalWidth > 0) {
-      img.onload!(null as any)
-    }
-  } catch {}
+  img.onload = () => {
+    ctx.clearRect(0, 0, size, size)
+    const iw = img.width
+    const ih = img.height
+    const scale = zoom * Math.max(size / iw, size / ih)
+    const dw = iw * scale
+    const dh = ih * scale
+    const dx = (size - dw) / 2
+    const dy = (size - dh) / 2
+    ctx.drawImage(img, dx, dy, dw, dh)
+    ;(renderPreview as any)._lastDataUrl = canvas.toDataURL('image/jpeg', 0.9)
+  }
+  if ((img as any).complete && img.naturalWidth > 0) {
+    // se já carregou do cache
+    img.onload!(null as any)
+  }
 
   return (renderPreview as any)._lastDataUrl
 }
