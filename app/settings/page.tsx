@@ -3,8 +3,8 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import AvatarCropper from './AvatarCropper'
-import SettingsNotifier from './SettingsNotifier'
 
+import SettingsNotifier from './SettingsNotifier'
 type SettingsPageProps = {
   searchParams: { tab?: string }
 }
@@ -54,15 +54,14 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         body: JSON.stringify({ nickname }),
       })
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}
-      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Apelido atualizado com sucesso.' } }))
-))
+        const j = await res.json().catch(() => ({}))
         throw new Error(j?.error || 'Falha ao salvar apelido')
       }
       // opcional: feedback visual
+      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Apelido atualizado com sucesso.' } }))
     } catch (e) {
       console.error(e)
-      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'error', message: 'Não foi possível atualizar o apelido.' } }))
+      alert('Falha ao salvar apelido.')
     } finally {
       setSavingNick(false)
     }
@@ -113,10 +112,10 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       setSelectedUrl(null)
       setCroppedBlob(null)
       setCroppedPreviewUrl(null)
-      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Avatar atualizado com sucesso.' } }))
+      alert('Avatar atualizado!')
     } catch (e) {
       console.error(e)
-      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'error', message: 'Não foi possível atualizar o avatar.' } }))
+      alert('Falha ao enviar avatar.')
     } finally {
       setUploading(false)
     }
@@ -149,9 +148,9 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
           </div>
         </div>
       </nav>
+        <SettingsNotifier />
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
-        <SettingsNotifier />
         {tab === 'perfil' && (
           <section className="space-y-6">
             <h1 className="text-xl font-semibold">Editar Perfil</h1>
