@@ -17,8 +17,7 @@ type ProfileData = {
 
 export default function SettingsPage({ searchParams }: SettingsPageProps) {
   const tab = useMemo<"perfil" | "seguranca">(() => {
-    return (
-    <SettingsNotifier />searchParams?.tab === 'seguranca') ? 'seguranca' : 'perfil'
+    return (searchParams?.tab === 'seguranca') ? 'seguranca' : 'perfil'
   }, [searchParams?.tab])
 
   const [profile, setProfile] = useState<ProfileData>({})
@@ -36,8 +35,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       } finally { if (isMounted) setLoadingProfile(false) }
     }
     fetchProfile()
-    return (
-    <SettingsNotifier />) => { isMounted = false }
+    return () => { isMounted = false }
   }, [])
 
   const [nickname, setNickname] = useState<string>('')
@@ -96,7 +94,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
 
   const uploadAvatar = async () => {
     if (!croppedBlob) {
-      alert('Clique em "Aplicar recorte" antes de salvar.')
+      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'error', message: 'Clique em “Aplicar recorte” antes de salvar.' } }))
       return
     }
     setUploading(true)
@@ -131,7 +129,6 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
   const smallPreviewSrc = croppedPreviewUrl || selectedUrl || profile?.avatar_url || null
 
   return (
-    <SettingsNotifier />
     <div className="min-h-[60vh] w-full">
       <nav className="border-b border-white/10 bg-black/50 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
@@ -154,6 +151,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       </nav>
 
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
+        <SettingsNotifier />
         {tab === 'perfil' && (
           <section className="space-y-6">
             <h1 className="text-xl font-semibold">Editar Perfil</h1>
