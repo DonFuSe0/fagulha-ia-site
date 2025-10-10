@@ -1,52 +1,45 @@
+// app/settings/page.tsx
 'use client'
 
-import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import AvatarCropper from './AvatarCropper'
 
-type SettingsPageProps = {
-  searchParams: { tab?: string }
-}
+type Tab = 'perfil' | 'seguranca'
 
-type ProfileData = {
-  credits?: number
-  nickname?: string
-  avatar_url?: string | null
-}
+export default function SettingsPage() {
+  const [tab, setTab] = useState<Tab>('perfil')
 
-export default function SettingsPage({ searchParams }: SettingsPageProps) {
-  const tab = useMemo<"perfil" | "seguranca">(() => {
-    return (searchParams?.tab === 'seguranca') ? 'seguranca' : 'perfil'
-  }, [searchParams?.tab])
+  const [nickname, setNickname] = useState('')
+  const [savingNick, setSavingNick] = useState(false)
+  const [nickOk, setNickOk] = useState<string | null>(null)
 
-  const [profile, setProfile] = useState<ProfileData>({})
-  const [loadingProfile, setLoadingProfile] = useState(true)
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [topPreviewUrl, setTopPreviewUrl] = useState<string | null>(null)
+  const [savingAvatar, setSavingAvatar] = useState(false)
+  const [avatarOk, setAvatarOk] = useState<string | null>(null)
 
   useEffect(() => {
-    let isMounted = true
-    const fetchProfile = async () => {
-      try {
-        const res = await fetch('/api/profile/credits', { cache: 'no-store' })
-        const data = await res.json()
-        if (!isMounted) return
-        setProfile({ credits: data?.credits, nickname: data?.nickname, avatar_url: data?.avatar_url })
-      } catch {}
-      finally { if (isMounted) setLoadingProfile(false) }
-    }
-    fetchProfile()
-    return () => { isMounted = false }
+    // TODO: carregar nickname/avatar_url reais do Supabase
   }, [])
 
-  const [nickname, setNickname] = useState<string>('')
-  useEffect(() => {
-    setNickname(profile?.nickname ?? '')
-  }, [profile?.nickname])
+  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] || null
+    setSelectedFile(f)
+    if (f) {
+      const url = URL.createObjectURL(f)
+      setTopPreviewUrl(url)
+    }
+  }
 
-  const [savingNick, setSavingNick] = useState(false)
-  const saveNickname = async () => {
-    if (!nickname || nickname.trim().length < 2) return
-    setSavingNick(true)
+  const handlePreviewChange = useCallback((dataUrl: string) => {
+    setTopPreviewUrl(dataUrl)
+  }, [])
+
+  async function saveNickname() {
     try {
+      setSavingNick(true)
+      setNickOk(null)
       const res = await fetch('/api/profile/nickname', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -54,8 +47,10 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
-        throw new Error(j?.error || 'Falha ao salvar apelido')
+        throw new Error(j?.error || 'profile_update_failed')
       }
+      setNickOk('Apelido atualizado com sucesso!')
+      setTimeout(() => setNickOk(null), 3000)
     } catch (e) {
       console.error(e)
       alert('Falha ao salvar apelido.')
@@ -64,159 +59,98 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
     }
   }
 
-  const [selectedUrl, setSelectedUrl] = useState<string | null>(null)
-  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)
-  const [uploading, setUploading] = useState(false)
-
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
-    if (!f) return
-    const url = URL.createObjectURL(f)
-    setSelectedUrl(url)
-    setCroppedBlob(null)
-  }
-
-  const uploadAvatar = async () => {
-    if (!croppedBlob) {
-      alert('Clique em "Aplicar recorte" antes de salvar.')
-      return
-    }
-    setUploading(true)
+  async function saveAvatar(blob: Blob) {
     try {
-      const fd = new FormData()
-      fd.append('file', croppedBlob, 'avatar.jpg')
-      const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
+      setSavingAvatar(true)
+      setAvatarOk(null)
+
+      const form = new FormData()
+      form.append('file', blob, `avatar_${Date.now()}.jpg`)
+
+      const res = await fetch('/api/profile/avatar', { method: 'POST', body: form })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
-        throw new Error(j?.error || 'Falha ao enviar avatar')
+        throw new Error(j?.error || 'profile_update_failed')
       }
-      setSelectedUrl(null)
-      setCroppedBlob(null)
-      const p = await fetch('/api/profile/credits', { cache: 'no-store' }).then(r => r.json()).catch(() => ({}))
-      setProfile({ credits: p?.credits, nickname: p?.nickname, avatar_url: p?.avatar_url })
-      alert('Avatar atualizado!')
+
+      setAvatarOk('Avatar atualizado com sucesso!')
+      setTimeout(() => setAvatarOk(null), 3000)
+      try {
+        const j = await res.json()
+        if (j?.publicUrl) {
+          setCurrentAvatarUrl(j.publicUrl)
+          setTopPreviewUrl(j.publicUrl)
+        }
+      } catch {}
     } catch (e) {
       console.error(e)
       alert('Falha ao enviar avatar.')
     } finally {
-      setUploading(false)
+      setSavingAvatar(false)
     }
   }
 
   return (
-    <div className="min-h-[60vh] w-full">
-      <nav className="border-b border-white/10 bg-black/50 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
-          <Link href="/dashboard" className="text-sm text-zinc-300 hover:text-white">← Voltar</Link>
-          <div className="flex items-center gap-2 text-sm">
-            <Link
-              href="/settings?tab=perfil"
-              className={"px-3 py-1.5 rounded " + (tab === 'perfil' ? "bg-white/10 text-white" : "text-zinc-300 hover:text-white")}
-            >
-              Perfil
-            </Link>
-            <Link
-              href="/settings?tab=seguranca"
-              className={"px-3 py-1.5 rounded " + (tab === 'seguranca' ? "bg-white/10 text-white" : "text-zinc-300 hover:text-white")}
-            >
-              Segurança
-            </Link>
-          </div>
-        </div>
+    <div className="max-w-3xl mx-auto px-4 py-6">
+      <nav className="mb-6 flex gap-3">
+        <button className={\`px-3 py-1 rounded \${tab==='perfil' ? 'bg-primary text-primary-foreground' : 'bg-muted'}\`} onClick={() => setTab('perfil')}>Perfil</button>
+        <button className={\`px-3 py-1 rounded \${tab==='seguranca' ? 'bg-primary text-primary-foreground' : 'bg-muted'}\`} onClick={() => setTab('seguranca')}>Segurança</button>
       </nav>
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
-        {tab === 'perfil' && (
-          <section className="space-y-6">
-            <h1 className="text-xl font-semibold">Editar Perfil</h1>
-
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
-              <label className="block text-sm text-zinc-300 mb-1">Apelido (nickname)</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm flex-1"
-                  placeholder="Seu apelido"
-                />
-                <button
-                  type="button"
-                  onClick={saveNickname}
-                  disabled={savingNick}
-                  className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm disabled:opacity-50"
-                >
-                  {savingNick ? 'Salvando…' : 'Salvar'}
-                </button>
-              </div>
-              <p className="text-xs text-zinc-400 mt-2">Esse apelido aparece ao lado do seu avatar.</p>
+      {tab === 'perfil' && (
+        <div className="space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 rounded-full overflow-hidden border">
+              <img
+                src={topPreviewUrl || currentAvatarUrl || '/avatar-placeholder.png'}
+                alt="Avatar atual"
+                className="w-full h-full object-cover"
+              />
             </div>
-
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-3">
-              <label className="block text-sm text-zinc-300">Avatar</label>
-              <div className="flex items-center gap-4">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Avatar atual" className="h-16 w-16 rounded-full object-cover border border-white/10" />
-                ) : (
-                  <div className="h-16 w-16 rounded-full bg-zinc-800 border border-white/10" />
-                )}
-                <input type="file" accept="image/*" onChange={onFileChange} className="text-sm text-zinc-300" />
-              </div>
-
-              {selectedUrl && (
-                <AvatarCropper
-                  src={selectedUrl}
-                  onCropped={(blob) => setCroppedBlob(blob)}
-                  size={384}
-                  className="mt-2"
-                />
-              )}
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={uploadAvatar}
-                  disabled={uploading || !croppedBlob}
-                  className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm disabled:opacity-50"
-                >
-                  {uploading ? 'Enviando…' : 'Salvar avatar'}
-                </button>
-                {selectedUrl && (
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedUrl(null); setCroppedBlob(null); }}
-                    className="px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-sm"
-                  >
-                    Cancelar
-                  </button>
-                )}
-              </div>
-              <p className="text-xs text-zinc-400">Ajuste o zoom entre 0.5× e 3.0× antes de salvar.</p>
+            <div>
+              <div className="text-sm opacity-70">Pré-visualização</div>
+              <div className="text-xs text-muted-foreground">Atualiza ao escolher/cortar a imagem.</div>
             </div>
-          </section>
-        )}
+          </div>
 
-        {tab === 'seguranca' && (
-          <section className="space-y-4">
-            <h1 className="text-xl font-semibold">Segurança</h1>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-zinc-300 space-y-3">
-              <form method="post" action="/api/auth/change-password" className="space-y-3">
-                <div className="grid gap-1.5">
-                  <label className="text-sm text-zinc-200">Senha atual</label>
-                  <input type="password" name="current_password" className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm" required />
-                </div>
-                <div className="grid gap-1.5">
-                  <label className="text-sm text-zinc-200">Nova senha</label>
-                  <input type="password" name="new_password" className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm" required />
-                </div>
-                <button type="submit" className="px-4 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm">
-                  Atualizar senha
-                </button>
-              </form>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Apelido</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                className="flex-1 px-3 py-2 rounded border bg-background"
+                placeholder="Seu apelido"
+              />
+              <button
+                onClick={saveNickname}
+                disabled={savingNick}
+                className="px-3 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {savingNick ? 'Salvando...' : 'Salvar'}
+              </button>
             </div>
-          </section>
-        )}
-      </main>
+            {nickOk && <div className="text-green-600 text-sm">{nickOk}</div>}
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-sm font-medium">Avatar</label>
+            <input type="file" accept="image/*" onChange={onPickFile} />
+            <AvatarCropper
+              file={selectedFile || undefined}
+              currentUrl={currentAvatarUrl ?? undefined}
+              initialZoom={1}
+              onPreviewChange={(d) => handlePreviewChange(d)}
+              onCropped={(blob) => saveAvatar(blob)}
+              size={256}
+            />
+            {avatarOk && <div className="text-green-600 text-sm">{avatarOk}</div>}
+          </div>
+        </div>
+      )}
+
+      {tab === 'seguranca' && <div>… conteúdo de segurança …</div>}
     </div>
   )
 }

@@ -1,111 +1,111 @@
+// app/settings/AvatarCropper.tsx
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 
 type Props = {
-  src: string | null
-  onCropped?: (blob: Blob) => void
-  size?: number // output square size (px)
-  className?: string
+  file?: File | null
+  currentUrl?: string | null
+  initialZoom?: number
+  onPreviewChange?: (dataUrl: string) => void
+  onCropped?: (blob: Blob, dataUrl: string) => void
+  size?: number
 }
 
-export default function AvatarCropper({ src, onCropped, size = 384, className }: Props) {
-  const imgRef = useRef<HTMLImageElement | null>(null)
+export default function AvatarCropper({
+  file,
+  currentUrl,
+  initialZoom = 1,
+  onPreviewChange,
+  onCropped,
+  size = 256,
+}: Props) {
+  const [zoom, setZoom] = useState(initialZoom)
+  const [imageUrl, setImageUrl] = useState<string | null>(currentUrl ?? null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const [zoom, setZoom] = useState<number>(1) // 1x default
-  const min = 0.5
-  const max = 3.0
-  const step = 0.01
-
-  const canCrop = useMemo(() => !!src, [src])
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    canvas.width = size
-    canvas.height = size
-  }, [size])
+    if (!file) return
+    const url = URL.createObjectURL(file)
+    setImageUrl(url)
+    queueMicrotask(() => {
+      const dataUrl = renderPreview(url, zoom, size, canvasRef)
+      if (dataUrl && onPreviewChange) onPreviewChange(dataUrl)
+    })
+    return () => URL.revokeObjectURL(url)
+  }, [file])
 
-  const handleCrop = async () => {
-    if (!src) return
-    const img = imgRef.current
-    const canvas = canvasRef.current
-    if (!img || !canvas) return
+  useEffect(() => {
+    if (!imageUrl) return
+    const dataUrl = renderPreview(imageUrl, zoom, size, canvasRef)
+    if (dataUrl && onPreviewChange) onPreviewChange(dataUrl)
+  }, [zoom, imageUrl, size, onPreviewChange])
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.fillStyle = '#000'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    const iw = img.naturalWidth
-    const ih = img.naturalHeight
-    if (!iw || !ih) return
-
-    // Base scale para preencher o quadrado com zoom=1
-    const baseScale = Math.max(size / iw, size / ih)
-    const s = baseScale * zoom
-
-    const drawW = iw * s
-    const drawH = ih * s
-
-    // Centraliza
-    const dx = (size - drawW) / 2
-    const dy = (size - drawH) / 2
-
-    ctx.imageSmoothingEnabled = true
-    ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(img, dx, dy, drawW, drawH)
-
-    canvas.toBlob((blob) => {
-      if (blob) onCropped?.(blob)
-    }, 'image/jpeg', 0.92)
+  function handleConfirm() {
+    if (!imageUrl) return
+    const dataUrl = renderPreview(imageUrl, zoom, size, canvasRef)
+    if (!dataUrl) return
+    fetch(dataUrl).then(r => r.blob()).then(blob => onCropped?.(blob, dataUrl))
   }
 
   return (
-    <div className={className ?? ""}>
-      <div className="grid gap-3">
-        <div className="flex items-center gap-6">
-          {/* Preview com zoom ao vivo via CSS transform */}
-          <div className="h-40 w-40 rounded-full overflow-hidden bg-black/40 border border-white/10 flex items-center justify-center">
-            {src ? (
-              <img
-                ref={imgRef}
-                src={src}
-                alt="Prévia do avatar"
-                className="h-full w-full object-cover"
-                style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}
-              />
-            ) : (
-              <span className="text-xs text-zinc-400">Selecione uma imagem…</span>
-            )}
+    <div className="space-y-3">
+      <div className="w-full flex items-center justify-center">
+        {imageUrl ? (
+          <div className="relative rounded-full overflow-hidden" style={{ width: size, height: size }}>
+            <img src={imageUrl} alt="Prévia do avatar" className="object-cover w-full h-full" style={{ transform: \`scale(\${zoom})\` }} />
           </div>
-          <div className="flex-1">
-            <label className="block text-xs text-zinc-400 mb-1">Zoom ({min}x – {max}x)</label>
-            <input
-              aria-label="Ajustar zoom do avatar"
-              type="range"
-              min={min}
-              max={max}
-              step={step}
-              value={zoom}
-              onChange={(e) => setZoom(parseFloat(e.target.value))}
-              className="w-full"
-            />
-            <div className="mt-2 text-xs text-zinc-400">Zoom atual: {zoom.toFixed(2)}x</div>
-            <button
-              type="button"
-              onClick={handleCrop}
-              disabled={!canCrop}
-              className="mt-3 px-3 py-1.5 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm disabled:opacity-50"
-            >
-              Aplicar recorte
-            </button>
-          </div>
-        </div>
-        <canvas ref={canvasRef} className="hidden" />
+        ) : (
+          <div className="text-sm text-muted-foreground">Selecione uma imagem para pré-visualizar</div>
+        )}
       </div>
+
+      <div className="flex items-center gap-3">
+        <span className="text-xs opacity-70">Zoom</span>
+        <input type="range" min={0.5} max={3} step={0.01} value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-full" aria-label="Zoom do avatar" />
+        <span className="text-xs w-10 text-right">{zoom.toFixed(2)}x</span>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <button type="button" onClick={handleConfirm} className="px-3 py-2 rounded-md bg-primary text-primary-foreground hover:opacity-90">
+          Confirmar recorte
+        </button>
+      </div>
+
+      <canvas ref={canvasRef} className="hidden" width={size} height={size} />
     </div>
   )
+}
+
+function renderPreview(src: string, zoom: number, size: number, canvasRef: React.RefObject<HTMLCanvasElement>) {
+  const canvas = canvasRef.current
+  if (!canvas) return null
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+
+  const img = new Image()
+  img.crossOrigin = 'anonymous'
+  img.src = src
+
+  ;(renderPreview as any)._lastDataUrl = (renderPreview as any)._lastDataUrl || null
+
+  try {
+    img.onload = () => {
+      ctx.clearRect(0, 0, size, size)
+      const iw = img.width
+      const ih = img.height
+      const scale = zoom * Math.max(size / iw, size / ih)
+      const dw = iw * scale
+      const dh = ih * scale
+      const dx = (size - dw) / 2
+      const dy = (size - dh) / 2
+      ctx.drawImage(img, dx, dy, dw, dh)
+      ;(renderPreview as any)._lastDataUrl = canvas.toDataURL('image/jpeg', 0.9)
+    }
+    if (img.complete && img.naturalWidth > 0) {
+      img.onload!(null as any)
+    }
+  } catch {}
+
+  return (renderPreview as any)._lastDataUrl
 }
