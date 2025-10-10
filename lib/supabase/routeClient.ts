@@ -1,6 +1,9 @@
-import { cookies } from 'next/headers';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+// lib/supabase/routeClient.ts
+import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+// import type { Database } from '@/lib/supabase/types'
 
-export function supabaseRoute() {
-  return createRouteHandlerClient({ cookies });
+export default function getRouteClient() {
+  // return createRouteHandlerClient<Database>({ cookies })
+  return createRouteHandlerClient({ cookies })
 }

@@ -1,6 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
+// lib/supabase/browserClient.ts
+// FULL compat (camelCase path)
+'use client'
 
-export const supabaseBrowser = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import supabaseDefault, { supabase as _supabase, createClient as _createClient } from './client'
+
+export const supabaseBrowser = _supabase
+export const supabase = _supabase
+export const createClient = _createClient
+export function getSupabaseBrowserClient() {
+  return _supabase
+}
+export default supabaseDefault

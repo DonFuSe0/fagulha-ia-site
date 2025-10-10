@@ -1,70 +1,106 @@
+// app/auth/signup/page.tsx
 'use client';
 
-export const dynamic = 'force-dynamic';
-
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-
-function SignupInner() {
-  const params = useSearchParams();
-  const serverError = params.get('error');
-  const serverOk = params.get('ok');
-
-  return (
-    <div className="mx-auto max-w-md space-y-4">
-      <h1 className="text-2xl font-bold text-white">Criar conta</h1>
-
-      {serverOk && (
-        <div className="rounded border border-emerald-700 bg-emerald-900/30 p-3 text-sm text-emerald-200">
-          {serverOk}
-        </div>
-      )}
-      {serverError && (
-        <div className="rounded border border-red-700 bg-red-900/40 p-3 text-sm text-red-200">
-          {serverError}
-        </div>
-      )}
-
-      <form action="/api/auth/signup" method="POST" className="space-y-4">
-        <div>
-          <label htmlFor="email" className="mb-1 block text-sm text-gray-300">E-mail</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-gray-200 focus:border-brand focus:outline-none"
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="mb-1 block text-sm text-gray-300">Senha</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            className="w-full rounded border border-gray-700 bg-gray-900 px-3 py-2 text-gray-200 focus:border-brand focus:outline-none"
-          />
-        </div>
-
-        {/* Turnstile widget */}
-        <div className="cf-turnstile" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''}></div>
-
-        <button
-          type="submit"
-          className="w-full rounded bg-brand px-4 py-2 font-medium text-black hover:bg-brand-light"
-        >
-          Criar conta
-        </button>
-      </form>
-    </div>
-  );
-}
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
 
 export default function SignupPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setOk(null);
+    if (password !== confirm) {
+      setError('As senhas não coincidem.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: `${siteUrl}/auth/callback` },
+      });
+      if (error) throw error;
+      setOk('Verifique seu e-mail para confirmar a conta.');
+      // opcional: redirecionar para /confirmar-email
+      // router.push('/auth/confirmar-email');
+    } catch (err: any) {
+      setError(err?.message ?? 'Não foi possível criar sua conta.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <Suspense fallback={<div className="text-sm text-gray-400">Carregando…</div>}>
-      <SignupInner />
-    </Suspense>
+    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        <h1 className="text-3xl font-bold text-center mb-6">Criar conta</h1>
+        <form onSubmit={onSubmit} className="space-y-4 bg-zinc-900/60 p-6 rounded-2xl border border-zinc-800">
+          <div className="space-y-2">
+            <label className="text-sm text-zinc-300">E-mail</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg bg-zinc-950/70 border border-zinc-800 px-3 py-2 outline-none focus:ring-2 focus:ring-orange-500"
+              placeholder="voce@exemplo.com"
+              autoComplete="email"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm text-zinc-300">Senha</label>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg bg-zinc-950/70 border border-zinc-800 px-3 py-2 outline-none focus:ring-2 focus:ring-orange-500"
+              placeholder="••••••••"
+              autoComplete="new-password"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm text-zinc-300">Confirmar senha</label>
+            <input
+              type="password"
+              required
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              className="w-full rounded-lg bg-zinc-950/70 border border-zinc-800 px-3 py-2 outline-none focus:ring-2 focus:ring-orange-500"
+              placeholder="••••••••"
+              autoComplete="new-password"
+            />
+          </div>
+
+          {error && <div className="text-sm text-red-400 bg-red-950/30 border border-red-900 px-3 py-2 rounded-lg">{error}</div>}
+          {ok && <div className="text-sm text-emerald-400 bg-emerald-950/30 border border-emerald-900 px-3 py-2 rounded-lg">{ok}</div>}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full h-11 rounded-lg bg-orange-600 hover:bg-orange-500 disabled:opacity-60 disabled:cursor-not-allowed transition-colors font-medium"
+          >
+            {loading ? 'Enviando...' : 'Criar conta'}
+          </button>
+
+          <div className="text-center text-sm text-zinc-400">
+            Já tem conta? <a className="text-orange-400 hover:underline" href="/auth/login">Entrar</a>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
