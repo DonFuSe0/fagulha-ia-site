@@ -1,17 +1,8 @@
-import { useRouter, useSearchParams } from 'next/navigation'
 'use client'
 
-
-function Banner({ kind, children }: { kind: 'success' | 'error'; children: React.ReactNode }) {
-  const base = 'mt-3 text-sm rounded-md border px-3 py-2';
-  const ok = 'border-green-500 text-green-400 bg-green-500/10';
-  const bad = 'border-red-500 text-red-400 bg-red-500/10';
-  return <div className={\`\${base} \${kind === 'success' ? ok : bad}\`}>{children}</div>;
-}
-
-
 import Link from 'next/link'
-import { useEffect, useMemo, useState , useCallback } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import AvatarCropper from './AvatarCropper'
 
 type SettingsPageProps = {
@@ -24,259 +15,193 @@ type ProfileData = {
   avatar_url?: string | null
 }
 
-export default function SettingsPage({
-const router = useRouter();
-const searchParams = useSearchParams();
-const [banner, setBanner] = useState<{ kind: 'success' | 'error'; msg: string } | null>(null);
+function Banner({ kind, children }: { kind: 'success' | 'error'; children: React.ReactNode }) {
+  const base = 'mt-3 text-sm rounded-md border px-3 py-2'
+  const ok = 'border-green-500 text-green-400 bg-green-500/10'
+  const bad = 'border-red-500 text-red-400 bg-red-500/10'
+  return <div className={`${base} ${kind === 'success' ? ok : bad}`}>{children}</div>
+}
 
-// Handle password feedback via querystring (?pwd=ok | ?pwd_error=...)
-useEffect(() => {
-  const pwd = searchParams?.get('pwd');
-  const perr = searchParams?.get('pwd_error');
-  if (pwd === 'ok') {
-    setBanner({ kind: 'success', msg: 'Senha atualizada com sucesso.' });
-    // Remove params from URL to avoid persistent banner
-    router.replace('/settings?tab=seguranca');
-  } else if (perr) {
-    const msg =
-      perr === 'invalid' ? 'Dados inválidos para alterar a senha.' :
-      perr === 'method_not_allowed' ? 'Método não permitido.' :
-      'Não foi possível atualizar a senha.';
-    setBanner({ kind: 'error', msg });
-    router.replace('/settings?tab=seguranca');
-  }
-}, [searchParams, router]);
- searchParams }: SettingsPageProps) {
-  const tab = useMemo<"perfil" | "seguranca">(() => {
-    return (
-        {banner && <Banner kind={banner.kind}>{banner.msg}</Banner>}
-searchParams?.tab === 'seguranca') ? 'seguranca' : 'perfil'
-  }, [searchParams?.tab])
+export default function SettingsPage({ searchParams }: SettingsPageProps) {
+  const router = useRouter()
+  const params = useSearchParams()
+  const tab = (searchParams?.tab || 'perfil') as 'perfil' | 'seguranca'
 
   const [profile, setProfile] = useState<ProfileData>({})
   const [loadingProfile, setLoadingProfile] = useState(true)
 
+  // feedback banner
+  const [banner, setBanner] = useState<{ kind: 'success' | 'error'; msg: string } | null>(null)
+
   useEffect(() => {
-    let isMounted = true
-    const fetchProfile = async () => {
+    let alive = true
+    ;(async () => {
       try {
         const res = await fetch('/api/profile/credits', { cache: 'no-store' })
         const data = await res.json()
-        if (!isMounted) return
+        if (!alive) return
         setProfile({ credits: data?.credits, nickname: data?.nickname, avatar_url: data?.avatar_url })
       } catch {
-      } finally { if (isMounted) setLoadingProfile(false) }
-    }
-    fetchProfile()
-    return () => { isMounted = false }
+        // ignore
+      } finally {
+        if (alive) setLoadingProfile(false)
+      }
+    })()
+    return () => { alive = false }
   }, [])
 
-  const [nickname, setNickname] = useState<string>('')
+  // pwd feedback via query params
   useEffect(() => {
-    setNickname(profile?.nickname ?? '')
-  }, [profile?.nickname])
+    const pwd = params.get('pwd')
+    const perr = params.get('pwd_error')
+    if (tab === 'seguranca') {
+      if (pwd === 'ok') {
+        setBanner({ kind: 'success', msg: 'Senha atualizada com sucesso.' })
+        router.replace('/settings?tab=seguranca')
+      } else if (perr) {
+        const msg =
+          perr === 'invalid' ? 'Dados inválidos para alterar a senha.' :
+          perr === 'method_not_allowed' ? 'Método não permitido.' :
+          'Não foi possível atualizar a senha.'
+        setBanner({ kind: 'error', msg })
+        router.replace('/settings?tab=seguranca')
+      }
+    }
+  }, [params, tab, router])
 
-  const [savingNick, setSavingNick] = useState(false)
-  const saveNickname = async () => {
-    if (!nickname || nickname.trim().length < 2) return
-    setSavingNick(true)
+  // nickname
+  const [nickname, setNickname] = useState('')
+  useEffect(() => {
+    if (profile.nickname) setNickname(profile.nickname)
+  }, [profile.nickname])
+
+  async function saveNickname() {
     try {
       const res = await fetch('/api/profile/nickname', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nickname }),
+        body: JSON.stringify({ nickname })
       })
-      if (!res.ok) {
-        setBanner({ kind: 'success', msg: 'Apelido atualizado com sucesso.' });
-
-        const j = await res.json().catch(() => ({}))
-        throw new Error(j?.error || 'Falha ao salvar apelido')
+      if (res.ok) {
+        setBanner({ kind: 'success', msg: 'Apelido atualizado com sucesso.' })
+        setProfile(p => ({ ...p, nickname }))
+      } else {
+        setBanner({ kind: 'error', msg: 'Não foi possível atualizar o apelido.' })
       }
-      // opcional: feedback visual
-    } catch (e) { setBanner({ kind: 'error', msg: 'Não foi possível concluir a operação.' });
-      console.error(e)
-      alert('Falha ao salvar apelido.')
-    } finally {
-      setSavingNick(false)
+    } catch {
+      setBanner({ kind: 'error', msg: 'Não foi possível atualizar o apelido.' })
     }
   }
 
-  // ---- Avatar ----
-  const [selectedUrl, setSelectedUrl] = useState<string | null>(null) // arquivo escolhido (prévia)
-  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)     // blob recortado pronto para upload
-  const [croppedPreviewUrl, setCroppedPreviewUrl] = useState<string | null>(null) // preview local do recorte
-  const [uploading, setUploading] = useState(false)
+  // avatar
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedUrl, setSelectedUrl] = useState<string | null>(null)
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null)
+  const [croppedUrl, setCroppedUrl] = useState<string | null>(null)
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
-    if (!f) return
-    const url = URL.createObjectURL(f)
-    setSelectedUrl(url)
+  function onFilePick(file: File | null) {
+    setSelectedFile(file)
     setCroppedBlob(null)
-    setCroppedPreviewUrl(null)
+    if (selectedUrl) URL.revokeObjectURL(selectedUrl)
+    setSelectedUrl(file ? URL.createObjectURL(file) : null)
+    if (croppedUrl) URL.revokeObjectURL(croppedUrl)
+    setCroppedUrl(null)
   }
 
-  // receber blob do cropper e gerar preview imediato
-  const onCropped = (blob: Blob) => {
+  function onCropped(blob: Blob) {
     setCroppedBlob(blob)
-    try {
-      const url = URL.createObjectURL(blob)
-      setCroppedPreviewUrl(url)
-    } catch {}
+    if (croppedUrl) URL.revokeObjectURL(croppedUrl)
+    setCroppedUrl(URL.createObjectURL(blob))
   }
 
-  const uploadAvatar = async () => {
-    if (!croppedBlob) {
-      alert('Clique em "Aplicar recorte" antes de salvar.')
-      return
-    }
-    setUploading(true)
+  async function saveAvatar() {
     try {
       const fd = new FormData()
-      fd.append('file', croppedBlob, 'avatar.jpg')
-      const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
-      if (!res.ok) {
-        setBanner({ kind: 'success', msg: 'Avatar atualizado com sucesso.' });
-
-        const j = await res.json().catch(() => ({}))
-        throw new Error(j?.error || 'Falha ao enviar avatar')
+      if (croppedBlob) {
+        fd.append('file', croppedBlob, 'avatar.jpg')
+      } else if (selectedFile) {
+        fd.append('file', selectedFile, selectedFile.name)
+      } else {
+        setBanner({ kind: 'error', msg: 'Selecione uma imagem primeiro.' })
+        return
       }
-      const j = await res.json()
-      // Atualiza avatar atual imediatamente com o retornado pela API
-      setProfile(p => ({ ...p, avatar_url: j?.avatar_url ?? p?.avatar_url }))
-      // limpa estados locais
-      setSelectedUrl(null)
-      setCroppedBlob(null)
-      setCroppedPreviewUrl(null)
-      alert('Avatar atualizado!')
-    } catch (e) { setBanner({ kind: 'error', msg: 'Não foi possível concluir a operação.' });
-      console.error(e)
-      alert('Falha ao enviar avatar.')
-    } finally {
-      setUploading(false)
+      const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        const newUrl: string | null = data?.avatar_url ?? null
+        setBanner({ kind: 'success', msg: 'Avatar atualizado com sucesso.' })
+        setProfile(p => ({ ...p, avatar_url: newUrl }))
+        if (selectedUrl) { URL.revokeObjectURL(selectedUrl); setSelectedUrl(null) }
+      } else {
+        setBanner({ kind: 'error', msg: 'Não foi possível atualizar o avatar.' })
+      }
+    } catch {
+      setBanner({ kind: 'error', msg: 'Não foi possível atualizar o avatar.' })
     }
   }
 
-  // fonte do preview pequeno (miniatura):
-  // 1) se já existe recorte, usa-o;
-  // 2) senão, se há arquivo selecionado, usa-o;
-  // 3) senão, usa avatar atual do perfil;
-  const smallPreviewSrc = croppedPreviewUrl || selectedUrl || profile?.avatar_url || null
+  const miniPreview = croppedUrl || selectedUrl || profile.avatar_url || null
 
   return (
-    <div className="min-h-[60vh] w-full">
-      <nav className="border-b border-white/10 bg-black/50 backdrop-blur">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
-          <Link href="/dashboard" className="text-sm text-zinc-300 hover:text-white">← Voltar</Link>
-          <div className="flex items-center gap-2 text-sm">
-            <Link
-              href="/settings?tab=perfil"
-              className={"px-3 py-1.5 rounded " + (tab === 'perfil' ? "bg-white/10 text-white" : "text-zinc-300 hover:text-white")}
-            >
-              Perfil
-            </Link>
-            <Link
-              href="/settings?tab=seguranca"
-              className={"px-3 py-1.5 rounded " + (tab === 'seguranca' ? "bg-white/10 text-white" : "text-zinc-300 hover:text-white")}
-            >
-              Segurança
-            </Link>
-          </div>
-        </div>
-      </nav>
+    <main className="max-w-5xl mx-auto px-4 py-6">
+      <div className="flex items-center gap-4 border-b border-white/10 pb-3">
+        <Link href="/settings?tab=perfil" className={tab === 'perfil' ? 'text-white' : 'text-white/60 hover:text-white'}>Perfil</Link>
+        <Link href="/settings?tab=seguranca" className={tab === 'seguranca' ? 'text-white' : 'text-white/60 hover:text-white'}>Segurança</Link>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
-        {tab === 'perfil' && (
-          <section className="space-y-6">
-            <h1 className="text-xl font-semibold">Editar Perfil</h1>
+      {banner && <Banner kind={banner.kind}>{banner.msg}</Banner>}
 
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
-              <label className="block text-sm text-zinc-300 mb-1">Apelido (nickname)</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm flex-1"
-                  placeholder="Seu apelido"
-                />
-                <button
-                  type="button"
-                  onClick={saveNickname}
-                  disabled={savingNick}
-                  className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm disabled:opacity-50"
-                >
-                  {savingNick ? 'Salvando…' : 'Salvar'}
-                </button>
-              </div>
-              <p className="text-xs text-zinc-400 mt-2">Esse apelido aparece ao lado do seu avatar.</p>
+      {tab === 'perfil' && (
+        <section className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Avatar</h2>
+            <p className="text-sm text-white/60">Envie uma imagem e recorte como preferir.</p>
+
+            <div className="mt-4">
+              <AvatarCropper onFilePick={onFilePick} onCropped={onCropped} selectedUrl={selectedUrl} />
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4 space-y-3">
-              <label className="block text-sm text-zinc-300">Avatar</label>
-              <div className="flex items-center gap-4">
-                {smallPreviewSrc ? (
-                  <img src={smallPreviewSrc} alt="Prévia" className="h-16 w-16 rounded-full object-cover border border-white/10" />
+            <div className="mt-4 flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-white/5 flex items-center justify-center">
+                {miniPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={miniPreview} alt="avatar preview" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="h-16 w-16 rounded-full bg-zinc-800 border border-white/10" />
-                )}
-                <input type="file" accept="image/*" onChange={onFileChange} className="text-sm text-zinc-300" />
-              </div>
-
-              {selectedUrl && (
-                <AvatarCropper
-                  src={selectedUrl}
-                  onCropped={onCropped}
-                  size={384}
-                  className="mt-2"
-                />
-              )}
-
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={uploadAvatar}
-                  disabled={uploading || !croppedBlob}
-                  className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm disabled:opacity-50"
-                >
-                  {uploading ? 'Enviando…' : 'Salvar avatar'}
-                </button>
-                {selectedUrl && (
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedUrl(null); setCroppedBlob(null); setCroppedPreviewUrl(null); }}
-                    className="px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-sm"
-                  >
-                    Cancelar
-                  </button>
+                  <span className="text-xs text-white/40">sem foto</span>
                 )}
               </div>
-              <p className="text-xs text-zinc-400">Ajuste o zoom entre 0.5× e 3.0× antes de salvar.</p>
+              <button onClick={saveAvatar} className="rounded-md bg-white/10 px-3 py-2 text-sm hover:bg-white/20">
+                Salvar avatar
+              </button>
             </div>
-          </section>
-        )}
+          </div>
 
-        {tab === 'seguranca' && (
-          <section className="space-y-4">
-            <h1 className="text-xl font-semibold">Segurança</h1>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-zinc-300 space-y-3">
-              <form method="post" action="/api/profile/password" className="space-y-3">
-                <div className="grid gap-1.5">
-                  <label className="text-sm text-zinc-200">Senha atual</label>
-                  <input type="password" name="current_password" className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm" required />
-                </div>
-                <div className="grid gap-1.5">
-                  <label className="text-sm text-zinc-200">Nova senha</label>
-                  <input type="password" name="new_password" className="bg-zinc-900 border border-white/10 rounded px-3 py-2 text-sm" required />
-                </div>
-                <button type="submit" className="px-4 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/10 text-sm">
-                  Atualizar senha
-                </button>
-              </form>
+          <div>
+            <h2 className="text-lg font-semibold text-white">Apelido</h2>
+            <p className="text-sm text-white/60">Como seu nome será exibido.</p>
+
+            <div className="mt-4 flex items-center gap-3">
+              <input
+                value={nickname}
+                onChange={e => setNickname(e.target.value)}
+                placeholder="Seu apelido"
+                className="w-full rounded-md bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-white/20"
+              />
+              <button onClick={saveNickname} className="rounded-md bg-white/10 px-3 py-2 text-sm hover:bg-white/20">
+                Salvar
+              </button>
             </div>
-          </section>
-        )}
-      </main>
-    </div>
+          </div>
+        </section>
+      )}
+
+      {tab === 'seguranca' && (
+        <section className="mt-6">
+          <h2 className="text-lg font-semibold text-white">Segurança</h2>
+          <p className="text-sm text-white/60">Altere sua senha atual.</p>
+          {/* A tela de senha original pode viver aqui; o handler já é /api/profile/password */}
+        </section>
+      )}
+    </main>
   )
 }
