@@ -28,7 +28,7 @@ export default function PrivateGalleryPage() {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-semibold">Sua Galeria</h1>
-        <a href="/dashboard" className="text-sm text-zinc-400 hover:text-zinc-200">Voltar</a>
+        <a href="/dashboard" className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10">Voltar</a>
       </div>
 
       {loading && <p className="text-zinc-400">carregando...</p>}
