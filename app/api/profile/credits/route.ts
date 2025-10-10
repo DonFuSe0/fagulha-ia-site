@@ -1,23 +1,29 @@
-// app/api/profile/credits/route.ts
 import { NextResponse } from 'next/server'
-import routeClient from '@/lib/supabase/routeClient'
+import getRouteClient from '@/lib/supabase/routeClient'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const supabase = routeClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) {
-    return NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
+  try {
+    const supabase = getRouteClient()
+
+    const { data: { user }, error: authErr } = await supabase.auth.getUser()
+    if (authErr || !user) {
+      return NextResponse.json({ error: 'not_authenticated', details: authErr?.message }, { status: 401 })
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('credits')
+      .eq('id', user.id)
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: 'profile_read_failed', details: error.message }, { status: 400 })
+    }
+
+    return NextResponse.json({ credits: data?.credits ?? 0 })
+  } catch (e: any) {
+    return NextResponse.json({ error: 'unexpected', details: e?.message ?? String(e) }, { status: 500 })
   }
-
-  const { data, error: qErr } = await supabase
-    .from('profiles')
-    .select('credits, nickname, avatar_url')
-    .eq('id', user.id)
-    .single()
-
-  if (qErr) {
-    return NextResponse.json({ error: 'profiles_query_failed', details: qErr.message }, { status: 400 })
-  }
-
-  return NextResponse.json({ credits: data?.credits ?? 0, nickname: data?.nickname ?? null, avatar_url: data?.avatar_url ?? null })
 }

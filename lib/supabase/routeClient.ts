@@ -1,17 +1,9 @@
-import 'server-only';
-import { createClient as createServerClient } from './server';
-
-/**
- * Uso em rotas (route handlers):
- *   import { supabaseRoute } from '@/lib/supabase/routeClient'
- *   const supabase = supabaseRoute();
- */
-export function supabaseRoute() {
-  return createServerClient();
-}
-
-export const createClient = createServerClient;
+// lib/supabase/routeClient.ts
+import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+// import type { Database } from '@/lib/supabase/types'
 
 export default function getRouteClient() {
-  return createServerClient();
+  // return createRouteHandlerClient<Database>({ cookies })
+  return createRouteHandlerClient({ cookies })
 }
