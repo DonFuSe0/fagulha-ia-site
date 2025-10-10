@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import AvatarCropper from './AvatarCropper'
+import SettingsNotifier from './SettingsNotifier'
 
 type SettingsPageProps = {
   searchParams: { tab?: string }
@@ -16,7 +17,8 @@ type ProfileData = {
 
 export default function SettingsPage({ searchParams }: SettingsPageProps) {
   const tab = useMemo<"perfil" | "seguranca">(() => {
-    return (searchParams?.tab === 'seguranca') ? 'seguranca' : 'perfil'
+    return (
+    <SettingsNotifier />searchParams?.tab === 'seguranca') ? 'seguranca' : 'perfil'
   }, [searchParams?.tab])
 
   const [profile, setProfile] = useState<ProfileData>({})
@@ -34,7 +36,8 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       } finally { if (isMounted) setLoadingProfile(false) }
     }
     fetchProfile()
-    return () => { isMounted = false }
+    return (
+    <SettingsNotifier />) => { isMounted = false }
   }, [])
 
   const [nickname, setNickname] = useState<string>('')
@@ -53,13 +56,15 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         body: JSON.stringify({ nickname }),
       })
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
+        const j = await res.json().catch(() => ({}
+      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Apelido atualizado com sucesso.' } }))
+))
         throw new Error(j?.error || 'Falha ao salvar apelido')
       }
       // opcional: feedback visual
     } catch (e) {
       console.error(e)
-      alert('Falha ao salvar apelido.')
+      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'error', message: 'Não foi possível atualizar o apelido.' } }))
     } finally {
       setSavingNick(false)
     }
@@ -110,10 +115,10 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       setSelectedUrl(null)
       setCroppedBlob(null)
       setCroppedPreviewUrl(null)
-      alert('Avatar atualizado!')
+      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Avatar atualizado com sucesso.' } }))
     } catch (e) {
       console.error(e)
-      alert('Falha ao enviar avatar.')
+      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'error', message: 'Não foi possível atualizar o avatar.' } }))
     } finally {
       setUploading(false)
     }
@@ -126,6 +131,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
   const smallPreviewSrc = croppedPreviewUrl || selectedUrl || profile?.avatar_url || null
 
   return (
+    <SettingsNotifier />
     <div className="min-h-[60vh] w-full">
       <nav className="border-b border-white/10 bg-black/50 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
