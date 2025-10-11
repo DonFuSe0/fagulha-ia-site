@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 
 type Item = {
   name?: string
@@ -18,12 +18,14 @@ export default function GalleryGrid({ items }: Props) {
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [published, setPublished] = useState<Record<string, boolean>>({})
   const [locked, setLocked] = useState<Record<string, boolean>>({})
+  const [lightbox, setLightbox] = useState<string | null>(null)
 
   const list = useMemo(() => {
     return (items || []).map((it) => {
       const src = it.thumb_url || it.image_url || it.signedUrl || it.url || ''
       const name = it.name || ''
-      return { src, name, it }
+      const full = it.image_url || it.signedUrl || it.url || src
+      return { src, name, full, it }
     }).filter(x => !!x.src)
   }, [items])
 
@@ -38,6 +40,15 @@ export default function GalleryGrid({ items }: Props) {
     io.observe(el)
     return () => io.disconnect()
   }, [list.length])
+
+  // Close on ESC
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setLightbox(null)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const visible = list.slice(0, count)
 
@@ -61,13 +72,10 @@ export default function GalleryGrid({ items }: Props) {
       })
       const j = await res.json().catch(()=>({}))
       if (!res.ok) {
-        if (res.status === 403) {
-          setLocked((prev) => ({ ...prev, [name]: true }))
-        }
+        if (res.status === 403) setLocked((prev) => ({ ...prev, [name]: true }))
         throw new Error(j?.error || 'Falha na operação.')
       }
       if (isPub) {
-        // Removido do público -> trava republicação
         setPublished((p) => ({ ...p, [name]: false }))
         setLocked((p) => ({ ...p, [name]: true }))
         notify('success', 'Imagem removida de Explorar. (republicar desativado)')
@@ -88,10 +96,13 @@ export default function GalleryGrid({ items }: Props) {
     a.click()
   }
 
+  const openLightbox = useCallback((url: string) => setLightbox(url), [])
+  const closeLightbox = useCallback(() => setLightbox(null), [])
+
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {visible.map(({ src, name }, idx) => {
+        {visible.map(({ src, name, full }, idx) => {
           const isPub = !!published[name]
           const isLocked = !!locked[name]
           return (
@@ -107,7 +118,8 @@ export default function GalleryGrid({ items }: Props) {
                 src={src}
                 alt="Imagem da sua galeria"
                 loading="lazy"
-                className="w-full h-full object-cover aspect-[320/410] transition-transform duration-300 ease-out group-hover:scale-105"
+                onClick={() => openLightbox(full)}
+                className="w-full h-full object-cover aspect-[320/410] transition-transform duration-300 ease-out group-hover:scale-105 cursor-zoom-in"
               />
               {/* Overlay hover */}
               <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/40 to-transparent" />
@@ -117,7 +129,7 @@ export default function GalleryGrid({ items }: Props) {
                 {/* Toggle Publish */}
                 <button
                   type="button"
-                  onClick={() => onToggleShare(name)}
+                  onClick={(e) => { e.stopPropagation(); onToggleShare(name) }}
                   disabled={(!isPub && isLocked)}
                   className={
                     "inline-flex items-center rounded-md border px-2 py-1 text-[11px] " +
@@ -139,7 +151,7 @@ export default function GalleryGrid({ items }: Props) {
                 {/* Download */}
                 <button
                   type="button"
-                  onClick={() => onDownload(name)}
+                  onClick={(e) => { e.stopPropagation(); onDownload(name) }}
                   className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
                   title="Download"
                 >
@@ -153,6 +165,7 @@ export default function GalleryGrid({ items }: Props) {
                 {/* Reuse */}
                 <a
                   href={name ? `/generate?path=${encodeURIComponent(name)}` : '/generate'}
+                  onClick={(e) => e.stopPropagation()}
                   className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
                   title="Reutilizar na geração"
                 >
@@ -170,6 +183,31 @@ export default function GalleryGrid({ items }: Props) {
 
       {count < list.length && (
         <div ref={sentinelRef} className="h-10" />
+      )}
+
+      {/* Lightbox overlay */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-[1px] flex items-center justify-center p-4"
+          onClick={closeLightbox}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox}
+            alt="Visualização"
+            className="max-h-[90vh] max-w-[90vw] object-contain shadow-2xl rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 inline-flex items-center justify-center h-9 w-9 rounded-full bg-white/15 hover:bg-white/25 text-zinc-100 border border-white/20"
+            aria-label="Fechar"
+            title="Fechar"
+          >
+            ✕
+          </button>
+        </div>
       )}
     </>
   )
