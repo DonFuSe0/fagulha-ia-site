@@ -46,10 +46,10 @@ export async function POST(req: Request) {
     if (!delOk) {
       return NextResponse.json({
         error: delErr?.message || 'Failed to delete from public bucket',
-        hint: 'Abra DELETE no bucket gen-public para usuários autenticados OU configure SUPABASE_SERVICE_ROLE_KEY.',
       }, { status: 500 })
     }
 
+    // Atualiza DB (persistência do bloqueio)
     try {
       const now = new Date().toISOString()
       await supabase.from('generations').upsert({
@@ -63,7 +63,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, removed: publicObject })
   } catch (e:any) {
-    console.error('unshare route fatal:', e?.message, e)
     return NextResponse.json({ error: e?.message || 'Unexpected error' }, { status: 500 })
   }
 }
