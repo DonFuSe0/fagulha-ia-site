@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 type Item = {
   name?: string
@@ -29,6 +29,45 @@ export default function GalleryGrid({ items }: Props) {
     }).filter(x => !!x.src)
   }, [items])
 
+  async function hydrate(names: string[]) {
+    if (!names.length) return
+    const res = await fetch('/api/gallery/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ names }),
+    })
+    const j = await res.json().catch(()=>({}))
+    const map = j?.map || {}
+    setPublished((prev) => {
+      const next = { ...prev }
+      for (const n of names) {
+        const alt = (n.split('/').pop() || n)
+        const row = map[n] || map[alt]
+        if (row && typeof row.is_public === 'boolean') {
+          next[n] = row.is_public
+        }
+      }
+      return next
+    })
+    setLocked((prev) => {
+      const next = { ...prev }
+      for (const n of names) {
+        const alt = (n.split('/').pop() || n)
+        const row = map[n] || map[alt]
+        // 👇 regra: uma vez bloqueado, permanece bloqueado (nunca limpa por hidratação)
+        const wasLocked = !!prev[n]
+        const nowLocked = !!row?.public_revoked
+        next[n] = wasLocked || nowLocked
+      }
+      return next
+    })
+  }
+
+  useEffect(() => {
+    const names = list.map(x => x.name).filter(Boolean)
+    hydrate(names)
+  }, [list])
+
   useEffect(() => {
     if (!sentinelRef.current) return
     const el = sentinelRef.current
@@ -41,7 +80,6 @@ export default function GalleryGrid({ items }: Props) {
     return () => io.disconnect()
   }, [list.length])
 
-  // Close on ESC
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setLightbox(null)
@@ -65,6 +103,11 @@ export default function GalleryGrid({ items }: Props) {
       return
     }
     try {
+      if (isPub) {
+        // Optimistic: remove efeito verde e trava PARA SEMPRE
+        setPublished((p) => ({ ...p, [name]: false }))
+        setLocked((l) => ({ ...l, [name]: true }))
+      }
       const res = await fetch(isPub ? '/api/gallery/unshare' : '/api/gallery/share', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -72,17 +115,25 @@ export default function GalleryGrid({ items }: Props) {
       })
       const j = await res.json().catch(()=>({}))
       if (!res.ok) {
+        // Reverte apenas published; o bloqueio permanece se backend acusou 403
+        if (isPub) {
+          setPublished((p) => ({ ...p, [name]: true }))
+          // mantém locked=true para não permitir spam até rehidratar
+        }
         if (res.status === 403) setLocked((prev) => ({ ...prev, [name]: true }))
         throw new Error(j?.error || 'Falha na operação.')
       }
-      if (isPub) {
-        setPublished((p) => ({ ...p, [name]: false }))
-        setLocked((p) => ({ ...p, [name]: true }))
-        notify('success', 'Imagem removida de Explorar. (republicar desativado)')
-      } else {
-        setPublished((p) => ({ ...p, [name]: true }))
-        notify('success', 'Imagem publicada em Explorar.')
+      // Consome flags do backend (se vierem)
+      if (typeof j?.is_public === 'boolean') {
+        setPublished((p)=>({ ...p, [name]: j.is_public }))
       }
+      if (typeof j?.locked === 'boolean' && j.locked) {
+        // Uma vez bloqueado, nunca limpa via resposta
+        setLocked((l)=>({ ...l, [name]: true }))
+      }
+      // Re-hidrata — não limpa o bloqueio (regra acima)
+      await hydrate([name])
+      notify('success', isPub ? 'Imagem removida de Explorar. (republicar desativado)' : 'Imagem publicada em Explorar.')
     } catch (e:any) {
       notify('error', e?.message || 'Falha na operação.')
     }
@@ -95,9 +146,6 @@ export default function GalleryGrid({ items }: Props) {
     a.rel = 'noopener'
     a.click()
   }
-
-  const openLightbox = useCallback((url: string) => setLightbox(url), [])
-  const closeLightbox = useCallback(() => setLightbox(null), [])
 
   return (
     <>
@@ -118,15 +166,12 @@ export default function GalleryGrid({ items }: Props) {
                 src={src}
                 alt="Imagem da sua galeria"
                 loading="lazy"
-                onClick={() => openLightbox(full)}
+                onClick={() => setLightbox(full)}
                 className="w-full h-full object-cover aspect-[320/410] transition-transform duration-300 ease-out group-hover:scale-105 cursor-zoom-in"
               />
-              {/* Overlay hover */}
               <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/40 to-transparent" />
 
-              {/* Action bar (bottom-right) */}
               <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                {/* Toggle Publish */}
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onToggleShare(name) }}
@@ -148,7 +193,6 @@ export default function GalleryGrid({ items }: Props) {
                   </svg>
                   {isPub ? "Remover" : (isLocked ? "Bloqueado" : "Publicar")}
                 </button>
-                {/* Download */}
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onDownload(name) }}
@@ -162,7 +206,6 @@ export default function GalleryGrid({ items }: Props) {
                   </svg>
                   Baixar
                 </button>
-                {/* Reuse */}
                 <a
                   href={name ? `/generate?path=${encodeURIComponent(name)}` : '/generate'}
                   onClick={(e) => e.stopPropagation()}
@@ -185,11 +228,10 @@ export default function GalleryGrid({ items }: Props) {
         <div ref={sentinelRef} className="h-10" />
       )}
 
-      {/* Lightbox overlay */}
       {lightbox && (
         <div
           className="fixed inset-0 z-50 bg-black/90 backdrop-blur-[1px] flex items-center justify-center p-4"
-          onClick={closeLightbox}
+          onClick={() => setLightbox(null)}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -200,7 +242,7 @@ export default function GalleryGrid({ items }: Props) {
           />
           <button
             type="button"
-            onClick={closeLightbox}
+            onClick={() => setLightbox(null)}
             className="absolute top-4 right-4 inline-flex items-center justify-center h-9 w-9 rounded-full bg-white/15 hover:bg-white/25 text-zinc-100 border border-white/20"
             aria-label="Fechar"
             title="Fechar"

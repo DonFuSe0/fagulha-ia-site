@@ -29,27 +29,33 @@ export async function POST(req: Request) {
     const fileName = raw.split('/').pop() || raw
     const publicObject = `${fileName}` // gen-public/<file>
 
-    let delErr: any = null
-    let delOk = false
+    // Try delete as user
+    let { error } = await supabase.storage.from('gen-public').remove([publicObject])
+    if (error && admin) {
+      // Retry with service role
+      const r2 = await admin.storage.from('gen-public').remove([publicObject])
+      error = r2.error
+    }
+    if (error) {
+      return NextResponse.json({ error: error.message || 'Failed to delete from public bucket' }, { status: 500 })
+    }
 
-    const first = await supabase.storage.from('gen-public').remove([publicObject])
-    if (!first.error) delOk = true
-    else {
-      delErr = first.error
-      if (admin) {
-        const second = await admin.storage.from('gen-public').remove([publicObject])
-        if (!second.error) delOk = true
-        else delErr = second.error
+    // Verify by fetching public URL with cache busting
+    const { data: pub } = supabase.storage.from('gen-public').getPublicUrl(publicObject)
+    try {
+      const test = await fetch(`${pub.publicUrl}?cb=${Date.now()}`, { cache: 'no-store' })
+      if (test.ok) {
+        // Still accessible; attempt a second removal with admin if we didn't already use it
+        if (admin) {
+          const r3 = await admin.storage.from('gen-public').remove([publicObject])
+          if (r3.error) {
+            return NextResponse.json({ error: 'Delete verification failed after retry' }, { status: 500 })
+          }
+        }
       }
-    }
+    } catch {}
 
-    if (!delOk) {
-      return NextResponse.json({
-        error: delErr?.message || 'Failed to delete from public bucket',
-        hint: 'Abra DELETE no bucket gen-public para usuários autenticados OU configure SUPABASE_SERVICE_ROLE_KEY.',
-      }, { status: 500 })
-    }
-
+    // Update DB flags
     try {
       const now = new Date().toISOString()
       await supabase.from('generations').upsert({
@@ -61,9 +67,8 @@ export async function POST(req: Request) {
       }, { onConflict: 'user_id,file_name' })
     } catch {}
 
-    return NextResponse.json({ ok: true, removed: publicObject })
+    return NextResponse.json({ ok: true, removed: publicObject, locked: true, is_public: false })
   } catch (e:any) {
-    console.error('unshare route fatal:', e?.message, e)
     return NextResponse.json({ error: e?.message || 'Unexpected error' }, { status: 500 })
   }
 }
