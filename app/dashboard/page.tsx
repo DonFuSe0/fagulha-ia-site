@@ -164,7 +164,7 @@ export default function DashboardPage() {
             <div className="p-4 space-y-3">
               {loading && <div className="text-zinc-400 text-sm">Carregando…</div>}
               {!loading && purchases.length === 0 && <div className="text-zinc-400 text-sm">Nenhuma compra encontrada.</div>}
-              {purchases.map((p) => (
+              {lastUrls.map((p) => (
                 <div key={p.id} className="flex items-center justify-between text-sm bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2">
                   <div className="space-y-0.5">
                     <div className="text-gray-100">+{p.amount ?? 0} tokens</div>
@@ -185,7 +185,7 @@ export default function DashboardPage() {
             <div className="p-4 space-y-3">
               {loading && <div className="text-zinc-400 text-sm">Carregando…</div>}
               {!loading && usages.length === 0 && <div className="text-zinc-400 text-sm">Nenhum gasto encontrado.</div>}
-              {usages.map((u) => (
+              {lastUrls.map((u) => (
                 <div key={u.id} className="flex items-center justify-between text-sm bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2">
                   <div className="space-y-0.5">
                     <div className="text-gray-100">-{Math.abs(u.amount ?? 0)} tokens</div>
@@ -206,7 +206,7 @@ export default function DashboardPage() {
             <div className="p-4 grid grid-cols-2 gap-3">
               {loading && <div className="col-span-2 text-zinc-400 text-sm">Carregando…</div>}
               {!loading && gens.length === 0 && <div className="col-span-2 text-zinc-400 text-sm">Nenhuma geração encontrado.</div>}
-              {gens.map((g) => (
+              {lastUrls.map((g) => (
                 <div key={g.id} className="aspect-square relative rounded-xl overflow-hidden border border-zinc-800">
                   <Image
                     src={(g.thumb_url || g.image_url || '/gallery/1.jpg') as string}

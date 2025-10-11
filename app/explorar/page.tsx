@@ -8,7 +8,11 @@ import { IconReuse } from '../_components/icons'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-export default async function ExplorarPage({ searchParams }: { searchParams: { cursor?: string } }) {
+\1
+  // Fonte: bucket público (gen-public) via API
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/explore/list`, { cache: 'no-store' });
+  const items = await res.json().catch(() => []);
+  const getUrl = (it:any) => it?.thumb_url || it?.image_url || it?.url || it?.publicUrl || it?.signedUrl || it?.href || '';
   const supabase = createServerComponentClient<any>({ cookies })
   const pageSize = 24
   let query = supabase
