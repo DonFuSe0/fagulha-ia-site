@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+import { headers } from 'next/headers'
+
 type Item = {
   name?: string
   url?: string
@@ -11,9 +13,20 @@ type Item = {
   thumb_url?: string
 }
 
+function getBaseUrl() {
+  // Prefer env for local dev; fallback to request host for server components in Vercel
+  const h = headers()
+  const host = h.get('x-forwarded-host') || h.get('host')
+  const proto = (h.get('x-forwarded-proto') || 'https').split(',')[0]
+  const envBase = process.env.NEXT_PUBLIC_BASE_URL
+  if (envBase && /^https?:\/\//i.test(envBase)) return envBase.replace(/\/$/, '')
+  if (host) return `${proto}://${host}`
+  // Last resort for build-time (shouldn't happen at runtime for this page)
+  return 'http://localhost:3000'
+}
+
 export default async function Page() {
-  // Fonte correta: bucket público (gen-public) via API
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? ''
+  const base = getBaseUrl()
   const res = await fetch(`${base}/api/explore/list`, { cache: 'no-store' })
   const items: Item[] = await res.json().catch(() => [])
 
