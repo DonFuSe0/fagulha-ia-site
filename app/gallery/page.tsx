@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 import GalleryGrid from './GalleryGrid'
-import { headers } from 'next/headers'
 
 type Item = {
   name?: string
@@ -12,19 +11,9 @@ type Item = {
   thumb_url?: string
 }
 
-function getBaseUrl() {
-  const h = headers()
-  const host = h.get('x-forwarded-host') || h.get('host')
-  const proto = (h.get('x-forwarded-proto') || 'https').split(',')[0]
-  const envBase = process.env.NEXT_PUBLIC_BASE_URL
-  if (envBase && /^https?:\/\//i.test(envBase)) return envBase.replace(/\/$/, '')
-  if (host) return `${proto}://${host}`
-  return 'http://localhost:3000'
-}
-
 export default async function Page() {
-  const base = getBaseUrl()
-  const res = await fetch(`${base}/api/gallery/list`, { cache: 'no-store' })
+  // IMPORTANTE: usar URL relativa para que os cookies de sessão sejam encaminhados automaticamente
+  const res = await fetch('/api/gallery/list', { cache: 'no-store' })
   let raw: any = null
   try { raw = await res.json() } catch { raw = null }
 
