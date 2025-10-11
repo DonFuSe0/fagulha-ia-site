@@ -19,11 +19,9 @@ export async function POST(req: Request) {
   const admin = getAdminClient()
 
   try {
-    // auth
     const { data: { user }, error: userErr } = await supabase.auth.getUser()
     if (userErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // expect form-data: file
     const form = await req.formData()
     const file = form.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'Arquivo ausente' }, { status: 400 })
@@ -32,38 +30,42 @@ export async function POST(req: Request) {
     const filename = `avatar_${Date.now()}.${ext}`
     const objectPath = `${user.id}/${filename}`
 
-    // Upload avatar
-    let { error: upErr } = await supabase.storage.from('avatars').upload(objectPath, file, {
-      cacheControl: '3600',
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    const contentType = file.type || (ext === 'png' ? 'image/png' : 'image/jpeg')
+
+    // Upload (user -> fallback service role)
+    let upErr = (await supabase.storage.from('avatars').upload(objectPath, bytes, {
+      cacheControl: '1',
       upsert: true,
-      contentType: file.type || 'image/jpeg',
-    })
+      contentType,
+    })).error
     if (upErr && admin) {
-      const r2 = await admin.storage.from('avatars').upload(objectPath, file, {
-        cacheControl: '3600',
+      const r2 = await admin.storage.from('avatars').upload(objectPath, bytes, {
+        cacheControl: '1',
         upsert: true,
-        contentType: file.type || 'image/jpeg',
+        contentType,
       })
       upErr = r2.error || undefined
     }
     if (upErr) return NextResponse.json({ error: upErr.message || 'Falha no upload' }, { status: 500 })
 
-    // Public URL (ou use signed se preferir)
     const { data: pub } = supabase.storage.from('avatars').getPublicUrl(objectPath)
-    const publicUrl = pub.publicUrl
+    // cache-busting param garante que Next/Image e navegador não mostrem avatar antigo
+    const bust = Date.now().toString()
+    const publicUrl = `${pub.publicUrl}?v=${bust}`
 
-    // Lê avatar anterior armazenado no perfil (se existir)
+    // Lê avatar anterior
     let previousPath: string | null = null
     try {
       const { data: profile } = await supabase
         .from('profiles')
         .select('avatar_path')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
       previousPath = profile?.avatar_path ?? null
     } catch {}
 
-    // Atualiza perfil com novo path/url
+    // Atualiza perfil (DB)
     try {
       await supabase.from('profiles').upsert({
         id: user.id,
@@ -73,7 +75,18 @@ export async function POST(req: Request) {
       }, { onConflict: 'id' })
     } catch {}
 
-    // Remove avatar anterior do bucket (best-effort, não bloqueia resposta)
+    // Atualiza metadata da sessão (para Navbar que lê session.user.user_metadata)
+    try {
+      await supabase.auth.updateUser({
+        data: {
+          avatar_url: publicUrl,
+          avatar_path: objectPath,
+          avatar_ver: bust,
+        }
+      })
+    } catch {}
+
+    // Remove avatar anterior (best-effort)
     ;(async () => {
       const client = admin || supabase
       try {
@@ -81,20 +94,15 @@ export async function POST(req: Request) {
         if (previousPath && previousPath !== objectPath) {
           toDelete.push(previousPath)
         } else if (!previousPath) {
-          // fallback: apaga todos menos o atual dentro da pasta do usuário
-          const { data: list } = await client.storage.from('avatars').list(user.id, { limit: 50 })
+          const { data: list } = await client.storage.from('avatars').list(user.id, { limit: 100 })
           const leftovers = (list || []).map(x => `${user.id}/${x.name}`).filter(p => p !== objectPath)
-          toDelete.push(...leftovers)
+          if (leftovers.length) await client.storage.from('avatars').remove(leftovers)
         }
-        if (toDelete.length) {
-          await client.storage.from('avatars').remove(toDelete)
-        }
-      } catch {
-        // silencioso
-      }
+        if (toDelete.length) await client.storage.from('avatars').remove(toDelete)
+      } catch {}
     })()
 
-    return NextResponse.json({ ok: true, path: objectPath, url: publicUrl })
+    return NextResponse.json({ ok: true, path: objectPath, url: publicUrl, ver: bust })
   } catch (e:any) {
     return NextResponse.json({ error: e?.message || 'Unexpected error' }, { status: 500 })
   }
