@@ -29,32 +29,31 @@ export default function GalleryGrid({ items }: Props) {
     }).filter(x => !!x.src)
   }, [items])
 
-  // hydrate published/locked from backend for persistence
+  async function hydrate(names: string[]) {
+    if (!names.length) return
+    const res = await fetch('/api/gallery/status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ names }),
+    })
+    const j = await res.json().catch(()=>({}))
+    const map = j?.map || {}
+    const pub: Record<string, boolean> = {}
+    const lock: Record<string, boolean> = {}
+    for (const n of names) {
+      const row = map[n] || map[(n.split('/').pop() || n)]
+      if (row) {
+        pub[n] = !!row.is_public
+        lock[n] = !!row.public_revoked
+      }
+    }
+    setPublished(pub)
+    setLocked(lock)
+  }
+
   useEffect(() => {
     const names = list.map(x => x.name).filter(Boolean)
-    if (names.length === 0) return
-    ;(async () => {
-      try {
-        const res = await fetch('/api/gallery/status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ names }),
-        })
-        const j = await res.json().catch(()=>({}))
-        const map = j?.map || {}
-        const pub: Record<string, boolean> = {}
-        const lock: Record<string, boolean> = {}
-        for (const n of names) {
-          const row = map[n]
-          if (row) {
-            pub[n] = !!row.is_public
-            lock[n] = !!row.public_revoked
-          }
-        }
-        setPublished(pub)
-        setLocked(lock)
-      } catch {}
-    })()
+    hydrate(names)
   }, [list])
 
   useEffect(() => {
@@ -102,12 +101,10 @@ export default function GalleryGrid({ items }: Props) {
         if (res.status === 403) setLocked((prev) => ({ ...prev, [name]: true }))
         throw new Error(j?.error || 'Falha na operação.')
       }
+      await hydrate([name])
       if (isPub) {
-        setPublished((p) => ({ ...p, [name]: false }))
-        setLocked((p) => ({ ...p, [name]: true }))
         notify('success', 'Imagem removida de Explorar. (republicar desativado)')
       } else {
-        setPublished((p) => ({ ...p, [name]: true }))
         notify('success', 'Imagem publicada em Explorar.')
       }
     } catch (e:any) {
