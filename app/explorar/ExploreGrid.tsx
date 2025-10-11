@@ -69,10 +69,9 @@ export default function ExploreGrid({ items }: Props) {
             />
             <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/40 to-transparent" />
 
-            {/* Only Reutilizar button */}
             <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <a
-                href={name ? \`/generate?path=\${encodeURIComponent(name)}\` : '/generate'}
+                href={name ? `/generate?path=${encodeURIComponent(name)}` : '/generate'}
                 onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
                 title="Reutilizar na geração"
@@ -92,7 +91,6 @@ export default function ExploreGrid({ items }: Props) {
         <div ref={sentinelRef} className="h-10" />
       )}
 
-      {/* Lightbox overlay */}
       {lightbox && (
         <div
           className="fixed inset-0 z-50 bg-black/90 backdrop-blur-[1px] flex items-center justify-center p-4"

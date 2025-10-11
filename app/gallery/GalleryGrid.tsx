@@ -101,7 +101,6 @@ export default function GalleryGrid({ items }: Props) {
         if (res.status === 403) setLocked((prev) => ({ ...prev, [name]: true }))
         throw new Error(j?.error || 'Falha na operação.')
       }
-      // após sucesso, revalida estado pelo backend (DB + storage) para refletir na tela e evitar divergência
       await hydrate([name])
       if (isPub) {
         notify('success', 'Imagem removida de Explorar. (republicar desativado)')
@@ -181,7 +180,7 @@ export default function GalleryGrid({ items }: Props) {
                   Baixar
                 </button>
                 <a
-                  href={name ? \`/generate?path=\${encodeURIComponent(name)}\` : '/generate'}
+                  href={name ? `/generate?path=${encodeURIComponent(name)}` : '/generate'}
                   onClick={(e) => e.stopPropagation()}
                   className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
                   title="Reutilizar na geração"
