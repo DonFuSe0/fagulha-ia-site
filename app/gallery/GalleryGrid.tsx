@@ -38,19 +38,29 @@ export default function GalleryGrid({ items }: Props) {
     })
     const j = await res.json().catch(()=>({}))
     const map = j?.map || {}
-    const pub: Record<string, boolean> = {}
-    const lock: Record<string, boolean> = {}
-    for (const n of names) {
-      const key = n
-      const alt = (n.split('/').pop() || n)
-      const row = map[key] || map[alt]
-      if (row) {
-        pub[n] = !!row.is_public
-        lock[n] = !!row.public_revoked
+    setPublished((prev) => {
+      const next = { ...prev }
+      for (const n of names) {
+        const alt = (n.split('/').pop() || n)
+        const row = map[n] || map[alt]
+        if (row && typeof row.is_public === 'boolean') {
+          next[n] = row.is_public
+        }
       }
-    }
-    setPublished((p)=>({ ...p, ...pub }))
-    setLocked((l)=>({ ...l, ...lock }))
+      return next
+    })
+    setLocked((prev) => {
+      const next = { ...prev }
+      for (const n of names) {
+        const alt = (n.split('/').pop() || n)
+        const row = map[n] || map[alt]
+        // 👇 regra: uma vez bloqueado, permanece bloqueado (nunca limpa por hidratação)
+        const wasLocked = !!prev[n]
+        const nowLocked = !!row?.public_revoked
+        next[n] = wasLocked || nowLocked
+      }
+      return next
+    })
   }
 
   useEffect(() => {
@@ -94,7 +104,7 @@ export default function GalleryGrid({ items }: Props) {
     }
     try {
       if (isPub) {
-        // Optimistic: remove efeito verde e bloqueia imediatamente
+        // Optimistic: remove efeito verde e trava PARA SEMPRE
         setPublished((p) => ({ ...p, [name]: false }))
         setLocked((l) => ({ ...l, [name]: true }))
       }
@@ -105,20 +115,24 @@ export default function GalleryGrid({ items }: Props) {
       })
       const j = await res.json().catch(()=>({}))
       if (!res.ok) {
-        // Revert optimistic if needed
+        // Reverte apenas published; o bloqueio permanece se backend acusou 403
         if (isPub) {
           setPublished((p) => ({ ...p, [name]: true }))
-          setLocked((l) => ({ ...l, [name]: false }))
+          // mantém locked=true para não permitir spam até rehidratar
         }
         if (res.status === 403) setLocked((prev) => ({ ...prev, [name]: true }))
         throw new Error(j?.error || 'Falha na operação.')
       }
-      // Apply flags if provided
-      if (typeof j?.is_public === 'boolean') setPublished((p)=>({ ...p, [name]: j.is_public }))
-      if (typeof j?.locked === 'boolean') setLocked((l)=>({ ...l, [name]: j.locked }))
-      // Re-hydrate from backend for final truth
+      // Consome flags do backend (se vierem)
+      if (typeof j?.is_public === 'boolean') {
+        setPublished((p)=>({ ...p, [name]: j.is_public }))
+      }
+      if (typeof j?.locked === 'boolean' && j.locked) {
+        // Uma vez bloqueado, nunca limpa via resposta
+        setLocked((l)=>({ ...l, [name]: true }))
+      }
+      // Re-hidrata — não limpa o bloqueio (regra acima)
       await hydrate([name])
-
       notify('success', isPub ? 'Imagem removida de Explorar. (republicar desativado)' : 'Imagem publicada em Explorar.')
     } catch (e:any) {
       notify('error', e?.message || 'Falha na operação.')
