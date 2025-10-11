@@ -13,43 +13,6 @@ type Props = {
   items: Item[]
 }
 
-function filenameFrom(pathOrUrl: string) {
-  try {
-    const u = new URL(pathOrUrl, window.location.origin)
-    const last = u.pathname.split('/').filter(Boolean).pop() || 'image.jpg'
-    return last.includes('.') ? last : `${last}.jpg`
-  } catch {
-    const parts = pathOrUrl.split('?')[0].split('/')
-    const last = parts.filter(Boolean).pop() || 'image.jpg'
-    return last.includes('.') ? last : `${last}.jpg`
-  }
-}
-
-async function forceDownload(src: string, filenameHint?: string) {
-  const filename = filenameHint || filenameFrom(src)
-  try {
-    const resp = await fetch(src, { credentials: 'include' })
-    const blob = await resp.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-  } catch {
-    // Fallback: try anchor with download directly
-    const a = document.createElement('a')
-    a.href = src
-    a.setAttribute('download', filename)
-    a.rel = 'noopener'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-  }
-}
-
 export default function GalleryGrid({ items }: Props) {
   const [count, setCount] = useState(16)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
@@ -57,8 +20,8 @@ export default function GalleryGrid({ items }: Props) {
   const list = useMemo(() => {
     return (items || []).map((it) => {
       const src = it.thumb_url || it.image_url || it.signedUrl || it.url || ''
-      const path = it.name || ''
-      return { src, path, it }
+      const name = it.name || ''
+      return { src, name, it }
     }).filter(x => !!x.src)
   }, [items])
 
@@ -76,8 +39,8 @@ export default function GalleryGrid({ items }: Props) {
 
   const visible = list.slice(0, count)
 
-  async function onShare(path: string) {
-    if (!path) {
+  async function onShare(name: string) {
+    if (!name) {
       window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'error', message: 'Caminho inválido para compartilhar.' } }))
       return
     }
@@ -85,7 +48,7 @@ export default function GalleryGrid({ items }: Props) {
       const res = await fetch('/api/gallery/share', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path }),
+        body: JSON.stringify({ path: name }),
       })
       if (!res.ok) {
         const j = await res.json().catch(()=>({}))
@@ -97,10 +60,19 @@ export default function GalleryGrid({ items }: Props) {
     }
   }
 
+  function onDownload(name: string) {
+    if (!name) return
+    // use same-origin proxy to force Content-Disposition: attachment
+    const a = document.createElement('a')
+    a.href = `/api/gallery/download?name=${encodeURIComponent(name)}`
+    a.rel = 'noopener'
+    a.click()
+  }
+
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {visible.map(({ src, path }, idx) => (
+        {visible.map(({ src, name }, idx) => (
           <div key={idx} className="group relative overflow-hidden rounded-lg bg-black/20">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -117,7 +89,7 @@ export default function GalleryGrid({ items }: Props) {
               {/* Share */}
               <button
                 type="button"
-                onClick={() => onShare(path)}
+                onClick={() => onShare(name)}
                 className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
                 title="Permitir público"
               >
@@ -128,10 +100,10 @@ export default function GalleryGrid({ items }: Props) {
                 </svg>
                 Publicar
               </button>
-              {/* Download (force) */}
+              {/* Download via proxy */}
               <button
                 type="button"
-                onClick={() => forceDownload(src, filenameFrom(path || src))}
+                onClick={() => onDownload(name)}
                 className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
                 title="Download"
               >
@@ -144,7 +116,7 @@ export default function GalleryGrid({ items }: Props) {
               </button>
               {/* Reuse */}
               <a
-                href={path ? `/generate?path=${encodeURIComponent(path)}` : '/generate'}
+                href={name ? `/generate?path=${encodeURIComponent(name)}` : '/generate'}
                 className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
                 title="Reutilizar na geração"
               >
