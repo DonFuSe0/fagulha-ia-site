@@ -13,6 +13,43 @@ type Props = {
   items: Item[]
 }
 
+function filenameFrom(pathOrUrl: string) {
+  try {
+    const u = new URL(pathOrUrl, window.location.origin)
+    const last = u.pathname.split('/').filter(Boolean).pop() || 'image.jpg'
+    return last.includes('.') ? last : `${last}.jpg`
+  } catch {
+    const parts = pathOrUrl.split('?')[0].split('/')
+    const last = parts.filter(Boolean).pop() || 'image.jpg'
+    return last.includes('.') ? last : `${last}.jpg`
+  }
+}
+
+async function forceDownload(src: string, filenameHint?: string) {
+  const filename = filenameHint || filenameFrom(src)
+  try {
+    const resp = await fetch(src, { credentials: 'include' })
+    const blob = await resp.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  } catch {
+    // Fallback: try anchor with download directly
+    const a = document.createElement('a')
+    a.href = src
+    a.setAttribute('download', filename)
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
+}
+
 export default function GalleryGrid({ items }: Props) {
   const [count, setCount] = useState(16)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
@@ -91,10 +128,10 @@ export default function GalleryGrid({ items }: Props) {
                 </svg>
                 Publicar
               </button>
-              {/* Download */}
-              <a
-                href={src}
-                download
+              {/* Download (force) */}
+              <button
+                type="button"
+                onClick={() => forceDownload(src, filenameFrom(path || src))}
                 className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
                 title="Download"
               >
@@ -104,7 +141,7 @@ export default function GalleryGrid({ items }: Props) {
                   <path d="M12 15V3" />
                 </svg>
                 Baixar
-              </a>
+              </button>
               {/* Reuse */}
               <a
                 href={path ? `/generate?path=${encodeURIComponent(path)}` : '/generate'}
