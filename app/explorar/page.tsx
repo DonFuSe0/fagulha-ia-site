@@ -1,55 +1,59 @@
-// app/explorar/page.tsx
-import Link from 'next/link'
-import Image from 'next/image'
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
-import { IconReuse } from '../_components/icons'
-
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
-export default async function ExplorarPage({ searchParams }: { searchParams: { cursor?: string } }) {
-  const supabase = createServerComponentClient<any>({ cookies })
-  const pageSize = 24
-  let query = supabase
-    .from('generations')
-    .select('id, image_url, thumb_url, is_public, public_since, params, created_at')
-    .eq('is_public', true)
-    .order('public_since', { ascending: false })
-    .limit(pageSize)
+import { headers } from 'next/headers'
+import ExploreGrid from './ExploreGrid'
 
-  if (searchParams.cursor) {
-    const [ts] = decodeURIComponent(searchParams.cursor).split('_')
-    query = query.lt('public_since', ts)
+type Item = {
+  name?: string
+  url?: string
+  publicUrl?: string
+  signedUrl?: string
+  href?: string
+  image_url?: string
+  thumb_url?: string
+}
+
+function getBaseUrl() {
+  const h = headers()
+  const host = h.get('x-forwarded-host') || h.get('host')
+  const proto = (h.get('x-forwarded-proto') || 'https').split(',')[0]
+  const envBase = process.env.NEXT_PUBLIC_BASE_URL
+  if (envBase && /^https?:\/\//i.test(envBase)) return envBase.replace(/\/$/, '')
+  if (host) return `${proto}://${host}`
+  return 'http://localhost:3000'
+}
+
+export default async function Page() {
+  const base = getBaseUrl()
+
+  // Chamada robusta: tolera diferentes formatos de retorno {items}, {data}, {files} ou array direto
+  const res = await fetch(`${base}/api/explore/list`, { cache: 'no-store' })
+  let raw: any = null
+  try {
+    raw = await res.json()
+  } catch {
+    raw = null
   }
 
-  const { data: items } = await query
-  const nextCursor = items && items.length === pageSize
-    ? encodeURIComponent(`${items[items.length-1].public_since}_${items[items.length-1].id}`)
-    : null
+  const items: Item[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.items)
+    ? raw.items
+    : Array.isArray(raw?.data)
+    ? raw.data
+    : Array.isArray(raw?.files)
+    ? raw.files
+    : []
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold text-white mb-4">Explorar</h1>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {items?.map((g) => (
-          <div key={g.id} className="group relative rounded-xl overflow-hidden bg-black/20 border border-white/10">
-            <div className="relative w-full pt-[100%]">
-              <Image src={(g as any).thumb_url || (g as any).image_url} alt="" fill className="object-cover" />
-            </div>
-            <div className="absolute top-2 right-2 flex gap-2">
-              <Link href={`/generate?from=${g.id}`} className="p-2 rounded-lg bg-black/40 border border-white/10 hover:bg-black/60 text-white" aria-label="Reutilizar">
-                <IconReuse/>
-              </Link>
-            </div>
-          </div>
-        )) || <div className="text-neutral-400">Sem imagens públicas ainda.</div>}
-      </div>
-      {nextCursor && (
-        <div className="mt-6">
-          <a href={`/explorar?cursor=${nextCursor}`} className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white hover:bg-white/15">Carregar mais</a>
-        </div>
-      )}
+    <div className="max-w-6xl mx-auto px-4 py-6">
+      <header className="mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-zinc-100">Explorar</h1>
+        <a href="/" className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10">Voltar</a>
+      </header>
+
+      <ExploreGrid items={items} />
     </div>
   )
 }
