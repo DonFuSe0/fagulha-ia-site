@@ -1,4 +1,3 @@
-// app/layout.tsx — sem AuthWatcher
 import './globals.css'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
@@ -12,10 +11,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const _nonce = headers().get('x-nonce') ?? ''
   return (
-    <html lang="pt-br">
+    <html lang="pt-BR">
       <head />
-      \1
-        <AuthSessionSync />{children}</body>
+      <body>
+        <AuthSessionSync />
+        {children}
+      </body>
     </html>
   )
 }
