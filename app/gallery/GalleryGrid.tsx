@@ -16,6 +16,8 @@ type Props = {
 export default function GalleryGrid({ items }: Props) {
   const [count, setCount] = useState(16)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const [published, setPublished] = useState<Record<string, boolean>>({})
+  const [locked, setLocked] = useState<Record<string, boolean>>({})
 
   const list = useMemo(() => {
     return (items || []).map((it) => {
@@ -39,30 +41,47 @@ export default function GalleryGrid({ items }: Props) {
 
   const visible = list.slice(0, count)
 
-  async function onShare(name: string) {
-    if (!name) {
-      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'error', message: 'Caminho inválido para compartilhar.' } }))
+  function notify(kind: 'success'|'error', message: string) {
+    try { window.dispatchEvent(new CustomEvent('notify', { detail: { kind, message } })) } catch {}
+  }
+
+  async function onToggleShare(name: string) {
+    if (!name) { notify('error', 'Caminho inválido.'); return }
+    const isPub = !!published[name]
+    const isLocked = !!locked[name]
+    if (!isPub && isLocked) {
+      notify('error', 'Esta imagem foi removida do público e não pode ser republicada.')
       return
     }
     try {
-      const res = await fetch('/api/gallery/share', {
+      const res = await fetch(isPub ? '/api/gallery/unshare' : '/api/gallery/share', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: name }),
+        body: JSON.stringify({ name }),
       })
+      const j = await res.json().catch(()=>({}))
       if (!res.ok) {
-        const j = await res.json().catch(()=>({}))
-        throw new Error(j?.error || 'Falha ao compartilhar')
+        if (res.status === 403) {
+          setLocked((prev) => ({ ...prev, [name]: true }))
+        }
+        throw new Error(j?.error || 'Falha na operação.')
       }
-      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Imagem publicada em Explorar.' } }))
+      if (isPub) {
+        // Removido do público -> trava republicação
+        setPublished((p) => ({ ...p, [name]: false }))
+        setLocked((p) => ({ ...p, [name]: true }))
+        notify('success', 'Imagem removida de Explorar. (republicar desativado)')
+      } else {
+        setPublished((p) => ({ ...p, [name]: true }))
+        notify('success', 'Imagem publicada em Explorar.')
+      }
     } catch (e:any) {
-      window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'error', message: e?.message || 'Falha ao compartilhar.' } }))
+      notify('error', e?.message || 'Falha na operação.')
     }
   }
 
   function onDownload(name: string) {
     if (!name) return
-    // use same-origin proxy to force Content-Disposition: attachment
     const a = document.createElement('a')
     a.href = `/api/gallery/download?name=${encodeURIComponent(name)}`
     a.rel = 'noopener'
@@ -72,63 +91,81 @@ export default function GalleryGrid({ items }: Props) {
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-        {visible.map(({ src, name }, idx) => (
-          <div key={idx} className="group relative overflow-hidden rounded-lg bg-black/20">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={src}
-              alt="Imagem da sua galeria"
-              loading="lazy"
-              className="w-full h-full object-cover aspect-[320/410] transition-transform duration-300 ease-out group-hover:scale-105"
-            />
-            {/* Overlay hover */}
-            <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/40 to-transparent" />
+        {visible.map(({ src, name }, idx) => {
+          const isPub = !!published[name]
+          const isLocked = !!locked[name]
+          return (
+            <div
+              key={idx}
+              className={
+                "group relative overflow-hidden rounded-lg bg-black/20 transition " +
+                (isPub ? "ring-2 ring-emerald-400/60" : "")
+              }
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt="Imagem da sua galeria"
+                loading="lazy"
+                className="w-full h-full object-cover aspect-[320/410] transition-transform duration-300 ease-out group-hover:scale-105"
+              />
+              {/* Overlay hover */}
+              <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/40 to-transparent" />
 
-            {/* Action bar (bottom-right) */}
-            <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              {/* Share */}
-              <button
-                type="button"
-                onClick={() => onShare(name)}
-                className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
-                title="Permitir público"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
-                  <path d="M16 6l-4-4-4 4" />
-                  <path d="M12 2v14" />
-                </svg>
-                Publicar
-              </button>
-              {/* Download via proxy */}
-              <button
-                type="button"
-                onClick={() => onDownload(name)}
-                className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
-                title="Download"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <path d="M7 10l5 5 5-5" />
-                  <path d="M12 15V3" />
-                </svg>
-                Baixar
-              </button>
-              {/* Reuse */}
-              <a
-                href={name ? `/generate?path=${encodeURIComponent(name)}` : '/generate'}
-                className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
-                title="Reutilizar na geração"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 12a9 9 0 1 1-9-9" />
-                  <path d="M22 2 12 12" />
-                </svg>
-                Reutilizar
-              </a>
+              {/* Action bar (bottom-right) */}
+              <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                {/* Toggle Publish */}
+                <button
+                  type="button"
+                  onClick={() => onToggleShare(name)}
+                  disabled={(!isPub && isLocked)}
+                  className={
+                    "inline-flex items-center rounded-md border px-2 py-1 text-[11px] " +
+                    (isLocked
+                      ? "cursor-not-allowed opacity-60 border-white/10 bg-white/10 text-zinc-400"
+                      : isPub
+                        ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30"
+                        : "border-white/10 bg-white/10 text-zinc-100 hover:bg-white/20")
+                  }
+                  title={isLocked ? "Republicação desativada" : (isPub ? "Remover do público" : "Permitir público")}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
+                    <path d="M16 6l-4-4-4 4" />
+                    <path d="M12 2v14" />
+                  </svg>
+                  {isPub ? "Remover" : (isLocked ? "Bloqueado" : "Publicar")}
+                </button>
+                {/* Download */}
+                <button
+                  type="button"
+                  onClick={() => onDownload(name)}
+                  className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
+                  title="Download"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <path d="M7 10l5 5 5-5" />
+                    <path d="M12 15V3" />
+                  </svg>
+                  Baixar
+                </button>
+                {/* Reuse */}
+                <a
+                  href={name ? `/generate?path=${encodeURIComponent(name)}` : '/generate'}
+                  className="inline-flex items-center rounded-md border border-white/10 bg-white/10 hover:bg-white/20 px-2 py-1 text-[11px] text-zinc-100"
+                  title="Reutilizar na geração"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 12a9 9 0 1 1-9-9" />
+                    <path d="M22 2 12 12" />
+                  </svg>
+                  Reutilizar
+                </a>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {count < list.length && (
