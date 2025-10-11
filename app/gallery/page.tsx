@@ -1,54 +1,46 @@
-// app/gallery/page.tsx
-'use client'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
-import React from 'react'
+import GalleryGrid from './GalleryGrid'
+import { headers } from 'next/headers'
 
-export default function PrivateGalleryPage() {
-  const [loading, setLoading] = React.useState(true)
-  const [items, setItems] = React.useState<{name:string; path:string; url:string|null; created_at:string|null}[]>([])
-  const [err, setErr] = React.useState<string|null>(null)
+type Item = {
+  name?: string
+  url?: string
+  signedUrl?: string
+  image_url?: string
+  thumb_url?: string
+}
 
-  async function load() {
-    try {
-      setLoading(true)
-      const res = await fetch('/api/gallery/list', { credentials: 'include' })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.details || data?.error || 'Falha ao carregar galeria')
-      setItems(data.items || [])
-    } catch (e:any) {
-      setErr(e?.message || 'Falha ao carregar galeria')
-    } finally {
-      setLoading(false)
-    }
-  }
+function getBaseUrl() {
+  const h = headers()
+  const host = h.get('x-forwarded-host') || h.get('host')
+  const proto = (h.get('x-forwarded-proto') || 'https').split(',')[0]
+  const envBase = process.env.NEXT_PUBLIC_BASE_URL
+  if (envBase && /^https?:\/\//i.test(envBase)) return envBase.replace(/\/$/, '')
+  if (host) return `${proto}://${host}`
+  return 'http://localhost:3000'
+}
 
-  React.useEffect(()=>{ load() }, [])
+export default async function Page() {
+  const base = getBaseUrl()
+  const res = await fetch(`${base}/api/gallery/list`, { cache: 'no-store' })
+  let raw: any = null
+  try { raw = await res.json() } catch { raw = null }
+
+  const items: Item[] = Array.isArray(raw) ? raw
+    : Array.isArray(raw?.items) ? raw.items
+    : Array.isArray(raw?.data) ? raw.data
+    : []
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Sua Galeria</h1>
+    <div className="max-w-6xl mx-auto px-4 py-6">
+      <header className="mb-4 flex items-center justify-between">
+        <h1 className="text-xl font-semibold text-zinc-100">Minha Galeria</h1>
         <a href="/dashboard" className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10">Voltar</a>
-      </div>
+      </header>
 
-      {loading && <p className="text-zinc-400">carregando...</p>}
-      {err && <p className="text-red-400">{err}</p>}
-
-      {!loading && !err && items.length === 0 && (
-        <p className="text-zinc-400">Você ainda não possui imagens privadas.</p>
-      )}
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        {items.map((it) => (
-          <div key={it.path} className="group relative rounded-lg overflow-hidden border border-zinc-800 bg-zinc-950">
-            {it.url ? (
-              <img src={it.url} alt={it.name} className="w-full h-40 object-cover group-hover:opacity-90 transition" />
-            ) : (
-              <div className="w-full h-40 grid place-items-center text-xs text-zinc-500">sem preview</div>
-            )}
-          </div>
-        ))}
-      </div>
+      <GalleryGrid items={items} />
     </div>
   )
 }
