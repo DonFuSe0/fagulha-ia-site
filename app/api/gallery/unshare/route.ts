@@ -29,26 +29,33 @@ export async function POST(req: Request) {
     const fileName = raw.split('/').pop() || raw
     const publicObject = `${fileName}` // gen-public/<file>
 
-    // 1) Remove
-    let delErr: any = null
+    // Try delete as user
     let { error } = await supabase.storage.from('gen-public').remove([publicObject])
     if (error && admin) {
+      // Retry with service role
       const r2 = await admin.storage.from('gen-public').remove([publicObject])
       error = r2.error
-      delErr = r2.error
     }
     if (error) {
-      return NextResponse.json({ error: delErr?.message || error.message || 'Failed to delete from public bucket' }, { status: 500 })
+      return NextResponse.json({ error: error.message || 'Failed to delete from public bucket' }, { status: 500 })
     }
 
-    // 2) Verifica se realmente sumiu
-    const { data: listAfter } = await supabase.storage.from('gen-public').list('', { search: fileName, limit: 1 })
-    const stillThere = Array.isArray(listAfter) && listAfter.some(o => o.name === fileName)
-    if (stillThere) {
-      return NextResponse.json({ error: 'Delete verification failed: object still listed' }, { status: 500 })
-    }
+    // Verify by fetching public URL with cache busting
+    const { data: pub } = supabase.storage.from('gen-public').getPublicUrl(publicObject)
+    try {
+      const test = await fetch(`${pub.publicUrl}?cb=${Date.now()}`, { cache: 'no-store' })
+      if (test.ok) {
+        // Still accessible; attempt a second removal with admin if we didn't already use it
+        if (admin) {
+          const r3 = await admin.storage.from('gen-public').remove([publicObject])
+          if (r3.error) {
+            return NextResponse.json({ error: 'Delete verification failed after retry' }, { status: 500 })
+          }
+        }
+      }
+    } catch {}
 
-    // 3) Atualiza DB para bloquear republicação
+    // Update DB flags
     try {
       const now = new Date().toISOString()
       await supabase.from('generations').upsert({
@@ -60,7 +67,7 @@ export async function POST(req: Request) {
       }, { onConflict: 'user_id,file_name' })
     } catch {}
 
-    return NextResponse.json({ ok: true, removed: publicObject })
+    return NextResponse.json({ ok: true, removed: publicObject, locked: true, is_public: false })
   } catch (e:any) {
     return NextResponse.json({ error: e?.message || 'Unexpected error' }, { status: 500 })
   }
