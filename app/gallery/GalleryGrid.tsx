@@ -41,14 +41,16 @@ export default function GalleryGrid({ items }: Props) {
     const pub: Record<string, boolean> = {}
     const lock: Record<string, boolean> = {}
     for (const n of names) {
-      const row = map[n] || map[(n.split('/').pop() || n)]
+      const key = n
+      const alt = (n.split('/').pop() || n)
+      const row = map[key] || map[alt]
       if (row) {
         pub[n] = !!row.is_public
         lock[n] = !!row.public_revoked
       }
     }
-    setPublished(pub)
-    setLocked(lock)
+    setPublished((p)=>({ ...p, ...pub }))
+    setLocked((l)=>({ ...l, ...lock }))
   }
 
   useEffect(() => {
@@ -91,6 +93,11 @@ export default function GalleryGrid({ items }: Props) {
       return
     }
     try {
+      if (isPub) {
+        // Optimistic: remove efeito verde e bloqueia imediatamente
+        setPublished((p) => ({ ...p, [name]: false }))
+        setLocked((l) => ({ ...l, [name]: true }))
+      }
       const res = await fetch(isPub ? '/api/gallery/unshare' : '/api/gallery/share', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,15 +105,21 @@ export default function GalleryGrid({ items }: Props) {
       })
       const j = await res.json().catch(()=>({}))
       if (!res.ok) {
+        // Revert optimistic if needed
+        if (isPub) {
+          setPublished((p) => ({ ...p, [name]: true }))
+          setLocked((l) => ({ ...l, [name]: false }))
+        }
         if (res.status === 403) setLocked((prev) => ({ ...prev, [name]: true }))
         throw new Error(j?.error || 'Falha na operação.')
       }
+      // Apply flags if provided
+      if (typeof j?.is_public === 'boolean') setPublished((p)=>({ ...p, [name]: j.is_public }))
+      if (typeof j?.locked === 'boolean') setLocked((l)=>({ ...l, [name]: j.locked }))
+      // Re-hydrate from backend for final truth
       await hydrate([name])
-      if (isPub) {
-        notify('success', 'Imagem removida de Explorar. (republicar desativado)')
-      } else {
-        notify('success', 'Imagem publicada em Explorar.')
-      }
+
+      notify('success', isPub ? 'Imagem removida de Explorar. (republicar desativado)' : 'Imagem publicada em Explorar.')
     } catch (e:any) {
       notify('error', e?.message || 'Falha na operação.')
     }
