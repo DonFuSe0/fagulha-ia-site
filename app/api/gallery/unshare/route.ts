@@ -1,13 +1,23 @@
 // app/api/gallery/unshare/route.ts
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { createRouteHandlerClient, createServerClient } from '@supabase/auth-helpers-nextjs'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createClient as createSupabaseServerClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
+
+function getAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const srv = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !srv) return null
+  return createSupabaseServerClient(url, srv, { auth: { persistSession: false } })
+}
 
 export async function POST(req: Request) {
   const cookieStore = cookies()
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+  const admin = getAdminClient()
+
   try {
     const { data: { user }, error: userErr } = await supabase.auth.getUser()
     if (userErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -19,27 +29,24 @@ export async function POST(req: Request) {
     const fileName = raw.split('/').pop() || raw
     const publicObject = `${fileName}` // gen-public/<file>
 
-    const tryRemove = async (useService: boolean) => {
-      const client = useService
-        ? createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { cookies: () => cookieStore })
-        : supabase
-      return client.storage.from('gen-public').remove([publicObject])
-    }
+    let delErr: any = null
+    let delOk = false
 
-    let delErr = null as any
-    let { error } = await tryRemove(false)
-    if (error) {
-      delErr = error
-      if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        const res2 = await tryRemove(true)
-        error = res2.error
-        delErr = res2.error
+    const first = await supabase.storage.from('gen-public').remove([publicObject])
+    if (!first.error) delOk = true
+    else {
+      delErr = first.error
+      if (admin) {
+        const second = await admin.storage.from('gen-public').remove([publicObject])
+        if (!second.error) delOk = true
+        else delErr = second.error
       }
     }
-    if (error) {
+
+    if (!delOk) {
       return NextResponse.json({
         error: delErr?.message || 'Failed to delete from public bucket',
-        hint: 'Ajuste a policy do bucket gen-public para DELETE por usuários autenticados, ou use SERVICE ROLE no servidor.',
+        hint: 'Abra DELETE no bucket gen-public para usuários autenticados OU configure SUPABASE_SERVICE_ROLE_KEY.',
       }, { status: 500 })
     }
 

@@ -1,7 +1,8 @@
 // app/api/gallery/share/route.ts
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { createRouteHandlerClient, createServerClient } from '@supabase/auth-helpers-nextjs'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createClient as createSupabaseServerClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,9 +14,17 @@ function addHours(date: Date, h: number) {
   return d
 }
 
+function getAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const srv = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !srv) return null
+  return createSupabaseServerClient(url, srv, { auth: { persistSession: false } })
+}
+
 export async function POST(req: Request) {
   const cookieStore = cookies()
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+  const admin = getAdminClient()
 
   try {
     const { data: { user }, error: userErr } = await supabase.auth.getUser()
@@ -65,35 +74,34 @@ export async function POST(req: Request) {
     const contentType = fileRes.headers.get('Content-Type') || 'application/octet-stream'
     const arrayBuf = await fileRes.arrayBuffer()
 
-    // 3) Sobe no público — tenta com client do usuário; se política bloquear, usa SERVICE_ROLE se existir
-    const tryUpload = async (useService: boolean) => {
-      const client = useService
-        ? createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { cookies: () => cookieStore })
-        : supabase
-      return client.storage.from('gen-public').upload(publicObject, new Uint8Array(arrayBuf), {
-        contentType,
-        upsert: true,
-        cacheControl: '31536000',
-      })
-    }
+    // 3) Sobe no público — tenta com o client do usuário; se falhar, tenta com SERVICE ROLE (se definido)
+    let upErr: any = null
+    let upOk = false
 
-    let upErr = null as any
-    // tentativa 1: com usuário autenticado
-    let { error } = await tryUpload(false)
-    if (error) {
-      upErr = error
-      // tentativa 2: com SERVICE ROLE (se definido)
-      if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        const res2 = await tryUpload(true)
-        error = res2.error
-        upErr = res2.error
+    const first = await supabase.storage.from('gen-public').upload(publicObject, new Uint8Array(arrayBuf), {
+      contentType,
+      upsert: true,
+      cacheControl: '31536000',
+    })
+    if (!first.error) {
+      upOk = true
+    } else {
+      upErr = first.error
+      if (admin) {
+        const second = await admin.storage.from('gen-public').upload(publicObject, new Uint8Array(arrayBuf), {
+          contentType,
+          upsert: true,
+          cacheControl: '31536000',
+        })
+        if (!second.error) upOk = true
+        else upErr = second.error
       }
     }
 
-    if (error) {
+    if (!upOk) {
       return NextResponse.json({
         error: upErr?.message || 'Failed to upload to public bucket',
-        hint: 'Ou ajuste a policy do bucket gen-public para INSERT por usuários autenticados sem prefixo de userId, ou defina SUPABASE_SERVICE_ROLE_KEY no ambiente do servidor.',
+        hint: 'Abra INSERT no bucket gen-public para usuários autenticados OU configure SUPABASE_SERVICE_ROLE_KEY.',
       }, { status: 500 })
     }
 
