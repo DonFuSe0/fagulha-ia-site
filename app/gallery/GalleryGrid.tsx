@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 type Item = {
   name?: string
@@ -29,6 +29,34 @@ export default function GalleryGrid({ items }: Props) {
     }).filter(x => !!x.src)
   }, [items])
 
+  // hydrate published/locked from backend for persistence
+  useEffect(() => {
+    const names = list.map(x => x.name).filter(Boolean)
+    if (names.length === 0) return
+    ;(async () => {
+      try {
+        const res = await fetch('/api/gallery/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ names }),
+        })
+        const j = await res.json().catch(()=>({}))
+        const map = j?.map || {}
+        const pub: Record<string, boolean> = {}
+        const lock: Record<string, boolean> = {}
+        for (const n of names) {
+          const row = map[n]
+          if (row) {
+            pub[n] = !!row.is_public
+            lock[n] = !!row.public_revoked
+          }
+        }
+        setPublished(pub)
+        setLocked(lock)
+      } catch {}
+    })()
+  }, [list])
+
   useEffect(() => {
     if (!sentinelRef.current) return
     const el = sentinelRef.current
@@ -41,7 +69,6 @@ export default function GalleryGrid({ items }: Props) {
     return () => io.disconnect()
   }, [list.length])
 
-  // Close on ESC
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setLightbox(null)
@@ -96,9 +123,6 @@ export default function GalleryGrid({ items }: Props) {
     a.click()
   }
 
-  const openLightbox = useCallback((url: string) => setLightbox(url), [])
-  const closeLightbox = useCallback(() => setLightbox(null), [])
-
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -118,15 +142,12 @@ export default function GalleryGrid({ items }: Props) {
                 src={src}
                 alt="Imagem da sua galeria"
                 loading="lazy"
-                onClick={() => openLightbox(full)}
+                onClick={() => setLightbox(full)}
                 className="w-full h-full object-cover aspect-[320/410] transition-transform duration-300 ease-out group-hover:scale-105 cursor-zoom-in"
               />
-              {/* Overlay hover */}
               <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/40 to-transparent" />
 
-              {/* Action bar (bottom-right) */}
               <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                {/* Toggle Publish */}
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onToggleShare(name) }}
@@ -148,7 +169,6 @@ export default function GalleryGrid({ items }: Props) {
                   </svg>
                   {isPub ? "Remover" : (isLocked ? "Bloqueado" : "Publicar")}
                 </button>
-                {/* Download */}
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onDownload(name) }}
@@ -162,7 +182,6 @@ export default function GalleryGrid({ items }: Props) {
                   </svg>
                   Baixar
                 </button>
-                {/* Reuse */}
                 <a
                   href={name ? `/generate?path=${encodeURIComponent(name)}` : '/generate'}
                   onClick={(e) => e.stopPropagation()}
@@ -185,11 +204,10 @@ export default function GalleryGrid({ items }: Props) {
         <div ref={sentinelRef} className="h-10" />
       )}
 
-      {/* Lightbox overlay */}
       {lightbox && (
         <div
           className="fixed inset-0 z-50 bg-black/90 backdrop-blur-[1px] flex items-center justify-center p-4"
-          onClick={closeLightbox}
+          onClick={() => setLightbox(null)}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -200,7 +218,7 @@ export default function GalleryGrid({ items }: Props) {
           />
           <button
             type="button"
-            onClick={closeLightbox}
+            onClick={() => setLightbox(null)}
             className="absolute top-4 right-4 inline-flex items-center justify-center h-9 w-9 rounded-full bg-white/15 hover:bg-white/25 text-zinc-100 border border-white/20"
             aria-label="Fechar"
             title="Fechar"
