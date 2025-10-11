@@ -17,6 +17,7 @@ export default function GalleryGrid({ items }: Props) {
   const [count, setCount] = useState(16)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [published, setPublished] = useState<Record<string, boolean>>({})
+  const [locked, setLocked] = useState<Record<string, boolean>>({})
 
   const list = useMemo(() => {
     return (items || []).map((it) => {
@@ -41,17 +42,17 @@ export default function GalleryGrid({ items }: Props) {
   const visible = list.slice(0, count)
 
   function notify(kind: 'success'|'error', message: string) {
-    try {
-      window.dispatchEvent(new CustomEvent('notify', { detail: { kind, message } }))
-    } catch {}
+    try { window.dispatchEvent(new CustomEvent('notify', { detail: { kind, message } })) } catch {}
   }
 
   async function onToggleShare(name: string) {
-    if (!name) {
-      notify('error', 'Caminho inválido.')
+    if (!name) { notify('error', 'Caminho inválido.'); return }
+    const isPub = !!published[name]
+    const isLocked = !!locked[name]
+    if (!isPub && isLocked) {
+      notify('error', 'Esta imagem foi removida do público e não pode ser republicada.')
       return
     }
-    const isPub = !!published[name]
     try {
       const res = await fetch(isPub ? '/api/gallery/unshare' : '/api/gallery/share', {
         method: 'POST',
@@ -59,10 +60,21 @@ export default function GalleryGrid({ items }: Props) {
         body: JSON.stringify({ name }),
       })
       const j = await res.json().catch(()=>({}))
-      if (!res.ok) throw new Error(j?.error || 'Falha na operação.')
-
-      setPublished((prev) => ({ ...prev, [name]: !isPub }))
-      notify('success', isPub ? 'Imagem removida de Explorar.' : 'Imagem publicada em Explorar.')
+      if (!res.ok) {
+        if (res.status === 403) {
+          setLocked((prev) => ({ ...prev, [name]: true }))
+        }
+        throw new Error(j?.error || 'Falha na operação.')
+      }
+      if (isPub) {
+        // Removido do público -> trava republicação
+        setPublished((p) => ({ ...p, [name]: false }))
+        setLocked((p) => ({ ...p, [name]: true }))
+        notify('success', 'Imagem removida de Explorar. (republicar desativado)')
+      } else {
+        setPublished((p) => ({ ...p, [name]: true }))
+        notify('success', 'Imagem publicada em Explorar.')
+      }
     } catch (e:any) {
       notify('error', e?.message || 'Falha na operação.')
     }
@@ -81,6 +93,7 @@ export default function GalleryGrid({ items }: Props) {
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {visible.map(({ src, name }, idx) => {
           const isPub = !!published[name]
+          const isLocked = !!locked[name]
           return (
             <div
               key={idx}
@@ -105,20 +118,23 @@ export default function GalleryGrid({ items }: Props) {
                 <button
                   type="button"
                   onClick={() => onToggleShare(name)}
+                  disabled={(!isPub && isLocked)}
                   className={
                     "inline-flex items-center rounded-md border px-2 py-1 text-[11px] " +
-                    (isPub
-                      ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30"
-                      : "border-white/10 bg-white/10 text-zinc-100 hover:bg-white/20")
+                    (isLocked
+                      ? "cursor-not-allowed opacity-60 border-white/10 bg-white/10 text-zinc-400"
+                      : isPub
+                        ? "border-emerald-400/40 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30"
+                        : "border-white/10 bg-white/10 text-zinc-100 hover:bg-white/20")
                   }
-                  title={isPub ? "Remover do público" : "Permitir público"}
+                  title={isLocked ? "Republicação desativada" : (isPub ? "Remover do público" : "Permitir público")}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
                     <path d="M16 6l-4-4-4 4" />
                     <path d="M12 2v14" />
                   </svg>
-                  {isPub ? "Remover" : "Publicar"}
+                  {isPub ? "Remover" : (isLocked ? "Bloqueado" : "Publicar")}
                 </button>
                 {/* Download */}
                 <button
