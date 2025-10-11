@@ -53,7 +53,7 @@ export default function ExploreGrid({ items }: Props) {
               src={src}
               alt="Imagem pública"
               loading="lazy"
-              className="w-full h-full object-cover aspect-square transition-transform duration-300 ease-out group-hover:scale-105"
+              className="w-full h-full object-cover aspect-[320/410] transition-transform duration-300 ease-out group-hover:scale-105"
             />
             <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-t from-black/40 to-transparent" />
           </div>
