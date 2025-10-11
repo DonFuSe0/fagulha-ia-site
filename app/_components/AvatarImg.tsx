@@ -1,22 +1,43 @@
 // app/_components/AvatarImg.tsx
 'use client'
 import Image from 'next/image'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-export default function AvatarImg({ src, size=32, alt='Avatar', version }: { src?: string, size?: number, alt?: string, version?: string|number }) {
+type Props = {
+  src?: string
+  size?: number
+  alt?: string
+  className?: string
+}
+
+export default function AvatarImg({ src, size=32, alt='Avatar', className }: Props) {
+  const supabase = createClientComponentClient()
+  const [ver, setVer] = useState<string>('')
+
+  useEffect(() => {
+    let mounted = true
+    supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) return
+      const v = (data.user?.user_metadata as any)?.avatar_ver
+      if (v) setVer(String(v))
+    })
+    return () => { mounted = false }
+  }, [supabase])
+
   const url = useMemo(() => {
-    if (!src) return '/avatar-placeholder.png'
-    const hasQuery = src.includes('?')
-    const v = version ? String(version) : ''
-    return v ? (hasQuery ? `${src}&v=${v}` : `${src}?v=${v}`) : src
-  }, [src, version])
+    const base = src || '/avatar-placeholder.png'
+    const sep = base.includes('?') ? '&' : '?'
+    return ver ? `${base}${sep}v=${encodeURIComponent(ver)}` : base
+  }, [src, ver])
+
   return (
     <Image
       src={url}
       alt={alt}
       width={size}
       height={size}
-      className="rounded-full object-cover"
+      className={className || 'rounded-full object-cover'}
     />
   )
 }
