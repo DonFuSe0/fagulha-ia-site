@@ -29,27 +29,26 @@ export async function POST(req: Request) {
     const fileName = raw.split('/').pop() || raw
     const publicObject = `${fileName}` // gen-public/<file>
 
+    // 1) Remove
     let delErr: any = null
-    let delOk = false
-
-    const first = await supabase.storage.from('gen-public').remove([publicObject])
-    if (!first.error) delOk = true
-    else {
-      delErr = first.error
-      if (admin) {
-        const second = await admin.storage.from('gen-public').remove([publicObject])
-        if (!second.error) delOk = true
-        else delErr = second.error
-      }
+    let { error } = await supabase.storage.from('gen-public').remove([publicObject])
+    if (error && admin) {
+      const r2 = await admin.storage.from('gen-public').remove([publicObject])
+      error = r2.error
+      delErr = r2.error
+    }
+    if (error) {
+      return NextResponse.json({ error: delErr?.message || error.message || 'Failed to delete from public bucket' }, { status: 500 })
     }
 
-    if (!delOk) {
-      return NextResponse.json({
-        error: delErr?.message || 'Failed to delete from public bucket',
-      }, { status: 500 })
+    // 2) Verifica se realmente sumiu
+    const { data: listAfter } = await supabase.storage.from('gen-public').list('', { search: fileName, limit: 1 })
+    const stillThere = Array.isArray(listAfter) && listAfter.some(o => o.name === fileName)
+    if (stillThere) {
+      return NextResponse.json({ error: 'Delete verification failed: object still listed' }, { status: 500 })
     }
 
-    // Atualiza DB (persistência do bloqueio)
+    // 3) Atualiza DB para bloquear republicação
     try {
       const now = new Date().toISOString()
       await supabase.from('generations').upsert({
