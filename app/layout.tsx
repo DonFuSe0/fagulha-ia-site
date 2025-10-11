@@ -2,6 +2,7 @@
 import './globals.css'
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
+import AuthSessionSync from './_components/AuthSessionSync'
 
 export const metadata: Metadata = {
   title: 'Fagulha',
@@ -13,7 +14,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-br">
       <head />
-      <body>{children}</body>
+      \1
+        <AuthSessionSync />{children}</body>
     </html>
   )
 }
