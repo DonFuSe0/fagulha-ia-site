@@ -135,7 +135,14 @@ export default function DashboardPage() {
           setNickname(nick)
           // Debug: log da URL do avatar
           console.log('Avatar URL from DB:', profile?.avatar_url)
-          setAvatarUrl(profile?.avatar_url ?? null)
+          // Só atualiza se não temos avatar_url ainda ou se é diferente
+          setAvatarUrl(current => {
+            if (!current && profile?.avatar_url) {
+              console.log('Setting initial avatar URL:', profile.avatar_url)
+              return profile.avatar_url
+            }
+            return current
+          })
         }
 
         const { data: tokens } = await supabase.from('tokens')
@@ -163,6 +170,7 @@ export default function DashboardPage() {
       const detail = e.detail as any
       const newUrl = detail?.url as string | undefined
       
+      console.log('Avatar event received:', newUrl)
       if (newUrl) {
         setAvatarUrl(newUrl)
       }
