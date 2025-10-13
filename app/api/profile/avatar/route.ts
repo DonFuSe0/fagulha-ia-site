@@ -38,7 +38,8 @@ export async function POST(req: Request){
 
   const { data: pub } = supabase.storage.from('avatars').getPublicUrl(objectPath)
   const ver = Date.now().toString()
-  const publicUrl = `${pub.publicUrl}?v=${ver}&t=${Date.now()}`
+  const timestamp = Date.now()
+  const publicUrl = `${pub.publicUrl}?v=${ver}&t=${timestamp}&cb=${timestamp}&r=${Math.random()}`
 
   // read previous path
   let previousPath: string | null = null
@@ -58,5 +59,11 @@ export async function POST(req: Request){
     if (toDelete.length) await client.storage.from('avatars').remove(toDelete)
   } catch {}
 
-  return NextResponse.json({ ok: true, avatar_url: publicUrl, ver })
+  return NextResponse.json({ ok: true, avatar_url: publicUrl, ver }, {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    }
+  })
 }

@@ -1,5 +1,4 @@
 'use client'
-import Image from 'next/image'
 import { useEffect, useMemo, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
@@ -7,6 +6,7 @@ export default function AvatarImg({ src, size=32, alt='Avatar', className }:{src
   const supabase = createClientComponentClient()
   const [ver, setVer] = useState<string>('')
   const [tick, setTick] = useState<number>(Date.now())
+  const [forceRefresh, setForceRefresh] = useState(0)
   
   useEffect(()=>{
     let mounted=true
@@ -29,6 +29,7 @@ export default function AvatarImg({ src, size=32, alt='Avatar', className }:{src
     const handler = () => {
       if(!mounted) return
       setTick(Date.now())
+      setForceRefresh(prev => prev + 1)
     }
     window.addEventListener('avatar:updated', handler as any)
     
@@ -43,14 +44,27 @@ export default function AvatarImg({ src, size=32, alt='Avatar', className }:{src
     const base = src || '/avatar-placeholder.png'
     const sep = base.includes('?') ? '&' : '?'
     
+    // Cache busting agressivo com múltiplos parâmetros
+    const cacheParams = `cb=${tick}&fr=${forceRefresh}&r=${Math.random()}`
+    
     // Se temos uma URL do src (do banco), prioriza ela
     if (src && src !== '/avatar-placeholder.png') {
-      return ver ? `${base}${sep}v=${encodeURIComponent(ver)}&t=${tick}` : `${base}${sep}t=${tick}`
+      return ver ? `${base}${sep}v=${encodeURIComponent(ver)}&${cacheParams}` : `${base}${sep}${cacheParams}`
     }
     
     // Senão, usa placeholder com timestamp
-    return `/avatar-placeholder.png?t=${tick}`
-  },[src,ver,tick])
+    return `/avatar-placeholder.png?${cacheParams}`
+  },[src,ver,tick,forceRefresh])
   
-  return <Image key={`${ver}-${tick}`} src={url} alt={alt} width={size} height={size} className={className||'rounded-full object-cover'} />
+  return (
+    <img 
+      key={`avatar-img-${tick}-${forceRefresh}`}
+      src={url} 
+      alt={alt} 
+      width={size} 
+      height={size} 
+      className={className||'rounded-full object-cover'} 
+      style={{ imageRendering: 'auto' }}
+    />
+  )
 }
