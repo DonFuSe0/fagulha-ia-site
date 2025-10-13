@@ -131,7 +131,8 @@ function AvatarMenu({ nickname }: { nickname: string }) {
   )
 }
 
-function TopNav({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string | null }) {
+type TopNavProps = { nickname: string; avatarUrl?: string | null };
+function TopNav({ nickname, avatarUrl }: TopNavProps) {
   return (
     <nav className="w-full bg-black/60 backdrop-blur border-b border-zinc-800 text-zinc-100">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
