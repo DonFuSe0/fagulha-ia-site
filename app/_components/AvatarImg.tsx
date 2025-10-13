@@ -33,7 +33,6 @@ export default function AvatarImg({ src, size=32, alt='Avatar', className }: Pro
 
   return (
     <Image
-      key={ver || url}
       src={url}
       alt={alt}
       width={size}

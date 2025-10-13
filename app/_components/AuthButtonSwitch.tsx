@@ -35,7 +35,10 @@ export default function AuthButtonSwitch({
     return () => { mounted = false; sub.subscription.unsubscribe() }
   }, [supabase])
 
-  if (isLogged === null) return null
+  if (isLogged === null) {
+    // evita flicker: renderiza nada por um instante
+    return null
+  }
 
   return !isLogged ? (
     <Link href={loginHref} className={className}> {labelLogin} </Link>
