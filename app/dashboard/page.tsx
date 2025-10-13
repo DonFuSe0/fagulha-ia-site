@@ -44,6 +44,9 @@ function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: str
   // URL com cache busting equilibrado
   const imageUrl = avatarUrl ? `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}cb=${tick}` : null
   
+  // Debug: log da URL final
+  console.log('AvatarMenu - avatarUrl:', avatarUrl, 'imageUrl:', imageUrl)
+  
   return (
     <div className="relative">
       <button
@@ -130,7 +133,8 @@ export default function DashboardPage() {
         const nick = (profile?.nickname) || (user.user_metadata?.nickname) || (user.email?.split('@')[0] ?? 'Você')
         if (mounted) {
           setNickname(nick)
-          // Prioriza avatar_url do banco (mais atualizado) sobre user_metadata
+          // Debug: log da URL do avatar
+          console.log('Avatar URL from DB:', profile?.avatar_url)
           setAvatarUrl(profile?.avatar_url ?? null)
         }
 
