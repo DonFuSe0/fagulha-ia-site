@@ -2,88 +2,50 @@
 'use client'
 
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-
-type ProfileRow = {
-  id: string
-  full_name: string | null
-  username: string | null
-  avatar_url: string | null
-}
 
 export default function ProfileHero() {
   const supabase = createClientComponentClient()
   const [name, setName] = useState<string>('Meu perfil')
-  const [src, setSrc] = useState<string>('/avatar-placeholder.png')
   const [uid, setUid] = useState<string | null>(null)
+  const [tick, setTick] = useState<number>(Date.now())
 
-  // Carrega user e o profile CORRETO (filtrando por id)
+  // carrega nome e uid
   useEffect(() => {
     let mounted = true
     ;(async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const [{ data: { user } }, { data: profile }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from('profiles').select('full_name, username').maybeSingle(),
+      ])
       if (!mounted) return
-      const userId = user?.id || null
-      setUid(userId)
-
-      // Se não houver usuário autenticado, mantemos placeholder
-      if (!userId) return
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, full_name, username, avatar_url')
-        .eq('id', userId)
-        .maybeSingle() as unknown as { data: ProfileRow | null }
-
-      const display =
-        profile?.full_name ||
-        profile?.username ||
-        user?.email?.split('@')[0] ||
-        'Meu perfil'
-      setName(display)
-
-      // Preferimos sempre a URL do profile (já deve vir com ?v=)
-      let url = profile?.avatar_url || (user?.user_metadata as any)?.avatar_url || null
-      const ver = (user?.user_metadata as any)?.avatar_ver
-
-      if (url) {
-        const sep = url.includes('?') ? '&' : '?'
-        setSrc(ver ? `${url}${sep}v=${encodeURIComponent(String(ver))}` : url)
-      }
+      setUid(user?.id ?? null)
+      const display = profile?.full_name || profile?.username || user?.email?.split('@')[0] || 'Meu perfil'
+      setName(display || 'Meu perfil')
     })()
 
-    return () => { mounted = false }
-  }, [supabase])
-
-  // Reage a mudanças da sessão (updateUser com avatar_ver)
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
-      const meta = session?.user?.user_metadata as any
-      const url = meta?.avatar_url as string | undefined
-      const ver = meta?.avatar_ver
-      if (url) {
-        const sep = url.includes('?') ? '&' : '?'
-        setSrc(ver ? `${url}${sep}v=${encodeURIComponent(String(ver))}` : url)
-      }
+    // quando a sessão muda (updateUser com avatar_ver), força refresh do endpoint
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      setTick(Date.now())
     })
-    return () => { sub.subscription.unsubscribe() }
+
+    // escuta o evento do upload e força atualização
+    const handler = () => setTick(Date.now())
+    window.addEventListener('avatar:updated', handler as any)
+
+    return () => {
+      sub.subscription.unsubscribe()
+      window.removeEventListener('avatar:updated', handler as any)
+      mounted = false
+    }
   }, [supabase])
 
-  // Reage ao evento do upload
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as any
-      const url = detail?.url as string | undefined
-      const ver = detail?.ver
-      if (url) {
-        const sep = url.includes('?') ? '&' : '?'
-        setSrc(ver ? `${url}${sep}v=${encodeURIComponent(String(ver))}` : url)
-      }
-    }
-    window.addEventListener('avatar:updated', handler as any)
-    return () => window.removeEventListener('avatar:updated', handler as any)
-  }, [])
+  const src = useMemo(() => {
+    if (!uid) return '/avatar-placeholder.png'
+    // bate no endpoint que redireciona SEM cache para a URL atual do avatar
+    return `/api/profile/avatar-url?uid=${encodeURIComponent(uid)}&t=${tick}`
+  }, [uid, tick])
 
   return (
     <section className="w-full max-w-5xl mx-auto py-6 px-4 flex items-center gap-4">
