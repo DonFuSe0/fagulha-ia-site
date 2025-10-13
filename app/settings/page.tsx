@@ -121,15 +121,6 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         detail: { url: newAvatarUrl, ver: j?.ver } 
       }))
       
-      // Limpa cache do browser para a nova imagem
-      if (newAvatarUrl) {
-        try {
-          // Força reload da imagem no cache do browser
-          const img = new Image()
-          img.src = `${newAvatarUrl}&nocache=${Date.now()}`
-        } catch {}
-      }
-      
       // Força atualização da sessão para sincronizar user_metadata
       try {
         const { createClientComponentClient } = await import('@supabase/auth-helpers-nextjs')
@@ -207,11 +198,10 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
               <div className="flex items-center gap-4">
                 {smallPreviewSrc ? (
                   <img 
-                    key={`preview-${smallPreviewSrc}-${Date.now()}`}
+                    key={`preview-${smallPreviewSrc}`}
                     src={smallPreviewSrc} 
                     alt="Prévia" 
                     className="h-16 w-16 rounded-full object-cover border border-white/10" 
-                    style={{ imageRendering: 'auto' }}
                   />
                 ) : (
                   <div className="h-16 w-16 rounded-full bg-zinc-800 border border-white/10" />

@@ -44,27 +44,26 @@ export default function AvatarImg({ src, size=32, alt='Avatar', className }:{src
     const base = src || '/avatar-placeholder.png'
     const sep = base.includes('?') ? '&' : '?'
     
-    // Cache busting agressivo com múltiplos parâmetros
-    const cacheParams = `cb=${tick}&fr=${forceRefresh}&r=${Math.random()}`
+    // Cache busting equilibrado
+    const cacheParam = `cb=${tick}`
     
     // Se temos uma URL do src (do banco), prioriza ela
     if (src && src !== '/avatar-placeholder.png') {
-      return ver ? `${base}${sep}v=${encodeURIComponent(ver)}&${cacheParams}` : `${base}${sep}${cacheParams}`
+      return ver ? `${base}${sep}v=${encodeURIComponent(ver)}&${cacheParam}` : `${base}${sep}${cacheParam}`
     }
     
     // Senão, usa placeholder com timestamp
-    return `/avatar-placeholder.png?${cacheParams}`
-  },[src,ver,tick,forceRefresh])
+    return `/avatar-placeholder.png?${cacheParam}`
+  },[src,ver,tick])
   
   return (
     <img 
-      key={`avatar-img-${tick}-${forceRefresh}`}
+      key={`avatar-img-${tick}`}
       src={url} 
       alt={alt} 
       width={size} 
       height={size} 
       className={className||'rounded-full object-cover'} 
-      style={{ imageRendering: 'auto' }}
     />
   )
 }
