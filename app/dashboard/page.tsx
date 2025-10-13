@@ -153,48 +153,19 @@ export default function DashboardPage() {
     
     load()
     
-    // Escuta mudanças na sessão para atualizar avatar
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted || !session?.user) return
-      
-      // Só atualiza se não temos avatar_url do banco ou se é uma atualização explícita
-      const meta = session.user.user_metadata as any
-      const url = meta?.avatar_url as string | undefined
-      const ver = meta?.avatar_ver
-      
-      // Só atualiza se não temos avatar do banco ou se é uma atualização recente
-      if (url && ver) {
-        const sep = url.includes('?') ? '&' : '?'
-        const newUrl = `${url}${sep}v=${encodeURIComponent(String(ver))}`
-        
-        // Só atualiza se a URL mudou (evita loops)
-        setAvatarUrl(current => {
-          if (current === newUrl) return current
-          return newUrl
-        })
-      }
-    })
-    
-    // Escuta evento customizado de atualização de avatar
+    // Escuta evento customizado de atualização de avatar (simplificado)
     const handler = (e: CustomEvent) => {
       if (!mounted) return
       const detail = e.detail as any
       const newUrl = detail?.url as string | undefined
-      const ver = detail?.ver
       
       if (newUrl) {
-        const sep = newUrl.includes('?') ? '&' : '?'
-        const finalUrl = ver ? `${newUrl}${sep}v=${encodeURIComponent(String(ver))}` : newUrl
-        setAvatarUrl(finalUrl)
-      } else {
-        // Se não tem URL específica, recarrega dados completos
-        load()
+        setAvatarUrl(newUrl)
       }
     }
     window.addEventListener('avatar:updated', handler as any)
     
     return () => { 
-      sub.subscription.unsubscribe()
       window.removeEventListener('avatar:updated', handler as any)
       mounted = false 
     }

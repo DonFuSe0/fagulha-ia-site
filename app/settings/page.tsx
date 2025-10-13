@@ -116,17 +116,12 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       setCroppedBlob(null)
       setCroppedPreviewUrl(null)
       
-      // Dispara evento customizado ANTES de refresh da sessão
-      window.dispatchEvent(new CustomEvent('avatar:updated', { 
-        detail: { url: newAvatarUrl, ver: j?.ver } 
-      }))
-      
-      // Força atualização da sessão para sincronizar user_metadata
-      try {
-        const { createClientComponentClient } = await import('@supabase/auth-helpers-nextjs')
-        const supabase = createClientComponentClient()
-        await supabase.auth.refreshSession()
-      } catch {}
+      // Dispara evento customizado com delay para evitar conflitos
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('avatar:updated', { 
+          detail: { url: newAvatarUrl } 
+        }))
+      }, 100)
       
       window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Avatar atualizado com sucesso.' } }))
     } catch (e) {
