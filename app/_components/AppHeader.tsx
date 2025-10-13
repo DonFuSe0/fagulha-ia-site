@@ -38,6 +38,14 @@ export default function AppHeader() {
 
   const onSelect = () => setOpen(false)
 
+  // keep session in sync so Header reflects logged-in state immediately
+  useEffect(() => {
+    const { data: sub } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id ?? null)
+    })
+    return () => { try { sub.subscription.unsubscribe() } catch {} }
+  }, [])
+
   return (
     <header className="flex items-center gap-4 p-4 border-b border-white/10">
       <Link href="/" className="font-bold">Fagulha</Link>
