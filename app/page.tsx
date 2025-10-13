@@ -49,11 +49,26 @@ export default async function Home() {
           <div className="flex items-center gap-6">
             <Link href="/" className="font-semibold text-lg tracking-tight">Fagulha<span className="text-brand">.</span></Link>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/auth/login" className="hover:text-brand">Entrar</Link>
-            <Link href="/explorar" className="hover:text-brand">Explorar</Link>
-            <Link href="/planos" className="rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-2 font-medium">Adquirir Tokens</Link>
-          </div>
+          <div className="flex items-center gap-4">{/* menu direto */}
+{/* @ts-expect-error Server Component async */}
+{await (async () => { const supabase = (await import("@/lib/supabase/server")).createClient(); const { data: { session } } = await supabase.auth.getSession(); const isLogged = !!session?.user; return (
+  <>
+    {!isLogged ? (
+      <>
+        <a href="/auth/login" className="hover:text-brand">Entrar</a>
+        <a href="/explorar" className="hover:text-brand">Explorar</a>
+        <a href="/planos" className="rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-2 font-medium">Planos</a>
+      </>
+    ) : (
+      <>
+        <a href="/dashboard" className="hover:text-brand">Perfil</a>
+        <a href="/explorar" className="hover:text-brand">Explorar</a>
+        <a href="/planos" className="rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-2 font-medium">Planos</a>
+      </>
+    )}
+  </>
+) })()}
+</div>
         </div>
       </nav>
 
