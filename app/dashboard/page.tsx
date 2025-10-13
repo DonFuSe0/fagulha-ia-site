@@ -41,8 +41,8 @@ function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: str
     return () => window.removeEventListener('avatar:updated', handler as any)
   }, [])
   
-  // URL com cache busting agressivo
-  const imageUrl = avatarUrl ? `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}cb=${tick}&fr=${forceRefresh}&r=${Math.random()}` : null
+  // URL com cache busting equilibrado
+  const imageUrl = avatarUrl ? `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}cb=${tick}` : null
   
   return (
     <div className="relative">
@@ -53,13 +53,12 @@ function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: str
         <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center">
           {imageUrl ? (
             <img 
-              key={`avatar-${tick}-${forceRefresh}`}
+              key={`avatar-${tick}`}
               src={imageUrl} 
               alt={nickname} 
               width={32} 
               height={32}
               className="object-cover w-full h-full"
-              style={{ imageRendering: 'auto' }}
             />
           ) : (
             <span className="text-xs text-zinc-400">AV</span>

@@ -38,8 +38,7 @@ export async function POST(req: Request){
 
   const { data: pub } = supabase.storage.from('avatars').getPublicUrl(objectPath)
   const ver = Date.now().toString()
-  const timestamp = Date.now()
-  const publicUrl = `${pub.publicUrl}?v=${ver}&t=${timestamp}&cb=${timestamp}&r=${Math.random()}`
+  const publicUrl = `${pub.publicUrl}?v=${ver}`
 
   // read previous path
   let previousPath: string | null = null
