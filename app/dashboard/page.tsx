@@ -29,13 +29,20 @@ function cx(...p: (string | null | undefined | false)[]) { return p.filter(Boole
 function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string | null }) {
   const [open, setOpen] = useState(false)
   const [tick, setTick] = useState(Date.now())
+  const [forceRefresh, setForceRefresh] = useState(0)
   
   // Escuta evento de atualização de avatar
   useEffect(() => {
-    const handler = () => setTick(Date.now())
+    const handler = () => {
+      setTick(Date.now())
+      setForceRefresh(prev => prev + 1)
+    }
     window.addEventListener('avatar:updated', handler as any)
     return () => window.removeEventListener('avatar:updated', handler as any)
   }, [])
+  
+  // URL com cache busting agressivo
+  const imageUrl = avatarUrl ? `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}cb=${tick}&fr=${forceRefresh}&r=${Math.random()}` : null
   
   return (
     <div className="relative">
@@ -44,14 +51,15 @@ function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: str
         className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/70 px-2 py-1 hover:border-brand transition-colors"
       >
         <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center">
-          {avatarUrl ? (
-            <Image 
-              key={`${avatarUrl}-${tick}`}
-              src={avatarUrl} 
+          {imageUrl ? (
+            <img 
+              key={`avatar-${tick}-${forceRefresh}`}
+              src={imageUrl} 
               alt={nickname} 
               width={32} 
               height={32}
-              className="object-cover"
+              className="object-cover w-full h-full"
+              style={{ imageRendering: 'auto' }}
             />
           ) : (
             <span className="text-xs text-zinc-400">AV</span>
