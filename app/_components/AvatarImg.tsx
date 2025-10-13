@@ -42,7 +42,14 @@ export default function AvatarImg({ src, size=32, alt='Avatar', className }:{src
   const url = useMemo(()=>{
     const base = src || '/avatar-placeholder.png'
     const sep = base.includes('?') ? '&' : '?'
-    return ver ? `${base}${sep}v=${encodeURIComponent(ver)}&t=${tick}` : `${base}${sep}t=${tick}`
+    
+    // Se temos uma URL do src (do banco), prioriza ela
+    if (src && src !== '/avatar-placeholder.png') {
+      return ver ? `${base}${sep}v=${encodeURIComponent(ver)}&t=${tick}` : `${base}${sep}t=${tick}`
+    }
+    
+    // Senão, usa placeholder com timestamp
+    return `/avatar-placeholder.png?t=${tick}`
   },[src,ver,tick])
   
   return <Image key={`${ver}-${tick}`} src={url} alt={alt} width={size} height={size} className={className||'rounded-full object-cover'} />

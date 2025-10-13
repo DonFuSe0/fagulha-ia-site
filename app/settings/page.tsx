@@ -106,12 +106,20 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         throw new Error(j?.error || 'Falha ao enviar avatar')
       }
       const j = await res.json()
+      const newAvatarUrl = j?.avatar_url
+      
       // Atualiza avatar atual imediatamente com o retornado pela API
-      setProfile(p => ({ ...p, avatar_url: j?.avatar_url ?? p?.avatar_url }))
+      setProfile(p => ({ ...p, avatar_url: newAvatarUrl ?? p?.avatar_url }))
+      
       // limpa estados locais
       setSelectedUrl(null)
       setCroppedBlob(null)
       setCroppedPreviewUrl(null)
+      
+      // Dispara evento customizado ANTES de refresh da sessão
+      window.dispatchEvent(new CustomEvent('avatar:updated', { 
+        detail: { url: newAvatarUrl, ver: j?.ver } 
+      }))
       
       // Força atualização da sessão para sincronizar user_metadata
       try {
@@ -119,11 +127,6 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         const supabase = createClientComponentClient()
         await supabase.auth.refreshSession()
       } catch {}
-      
-      // Dispara evento customizado para outros componentes
-      window.dispatchEvent(new CustomEvent('avatar:updated', { 
-        detail: { url: j?.avatar_url, ver: j?.ver } 
-      }))
       
       window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Avatar atualizado com sucesso.' } }))
     } catch (e) {

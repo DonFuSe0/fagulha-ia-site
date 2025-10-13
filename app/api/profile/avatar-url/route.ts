@@ -29,9 +29,11 @@ export async function GET(req: Request) {
     .eq('id', userId)
     .maybeSingle()
 
+  // Prioriza avatar_url do banco (mais atualizado)
   let finalUrl = profile?.avatar_url as string | undefined
-  if (!finalUrl) {
-    // fallback em user_metadata do próprio usuário (se for ele)
+  
+  // Só usa user_metadata como fallback se não temos nada no banco
+  if (!finalUrl && userId === user?.id) {
     const metaUrl = (user?.user_metadata as any)?.avatar_url as string | undefined
     const ver = (user?.user_metadata as any)?.avatar_ver
     if (metaUrl) {
