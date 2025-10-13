@@ -1,58 +1,26 @@
+// app/_components/ProfileHero.tsx
+// Server wrapper que busca avatar_url DIRETO do DB e passa para o client.
+// Evita depender de user_metadata antigo na sessão.
 
-import Image from "next/image";
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
-function fallbackAvatarFor(userId: string) {
-  let h = 0; for (let i = 0; i < userId.length; i++) h = ((h << 5) - h) + userId.charCodeAt(i) | 0;
-  const idx = Math.abs(h) % 4;
-  return `/avatars/fire-${idx + 1}.png`;
-}
+import { createClient } from '@/lib/supabase/server'
+import ProfileHeroClient from './ProfileHeroClient'
 
 export default async function ProfileHero() {
-  const supabase = createServerComponentClient<any>({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  const supabase = createClient()
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("avatar_url, nickname, credits")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: { user } }, { data: profile }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from('profiles').select('full_name, username, avatar_url').maybeSingle(),
+  ])
 
-  const metaNick = (user.user_metadata && typeof user.user_metadata.nickname === "string")
-    ? String(user.user_metadata.nickname) : null;
+  const displayName =
+    profile?.full_name ||
+    profile?.username ||
+    user?.email?.split('@')[0] ||
+    'Meu perfil'
 
-  const nickname = (profile?.nickname && profile.nickname.length > 0)
-    ? profile.nickname
-    : (metaNick ?? (user.email?.split("@")[0] ?? "Usuário"));
+  // Preferimos SEMPRE o profiles.avatar_url (já vem com ?v=timestamp)
+  const avatarUrl = profile?.avatar_url || (user?.user_metadata as any)?.avatar_url || null
 
-  const rawAvatar = profile?.avatar_url ?? null;
-  const avatarSrc = rawAvatar
-    ? `${rawAvatar}${rawAvatar.includes("?") ? "&" : "?"}v=${Date.now()}`
-    : fallbackAvatarFor(user.id);
-
-  const credits = profile?.credits ?? 0;
-
-  return (
-    <section className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-      <div className="flex items-center gap-4">
-        <span className="relative h-14 w-14 overflow-hidden rounded-full ring-2 ring-white/10">
-          <Image src={avatarSrc} alt="avatar" fill className="object-cover" />
-        </span>
-        <div className="flex flex-col">
-          <span className="text-base font-semibold text-white">{nickname}</span>
-        </div>
-      </div>
-      <div className="text-right">
-        <div className="text-xs text-white/60">Saldo</div>
-        <div className="text-2xl font-semibold text-white">
-          {credits} <span className="text-sm font-normal text-white/60">tokens</span>
-        </div>
-      </div>
-    </section>
-  );
+  return <ProfileHeroClient name={displayName} avatarUrl={avatarUrl} />
 }
