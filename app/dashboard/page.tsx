@@ -123,7 +123,8 @@ export default function DashboardPage() {
         const nick = (profile?.nickname) || (user.user_metadata?.nickname) || (user.email?.split('@')[0] ?? 'Você')
         if (mounted) {
           setNickname(nick)
-          setAvatarUrl(profile?.avatar_url ?? user.user_metadata?.avatar_url ?? null)
+          // Prioriza avatar_url do banco (mais atualizado) sobre user_metadata
+          setAvatarUrl(profile?.avatar_url ?? null)
         }
 
         const { data: tokens } = await supabase.from('tokens')
@@ -148,19 +149,40 @@ export default function DashboardPage() {
     // Escuta mudanças na sessão para atualizar avatar
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted || !session?.user) return
+      
+      // Só atualiza se não temos avatar_url do banco ou se é uma atualização explícita
       const meta = session.user.user_metadata as any
       const url = meta?.avatar_url as string | undefined
       const ver = meta?.avatar_ver
-      if (url) {
+      
+      // Só atualiza se não temos avatar do banco ou se é uma atualização recente
+      if (url && ver) {
         const sep = url.includes('?') ? '&' : '?'
-        setAvatarUrl(ver ? `${url}${sep}v=${encodeURIComponent(String(ver))}` : url)
+        const newUrl = `${url}${sep}v=${encodeURIComponent(String(ver))}`
+        
+        // Só atualiza se a URL mudou (evita loops)
+        setAvatarUrl(current => {
+          if (current === newUrl) return current
+          return newUrl
+        })
       }
     })
     
     // Escuta evento customizado de atualização de avatar
-    const handler = () => {
+    const handler = (e: CustomEvent) => {
       if (!mounted) return
-      load() // Recarrega dados completos
+      const detail = e.detail as any
+      const newUrl = detail?.url as string | undefined
+      const ver = detail?.ver
+      
+      if (newUrl) {
+        const sep = newUrl.includes('?') ? '&' : '?'
+        const finalUrl = ver ? `${newUrl}${sep}v=${encodeURIComponent(String(ver))}` : newUrl
+        setAvatarUrl(finalUrl)
+      } else {
+        // Se não tem URL específica, recarrega dados completos
+        load()
+      }
     }
     window.addEventListener('avatar:updated', handler as any)
     
