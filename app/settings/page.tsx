@@ -30,6 +30,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         const res = await fetch('/api/profile/credits', { cache: 'no-store' })
         const data = await res.json()
         if (!isMounted) return
+        console.log('Settings - Profile data:', data)
         setProfile({ credits: data?.credits, nickname: data?.nickname, avatar_url: data?.avatar_url })
       } catch {
       } finally { if (isMounted) setLoadingProfile(false) }

@@ -58,6 +58,7 @@ export async function POST(req: Request){
     if (toDelete.length) await client.storage.from('avatars').remove(toDelete)
   } catch {}
 
+  console.log('Avatar upload - publicUrl:', publicUrl)
   return NextResponse.json({ ok: true, avatar_url: publicUrl, ver }, {
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
