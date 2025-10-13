@@ -112,6 +112,19 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       setSelectedUrl(null)
       setCroppedBlob(null)
       setCroppedPreviewUrl(null)
+      
+      // Força atualização da sessão para sincronizar user_metadata
+      try {
+        const { createClientComponentClient } = await import('@supabase/auth-helpers-nextjs')
+        const supabase = createClientComponentClient()
+        await supabase.auth.refreshSession()
+      } catch {}
+      
+      // Dispara evento customizado para outros componentes
+      window.dispatchEvent(new CustomEvent('avatar:updated', { 
+        detail: { url: j?.avatar_url, ver: j?.ver } 
+      }))
+      
       window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Avatar atualizado com sucesso.' } }))
     } catch (e) {
       console.error(e)
@@ -181,7 +194,12 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
               <label className="block text-sm text-zinc-300">Avatar</label>
               <div className="flex items-center gap-4">
                 {smallPreviewSrc ? (
-                  <img src={smallPreviewSrc} alt="Prévia" className="h-16 w-16 rounded-full object-cover border border-white/10" />
+                  <img 
+                    key={smallPreviewSrc} 
+                    src={smallPreviewSrc} 
+                    alt="Prévia" 
+                    className="h-16 w-16 rounded-full object-cover border border-white/10" 
+                  />
                 ) : (
                   <div className="h-16 w-16 rounded-full bg-zinc-800 border border-white/10" />
                 )}

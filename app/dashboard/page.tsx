@@ -28,6 +28,15 @@ function cx(...p: (string | null | undefined | false)[]) { return p.filter(Boole
 
 function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string | null }) {
   const [open, setOpen] = useState(false)
+  const [tick, setTick] = useState(Date.now())
+  
+  // Escuta evento de atualização de avatar
+  useEffect(() => {
+    const handler = () => setTick(Date.now())
+    window.addEventListener('avatar:updated', handler as any)
+    return () => window.removeEventListener('avatar:updated', handler as any)
+  }, [])
+  
   return (
     <div className="relative">
       <button
@@ -36,7 +45,14 @@ function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: str
       >
         <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center">
           {avatarUrl ? (
-            <Image src={avatarUrl} alt={nickname} width={32} height={32} />
+            <Image 
+              key={`${avatarUrl}-${tick}`}
+              src={avatarUrl} 
+              alt={nickname} 
+              width={32} 
+              height={32}
+              className="object-cover"
+            />
           ) : (
             <span className="text-xs text-zinc-400">AV</span>
           )}
@@ -126,8 +142,33 @@ export default function DashboardPage() {
         if (mounted) setLoading(false)
       }
     }
+    
     load()
-    return () => { mounted = false }
+    
+    // Escuta mudanças na sessão para atualizar avatar
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mounted || !session?.user) return
+      const meta = session.user.user_metadata as any
+      const url = meta?.avatar_url as string | undefined
+      const ver = meta?.avatar_ver
+      if (url) {
+        const sep = url.includes('?') ? '&' : '?'
+        setAvatarUrl(ver ? `${url}${sep}v=${encodeURIComponent(String(ver))}` : url)
+      }
+    })
+    
+    // Escuta evento customizado de atualização de avatar
+    const handler = () => {
+      if (!mounted) return
+      load() // Recarrega dados completos
+    }
+    window.addEventListener('avatar:updated', handler as any)
+    
+    return () => { 
+      sub.subscription.unsubscribe()
+      window.removeEventListener('avatar:updated', handler as any)
+      mounted = false 
+    }
   }, [router])
 
   return (
