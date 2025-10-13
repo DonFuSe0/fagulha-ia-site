@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import CreditsBadge from '@/app/_components/CreditsBadge'
 
 type TokenRow = {
@@ -26,47 +27,85 @@ type GenerationRow = {
 
 function cx(...p: (string | null | undefined | false)[]) { return p.filter(Boolean).join(' ') }
 
-function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string | null }) {
-  const [open, setOpen] = useState(false)
+// Componente separado para gerenciar o avatar de forma independente
+function AvatarDisplay({ nickname }: { nickname: string }) {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [tick, setTick] = useState(Date.now())
-  const [forceRefresh, setForceRefresh] = useState(0)
-  
-  // Escuta evento de atualização de avatar
+
   useEffect(() => {
-    const handler = () => {
-      setTick(Date.now())
-      setForceRefresh(prev => prev + 1)
+    let mounted = true
+
+    // Carrega avatar do banco apenas uma vez
+    const loadAvatar = async () => {
+      try {
+        const supabaseClient = createClientComponentClient()
+        const { data: s } = await supabaseClient.auth.getSession()
+        const user = s?.session?.user
+        if (!user || !mounted) return
+
+        const { data: profile } = await supabaseClient.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle()
+        if (mounted && profile?.avatar_url) {
+          setAvatarUrl(profile.avatar_url)
+          console.log('AvatarDisplay - Avatar loaded')
+        }
+      } catch (error) {
+        console.error('AvatarDisplay - Error loading avatar:', error)
+      }
+    }
+
+    loadAvatar()
+
+    // Escuta eventos de atualização
+    const handler = (e: CustomEvent) => {
+      if (!mounted) return
+      const detail = e.detail as any
+      const newUrl = detail?.url as string | undefined
+
+      if (newUrl) {
+        setAvatarUrl(newUrl)
+        setTick(Date.now())
+      }
     }
     window.addEventListener('avatar:updated', handler as any)
-    return () => window.removeEventListener('avatar:updated', handler as any)
+
+    return () => {
+      mounted = false
+      window.removeEventListener('avatar:updated', handler as any)
+    }
   }, [])
-  
-  // URL com cache busting equilibrado
+
   const imageUrl = avatarUrl ? `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}cb=${tick}` : null
-  
-  // Debug: log da URL final
-  console.log('AvatarMenu - avatarUrl:', avatarUrl, 'imageUrl:', imageUrl)
-  
+
+  console.log('AvatarDisplay - avatarUrl:', avatarUrl, 'imageUrl:', imageUrl)
+
+  return (
+    <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center">
+      {imageUrl ? (
+        <img
+          key={`avatar-${tick}`}
+          src={imageUrl}
+          alt={nickname}
+          width={32}
+          height={32}
+          className="object-cover w-full h-full"
+        />
+      ) : (
+        <span className="text-xs text-zinc-400">AV</span>
+      )}
+    </div>
+  )
+}
+
+function AvatarMenu({ nickname }: { nickname: string }) {
+  const [open, setOpen] = useState(false)
+
   return (
     <div className="relative">
       <button
         onClick={() => setOpen(v => !v)}
         className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/70 px-2 py-1 hover:border-brand transition-colors"
       >
-        <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center">
-          {imageUrl ? (
-            <img 
-              key={`avatar-${tick}`}
-              src={imageUrl} 
-              alt={nickname} 
-              width={32} 
-              height={32}
-              className="object-cover w-full h-full"
-            />
-          ) : (
-            <span className="text-xs text-zinc-400">AV</span>
-          )}
-        </div>
+        <AvatarDisplay nickname={nickname} />
         
         
         <svg className={cx('w-4 h-4 text-zinc-400 transition-transform', open && 'rotate-180')} viewBox="0 0 20 20" fill="currentColor">
@@ -120,7 +159,7 @@ export default function DashboardPage() {
   const [usages, setUsages] = useState<TokenRow[]>([]) // amount < 0
   const [gens, setGens] = useState<GenerationRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [initialLoadDone, setInitialLoadDone] = useState(false)
+  const [avatarLoaded, setAvatarLoaded] = useState(false)
 
   // Carregamento inicial (executa apenas uma vez)
   useEffect(() => {
@@ -135,10 +174,10 @@ export default function DashboardPage() {
         const nick = (profile?.nickname) || (user.user_metadata?.nickname) || (user.email?.split('@')[0] ?? 'Você')
         if (mounted) {
           setNickname(nick)
-          console.log('Initial load - Avatar URL from DB:', profile?.avatar_url)
-          if (profile?.avatar_url) {
+          if (profile?.avatar_url && !avatarLoaded) {
             setAvatarUrl(profile.avatar_url)
-            console.log('Initial avatar set:', profile.avatar_url)
+            setAvatarLoaded(true)
+            console.log('Dashboard - Avatar loaded:', profile.avatar_url)
           }
         }
 
@@ -157,32 +196,29 @@ export default function DashboardPage() {
       } finally {
         if (mounted) {
           setLoading(false)
-          setInitialLoadDone(true)
         }
       }
     }
-    
-    if (!initialLoadDone) {
-      loadInitial()
-    }
-    
+
+    loadInitial()
+
     return () => { mounted = false }
-  }, [router, initialLoadDone])
+  }, [router])
 
   // Escuta eventos de atualização de avatar
   useEffect(() => {
     const handler = (e: CustomEvent) => {
       const detail = e.detail as any
       const newUrl = detail?.url as string | undefined
-      
-      console.log('Avatar event received:', newUrl)
+
       if (newUrl) {
         setAvatarUrl(newUrl)
+        setAvatarLoaded(true)
       }
     }
     window.addEventListener('avatar:updated', handler as any)
-    
-    return () => { 
+
+    return () => {
       window.removeEventListener('avatar:updated', handler as any)
     }
   }, [])
