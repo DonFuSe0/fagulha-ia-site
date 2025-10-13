@@ -120,10 +120,12 @@ export default function DashboardPage() {
   const [usages, setUsages] = useState<TokenRow[]>([]) // amount < 0
   const [gens, setGens] = useState<GenerationRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [initialLoadDone, setInitialLoadDone] = useState(false)
 
+  // Carregamento inicial (executa apenas uma vez)
   useEffect(() => {
     let mounted = true
-    async function load() {
+    async function loadInitial() {
       try {
         const { data: s } = await supabase.auth.getSession()
         const user = s?.session?.user
@@ -133,16 +135,11 @@ export default function DashboardPage() {
         const nick = (profile?.nickname) || (user.user_metadata?.nickname) || (user.email?.split('@')[0] ?? 'Você')
         if (mounted) {
           setNickname(nick)
-          // Debug: log da URL do avatar
-          console.log('Avatar URL from DB:', profile?.avatar_url)
-          // Só atualiza se não temos avatar_url ainda ou se é diferente
-          setAvatarUrl(current => {
-            if (!current && profile?.avatar_url) {
-              console.log('Setting initial avatar URL:', profile.avatar_url)
-              return profile.avatar_url
-            }
-            return current
-          })
+          console.log('Initial load - Avatar URL from DB:', profile?.avatar_url)
+          if (profile?.avatar_url) {
+            setAvatarUrl(profile.avatar_url)
+            console.log('Initial avatar set:', profile.avatar_url)
+          }
         }
 
         const { data: tokens } = await supabase.from('tokens')
@@ -158,15 +155,23 @@ export default function DashboardPage() {
           .order('created_at', { ascending: false }).limit(4) as any
         if (mounted) setGens(g ?? [])
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted) {
+          setLoading(false)
+          setInitialLoadDone(true)
+        }
       }
     }
     
-    load()
+    if (!initialLoadDone) {
+      loadInitial()
+    }
     
-    // Escuta evento customizado de atualização de avatar (simplificado)
+    return () => { mounted = false }
+  }, [router, initialLoadDone])
+
+  // Escuta eventos de atualização de avatar
+  useEffect(() => {
     const handler = (e: CustomEvent) => {
-      if (!mounted) return
       const detail = e.detail as any
       const newUrl = detail?.url as string | undefined
       
@@ -179,9 +184,9 @@ export default function DashboardPage() {
     
     return () => { 
       window.removeEventListener('avatar:updated', handler as any)
-      mounted = false 
     }
-  }, [router])
+  }, [])
+
 
   return (
     <div className="min-h-screen bg-background text-gray-200 relative">
