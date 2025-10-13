@@ -29,20 +29,16 @@ export default function AuthButtonSwitch({
       if (!mounted) return
       setIsLogged(!!data.session?.user)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsLogged(!!session?.user)
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      setIsLogged(!!s?.user)
     })
     return () => { mounted = false; sub.subscription.unsubscribe() }
   }, [supabase])
 
-  if (isLogged === null) {
-    // evita flicker: renderiza nada por um instante
-    return null
-  }
-
+  if (isLogged === null) return null
   return !isLogged ? (
-    <Link href={loginHref} className={className}> {labelLogin} </Link>
+    <Link href={loginHref} className={className}>{labelLogin}</Link>
   ) : (
-    <Link href={profileHref} className={className}> {labelProfile} </Link>
+    <Link href={profileHref} className={className}>{labelProfile}</Link>
   )
 }

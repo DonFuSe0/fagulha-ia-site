@@ -1,55 +1,66 @@
+// app/api/profile/avatar/route.ts
 import { NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { createClient as createSupabaseServerClient } from '@supabase/supabase-js'
+
+export const dynamic = 'force-dynamic'
+
+function getAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return null
+  return createSupabaseServerClient(url, key, { auth: { persistSession: false } })
+}
 
 export async function POST(req: Request) {
   const cookieStore = cookies()
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-
-  // helper admin client (opcional) para limpar arquivos com segurança
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const admin = (url && key) ? createSupabaseServerClient(url, key, { auth: { persistSession: false } }) : null
+  const admin = getAdmin()
 
   try {
     const { data: { user }, error: userErr } = await supabase.auth.getUser()
     if (userErr || !user) return NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
 
     const form = await req.formData()
-    const file = form.get('file') as File | null
-    if (!file) return NextResponse.json({ error: 'file_missing' }, { status: 400 })
+    // Aceita tanto 'file' quanto 'avatar' para evitar desencontro com o front
+    const picked = (form.get('file') || form.get('avatar')) as File | null
+    if (!picked) return NextResponse.json({ error: 'file_missing' }, { status: 400 })
 
-    const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase()
+    const ext = (picked.name?.split('.').pop() || 'jpg').toLowerCase()
     const objectPath = `${user.id}/avatar_${Date.now()}.${ext}`
-    const bytes = new Uint8Array(await file.arrayBuffer())
-    const contentType = file.type || (ext === 'png' ? 'image/png' : 'image/jpeg')
+    const bytes = new Uint8Array(await picked.arrayBuffer())
+    const contentType = picked.type || (ext === 'png' ? 'image/png' : 'image/jpeg')
 
-    // upload (user -> fallback admin)
+    // Upload: tenta com usuário; se falhar por RLS/ACL, tenta como admin
     let upErr = (await supabase.storage.from('avatars').upload(objectPath, bytes, {
-      cacheControl: '0', upsert: true, contentType,
+      cacheControl: '0',
+      upsert: true,
+      contentType,
     })).error
     if (upErr && admin) {
       const r2 = await admin.storage.from('avatars').upload(objectPath, bytes, {
-        cacheControl: '0', upsert: true, contentType,
+        cacheControl: '0',
+        upsert: true,
+        contentType,
       })
       upErr = r2.error || undefined
     }
     if (upErr) return NextResponse.json({ error: 'upload_failed', details: upErr.message }, { status: 500 })
 
-    // public url com bust
+    // URL pública com cache-busting
     const { data: pub } = supabase.storage.from('avatars').getPublicUrl(objectPath)
     const ver = Date.now().toString()
     const publicUrl = `${pub.publicUrl}?v=${ver}`
 
-    // ler previous avatar_path
+    // Lê avatar anterior para limpeza
     let previousPath: string | null = null
     try {
       const { data: profile } = await supabase.from('profiles').select('avatar_path').eq('id', user.id).maybeSingle()
       previousPath = profile?.avatar_path ?? null
     } catch {}
 
-    // atualizar perfil
+    // Atualiza profile (DB)
     await supabase.from('profiles').upsert({
       id: user.id,
       avatar_url: publicUrl,
@@ -57,20 +68,20 @@ export async function POST(req: Request) {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' })
 
-    // atualizar metadata da sessão (para header re-renderizar)
+    // Atualiza metadata da sessão para refletir no header imediatamente
     try {
       await supabase.auth.updateUser({ data: { avatar_url: publicUrl, avatar_path: objectPath, avatar_ver: ver } })
     } catch {}
 
-    // LIMPEZA SINCRONA: remove todos os arquivos antigos
+    // Limpeza SINCRONA: remove todos os arquivos exceto o atual
     try {
       const client = admin || supabase
       const { data: list } = await client.storage.from('avatars').list(user.id, { limit: 1000 })
-      const toDelete = (list || []).map(x => `${user.id}/${x.name}`).filter(p => p != objectPath)
+      const toDelete = (list || []).map(x => `${user.id}/${x.name}`).filter(p => p !== objectPath)
       if (toDelete.length) await client.storage.from('avatars').remove(toDelete)
     } catch {}
 
-    return NextResponse.json({ ok: true, avatar_url: publicUrl, ver })
+    return NextResponse.json({ ok: true, avatar_url: publicUrl, ver, path: objectPath })
   } catch (e: any) {
     return NextResponse.json({ error: 'unexpected', details: e?.message ?? String(e) }, { status: 500 })
   }

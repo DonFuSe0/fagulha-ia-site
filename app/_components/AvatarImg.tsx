@@ -22,7 +22,11 @@ export default function AvatarImg({ src, size=32, alt='Avatar', className }: Pro
       const v = (data.user?.user_metadata as any)?.avatar_ver
       if (v) setVer(String(v))
     })
-    return () => { mounted = false }
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      const v = (s?.user?.user_metadata as any)?.avatar_ver
+      if (v) setVer(String(v))
+    })
+    return () => { mounted = false; sub.subscription.unsubscribe() }
   }, [supabase])
 
   const url = useMemo(() => {
@@ -33,6 +37,7 @@ export default function AvatarImg({ src, size=32, alt='Avatar', className }: Pro
 
   return (
     <Image
+      key={ver || url}
       src={url}
       alt={alt}
       width={size}
