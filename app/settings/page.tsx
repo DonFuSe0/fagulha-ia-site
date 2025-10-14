@@ -210,9 +210,10 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
 
 
               {/* Exibe o cropper com a imagem atual do avatar se não houver arquivo selecionado */}
-              {(selectedUrl || profile?.avatar_url) && (
+              {/* Exibe o cropper grande SOMENTE quando um novo arquivo é selecionado */}
+              {selectedUrl && (
                 <AvatarCropper
-                  src={selectedUrl || (profile?.avatar_url ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}` : null)}
+                  src={selectedUrl}
                   onCropped={onCropped}
                   size={384}
                   className="mt-2"
