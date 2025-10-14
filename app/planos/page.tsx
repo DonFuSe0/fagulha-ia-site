@@ -1,4 +1,5 @@
 import AppHeader from '../_components/AppHeader'
+import PlanosAnimations from './PlanosAnimations'
 import { SparklesIcon, FireIcon, RocketLaunchIcon } from '@heroicons/react/24/solid'
 
 export const dynamic = "force-dynamic";
@@ -61,45 +62,9 @@ export default function PlanosPage() {
             <button className="mt-auto rounded-xl border border-pink-400 bg-pink-500/20 px-6 py-2 text-pink-100 hover:bg-pink-500/40 font-semibold shadow transition shadow-pink-400/10 hover:scale-105">Selecionar</button>
           </div>
         </div>
+        
         {/* Animations CSS */}
-        <style jsx global>{`
-          @keyframes gradient-move {
-            0% { transform: translateY(0) scale(1); }
-            50% { transform: translateY(-20px) scale(1.03); }
-            100% { transform: translateY(0) scale(1); }
-          }
-          .animate-gradient-move > div:first-child {
-            animation: gradient-move 8s ease-in-out infinite;
-          }
-          @keyframes spin-slow {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          .animate-spin-slow {
-            animation: spin-slow 24s linear infinite;
-          }
-          @keyframes text-glow {
-            0%, 100% { text-shadow: 0 0 8px #ff7a18, 0 0 24px #ffb347; }
-            50% { text-shadow: 0 0 24px #ffb347, 0 0 48px #ff7a18; }
-          }
-          .animate-text-glow {
-            animation: text-glow 2.5s ease-in-out infinite;
-          }
-          @keyframes card-float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-          }
-          .animate-card-float {
-            animation: card-float 3.5s ease-in-out infinite;
-          }
-          @keyframes bounce-slow {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
-          }
-          .animate-bounce-slow {
-            animation: bounce-slow 2.2s infinite;
-          }
-        `}</style>
+        <PlanosAnimations />
       </section>
     </>
   );
