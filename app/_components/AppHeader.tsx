@@ -80,7 +80,16 @@ export default function AppHeader() {
                 <Link href="/settings?tab=perfil" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Editar perfil</Link>
                 <Link href="/settings?tab=seguranca" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Alterar senha</Link>
                 <Link href="/planos" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Adquirir tokens</Link>
-                <Link href="/auth/logout" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Sair</Link>
+                <button
+                  onClick={async () => {
+                    await supabaseBrowser.auth.signOut();
+                    window.location.href = '/';
+                  }}
+                  role="menuitem"
+                  className="block w-full text-left px-3 py-2 rounded hover:bg-white/10"
+                >
+                  Sair
+                </button>
               </div>
             )}
           </div>
