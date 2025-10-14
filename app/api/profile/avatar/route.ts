@@ -64,7 +64,8 @@ export async function POST(req: Request){
   } catch {}
 
   console.log('Avatar upload - publicUrl:', publicUrl)
-  return NextResponse.json({ ok: true, avatar_url: publicUrl, ver }, {
+  // Retorna tanto a URL pública (para atualização imediata da UI) quanto o path salvo (para o app usar como fonte de verdade)
+  return NextResponse.json({ ok: true, avatar_url: publicUrl, avatar_path: savedPath, ver }, {
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
       'Pragma': 'no-cache',

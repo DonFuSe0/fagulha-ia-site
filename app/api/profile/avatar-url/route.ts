@@ -29,7 +29,7 @@ export async function GET(req: Request) {
     .eq('id', userId)
     .maybeSingle()
 
-  // Prioriza avatar_url do banco (mais atualizado)
+  // Prioriza avatar_url do banco (mais atualizado) — pode ser path (ex.: userId/file.jpg) ou URL absoluta
   let finalUrl = profile?.avatar_url as string | undefined
   
   // Só usa user_metadata como fallback se não temos nada no banco
@@ -39,6 +39,14 @@ export async function GET(req: Request) {
     if (metaUrl) {
       const sep = metaUrl.includes('?') ? '&' : '?'
       finalUrl = ver ? `${metaUrl}${sep}v=${encodeURIComponent(String(ver))}` : metaUrl
+    }
+  }
+
+  // Se veio um path relativo (sem http), converte para URL pública do Storage
+  if (finalUrl && !/^https?:\/\//i.test(finalUrl)) {
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL
+    if (base) {
+      finalUrl = `${base}/storage/v1/object/public/avatars/${finalUrl}`
     }
   }
 
