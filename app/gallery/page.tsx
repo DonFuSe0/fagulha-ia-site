@@ -4,6 +4,7 @@ export const revalidate = 0
 import GalleryGrid from './GalleryGrid'
 import AppHeader from '../_components/AppHeader'
 import { headers } from 'next/headers'
+import SkeletonLoader from '@/components/SkeletonLoader'
 
 type Item = {
   name?: string
@@ -40,6 +41,7 @@ export default async function Page() {
     : Array.isArray(raw?.data) ? raw.data
     : []
 
+  const isLoading = !raw
   return (
     <>
       <AppHeader />
@@ -56,7 +58,16 @@ export default async function Page() {
             <h1 className="text-xl font-semibold text-zinc-100 animate-text-glow drop-shadow-[0_2px_16px_rgba(244,114,182,0.18)]">Minha Galeria</h1>
             <a href="/dashboard" className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10 shadow shadow-pink-400/10 transition-transform hover:scale-105">Voltar</a>
           </div>
-          <GalleryGrid items={items} />
+          {isLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              <SkeletonLoader className="h-60 w-full mb-2" />
+              <SkeletonLoader className="h-60 w-full mb-2" />
+              <SkeletonLoader className="h-60 w-full mb-2" />
+              <SkeletonLoader className="h-60 w-full mb-2" />
+            </div>
+          ) : (
+            <GalleryGrid items={items} />
+          )}
         </main>
         {/* Animations CSS */}
         <style jsx global>{`
