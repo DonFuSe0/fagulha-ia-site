@@ -81,7 +81,7 @@ function AvatarDisplay({ nickname }: { nickname: string }) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const base = isFullUrl
       ? avatarUrl
-      : `${supabaseUrl}/storage/v1/object/public/${avatarUrl}`;
+  : `${supabaseUrl}/storage/v1/object/public/avatars/${avatarUrl}`;
     imageUrl = `${base}${base.includes('?') ? '&' : '?'}cb=${tick}`;
   }
 
