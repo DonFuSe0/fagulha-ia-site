@@ -259,8 +259,8 @@ export default function DashboardPage() {
         {/* Header row */}
         <header className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight drop-shadow-[0_2px_16px_rgba(255,122,24,0.18)] animate-text-glow">Bem-vindo, <span className="text-brand">{nickname}</span></h1>
-            <p className="text-zinc-300 mt-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.18)]">Acompanhe suas compras, consumo de tokens e últimas criações.</p>
+            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Bem-vindo, <span className="text-brand">{nickname}</span></h1>
+            <p className="text-zinc-300 mt-2">Acompanhe suas compras, consumo de tokens e últimas criações.</p>
           </div>
           <div className="hidden md:flex gap-3">
             <Link href="/generate" className="rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-2 font-medium shadow-lg shadow-orange-900/20 transition">Criar agora</Link>
@@ -272,7 +272,7 @@ export default function DashboardPage() {
           {/* Compras */}
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 shadow-lg shadow-amber-400/10 hover:scale-[1.025] transition-transform duration-300">
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-              <h2 className="font-semibold animate-text-glow">Histórico de compras</h2>
+              <h2 className="font-semibold">Histórico de compras</h2>
               <div className="text-xs text-zinc-400">últimas 10</div>
             </div>
             <div className="p-4 space-y-3">
@@ -298,7 +298,7 @@ export default function DashboardPage() {
           {/* Gastos */}
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 shadow-lg shadow-emerald-400/10 hover:scale-[1.025] transition-transform duration-300">
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-              <h2 className="font-semibold animate-text-glow">Gastos de tokens</h2>
+              <h2 className="font-semibold">Gastos de tokens</h2>
               <div className="text-xs text-zinc-400">últimos 10</div>
             </div>
             <div className="p-4 space-y-3">
@@ -324,7 +324,7 @@ export default function DashboardPage() {
           {/* Últimas gerações */}
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 shadow-lg shadow-pink-400/10 hover:scale-[1.025] transition-transform duration-300">
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-              <h2 className="font-semibold animate-text-glow">Últimas gerações</h2>
+              <h2 className="font-semibold">Últimas gerações</h2>
               <div className="text-xs text-zinc-400">4 mais recentes</div>
             </div>
             <div className="p-4 grid grid-cols-2 gap-3">
