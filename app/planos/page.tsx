@@ -17,8 +17,8 @@ export default function PlanosPage() {
             style={{background: 'radial-gradient(ellipse at 80% 80%, #34d399 0%, #0f172a 70%)'}} />
         </div>
         <div className="mx-auto max-w-4xl px-4 pt-10 pb-4 text-center">
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-white drop-shadow-lg flex items-center justify-center gap-2"> <SparklesIcon className="w-8 h-8 text-amber-300 animate-pulse" /> Planos de Tokens </h1>
-          <p className="mt-4 text-lg text-zinc-200 max-w-2xl mx-auto drop-shadow-[0_2px_8px_rgba(0,0,0,0.18)]">Escolha o plano ideal para liberar sua criatividade e gerar imagens incríveis com a Fagulha IA!</p>
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-white flex items-center justify-center gap-2"> <SparklesIcon className="w-8 h-8 text-amber-300 animate-pulse" /> Planos de Tokens </h1>
+          <p className="mt-4 text-lg text-zinc-200 max-w-2xl mx-auto">Escolha o plano ideal para liberar sua criatividade e gerar imagens incríveis com a Fagulha IA!</p>
         </div>
         <div className="mx-auto max-w-5xl px-4 grid gap-8 sm:grid-cols-3 mt-10">
           {/* Fagulha Semente */}
