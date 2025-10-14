@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import AvatarCropper from './AvatarCropper'
+import { publicAvatarUrl } from '@/lib/utils/avatar'
 
 import SettingsNotifier from './SettingsNotifier'
 type SettingsPageProps = {
@@ -106,11 +107,12 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         const j = await res.json().catch(() => ({}))
         throw new Error(j?.error || 'Falha ao enviar avatar')
       }
-      const j = await res.json()
-      const newAvatarUrl = j?.avatar_url
+  const j = await res.json()
+  const newAvatarPath: string | undefined = j?.avatar_path
+  const newAvatarUrl: string | undefined = j?.avatar_url
       
-      // Atualiza avatar atual imediatamente com o retornado pela API
-      setProfile(p => ({ ...p, avatar_url: newAvatarUrl ?? p?.avatar_url }))
+  // Atualiza avatar no estado com o PATH salvo (fonte de verdade)
+  setProfile(p => ({ ...p, avatar_url: newAvatarPath ?? p?.avatar_url }))
       
       // limpa estados locais
       setSelectedUrl(null)
@@ -120,7 +122,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       // Dispara evento customizado com delay para evitar conflitos
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('avatar:updated', { 
-          detail: { url: newAvatarUrl } 
+          detail: { url: newAvatarUrl, path: newAvatarPath, ver: j?.ver } 
         }))
       }, 100)
       
@@ -140,7 +142,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
   const smallPreviewSrc =
     croppedPreviewUrl
     || selectedUrl
-    || (profile?.avatar_url ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}` : null)
+    || publicAvatarUrl(profile?.avatar_url)
 
   return (
     <div className="min-h-[60vh] w-full relative overflow-hidden">

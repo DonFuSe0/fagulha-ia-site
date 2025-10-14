@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { publicAvatarUrl } from '@/lib/utils/avatar'
 
 export default function AvatarImg({ src, size=32, alt='Avatar', className }:{src?:string,size?:number,alt?:string,className?:string}){
   const supabase = createClientComponentClient()
@@ -25,19 +26,9 @@ export default function AvatarImg({ src, size=32, alt='Avatar', className }:{src
   },[])
   
   const url = useMemo(()=>{
-    const base = src || '/avatar-placeholder.png'
-    const sep = base.includes('?') ? '&' : '?'
-    
-    // Cache busting simples
-    const cacheParam = `cb=${tick}`
-    
-    // Se temos uma URL do src (do banco), usa ela
-    if (src && src !== '/avatar-placeholder.png') {
-      return `${base}${sep}${cacheParam}`
-    }
-    
-    // Senão, usa placeholder
-    return `/avatar-placeholder.png?${cacheParam}`
+    const built = publicAvatarUrl(src, { cb: tick })
+    if (built) return built
+    return `/avatar-placeholder.png?cb=${tick}`
   },[src,tick])
   
   return (

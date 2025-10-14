@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { publicAvatarUrl } from '@/lib/utils/avatar'
 import CreditsBadge from '@/app/_components/CreditsBadge'
 import SkeletonLoader from '@/components/SkeletonLoader'
 
@@ -61,11 +62,10 @@ function AvatarDisplay({ nickname }: { nickname: string }) {
       if (!mounted) return
       const detail = e.detail as any
       const newUrl = detail?.url as string | undefined
+      const newPath = detail?.path as string | undefined
 
-      if (newUrl) {
-        setAvatarUrl(newUrl)
-        setTick(Date.now())
-      }
+      const computed = newUrl || (newPath ? publicAvatarUrl(newPath, { cb: Date.now() }) : null)
+      if (computed) { setAvatarUrl(computed); setTick(Date.now()) }
     }
     window.addEventListener('avatar:updated', handler as any)
 
@@ -76,15 +76,7 @@ function AvatarDisplay({ nickname }: { nickname: string }) {
   }, [])
 
   // Monta a URL do Supabase Storage se avatarUrl for relativo
-  let imageUrl = null;
-  if (avatarUrl) {
-    const isFullUrl = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const base = isFullUrl
-      ? avatarUrl
-  : `${supabaseUrl}/storage/v1/object/public/avatars/${avatarUrl}`;
-    imageUrl = `${base}${base.includes('?') ? '&' : '?'}cb=${tick}`;
-  }
+  let imageUrl = avatarUrl ? publicAvatarUrl(avatarUrl, { cb: tick }) : null
 
   console.log('AvatarDisplay - avatarUrl:', avatarUrl, 'imageUrl:', imageUrl)
 
