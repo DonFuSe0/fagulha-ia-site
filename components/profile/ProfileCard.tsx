@@ -1,5 +1,6 @@
 'use client'
 import Image from 'next/image'
+import { publicAvatarUrl } from '@/lib/utils/avatar'
 
 type Props = {
   userId: string
@@ -18,11 +19,12 @@ function defaultAvatarFor(userId: string) {
 
 export default function ProfileCard({ userId, email, nickname, avatarUrl, credits }: Props) {
   const fallback = defaultAvatarFor(userId)
+  const resolved = publicAvatarUrl(avatarUrl) || fallback
   const name = nickname ?? (email?.split('@')[0] ?? 'Usuário')
   return (
     <div className="rounded-2xl p-5 bg-neutral-900/50 border border-neutral-800 flex items-center gap-4">
       <div className="relative w-16 h-16 overflow-hidden rounded-full ring-1 ring-white/10">
-        <Image src={avatarUrl || fallback} alt="Avatar" fill className="object-cover" />
+  <Image src={resolved} alt="Avatar" fill className="object-cover" />
       </div>
       <div className="flex-1">
         <div className="text-white font-medium text-lg">{name}</div>

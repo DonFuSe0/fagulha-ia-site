@@ -100,7 +100,7 @@ export default function UploadAvatarForm() {
 
       // 3) em último caso, pós-pequeno delay, dá um "ping" visual para re-render do Next/Image
       setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('avatar:updated', { detail: { url: data?.avatar_url, ver: data?.ver } }))
+        window.dispatchEvent(new CustomEvent('avatar:updated', { detail: { url: data?.avatar_url, path: data?.avatar_path, ver: data?.ver } }))
       }, 300)
 
     } catch (err: any) {

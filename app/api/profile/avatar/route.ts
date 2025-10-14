@@ -24,7 +24,15 @@ export async function POST(req: Request){
   const picked = (form.get('file') || form.get('avatar')) as File | null
   if(!picked) return NextResponse.json({ error: 'file_missing' }, { status: 400 })
 
-  const ext = (picked.name?.split('.').pop() || 'jpg').toLowerCase()
+  // Validação de tipo e tamanho
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp']
+  if (!allowedTypes.includes(picked.type)) {
+    return NextResponse.json({ error: 'invalid_type', details: 'Apenas PNG, JPG ou WEBP são aceitos.' }, { status: 400 })
+  }
+  if (picked.size > 3 * 1024 * 1024) {
+    return NextResponse.json({ error: 'too_large', details: 'Tamanho máximo: 3MB.' }, { status: 400 })
+  }
+  const ext = (picked.name?.split('.')?.pop() || 'jpg').toLowerCase()
   const objectPath = `${user.id}/avatar_${Date.now()}.${ext}`
   const bytes = new Uint8Array(await picked.arrayBuffer())
   const contentType = picked.type || (ext === 'png' ? 'image/png' : 'image/jpeg')
@@ -64,7 +72,8 @@ export async function POST(req: Request){
   } catch {}
 
   console.log('Avatar upload - publicUrl:', publicUrl)
-  return NextResponse.json({ ok: true, avatar_url: publicUrl, ver }, {
+  // Retorna tanto a URL pública (para atualização imediata da UI) quanto o path salvo (para o app usar como fonte de verdade)
+  return NextResponse.json({ ok: true, avatar_url: publicUrl, avatar_path: savedPath, ver }, {
     headers: {
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
       'Pragma': 'no-cache',

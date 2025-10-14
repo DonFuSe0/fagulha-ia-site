@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import HomeCtaSwitch from '@/app/_components/HomeCtaSwitch'
+import PageAnimations from '@/app/_components/PageAnimations'
 import { createClient } from '@/lib/supabase/server'
 
 async function PublicFeed() {
@@ -37,11 +38,15 @@ async function PublicFeed() {
 
 export default async function Home() {
   return (
-    <div className="min-h-screen bg-background text-gray-200 relative">
-      {/* Glow */}
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-1/3 left-1/2 -translate-x-1/2 w-[1400px] h-[1400px] rounded-full blur-3xl opacity-20"
-             style={{background: 'radial-gradient(closest-side, #ff7a18, transparent 70%)'}} />
+    <div className="min-h-screen relative overflow-x-hidden text-gray-200">
+      {/* Gradiente animado de fundo */}
+      <div className="pointer-events-none absolute inset-0 -z-10 animate-gradient-move">
+        <div className="absolute -top-1/3 left-1/2 -translate-x-1/2 w-[1600px] h-[1600px] rounded-full blur-3xl opacity-30 animate-pulse"
+          style={{background: 'radial-gradient(ellipse at 60% 40%, #ff7a18 0%, #ffb347 40%, #ff7a18 70%, transparent 100%)'}} />
+        <div className="absolute top-1/4 left-1/4 w-[900px] h-[900px] rounded-full blur-2xl opacity-20 animate-spin-slow"
+          style={{background: 'radial-gradient(ellipse at 30% 70%, #34d399 0%, #2563eb 60%, transparent 100%)'}} />
+        <div className="absolute bottom-0 right-0 w-[700px] h-[700px] rounded-full blur-2xl opacity-20 animate-spin-reverse"
+          style={{background: 'radial-gradient(ellipse at 80% 80%, #f472b6 0%, #a21caf 60%, transparent 100%)'}} />
       </div>
 
       {/* Top bar */}
@@ -64,22 +69,25 @@ export default async function Home() {
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight">
             Crie imagens incríveis com <span className="text-brand">IA</span>.
           </h1>
-          <p className="text-zinc-400 mt-4 text-lg">
+          <p className="text-zinc-300 mt-4 text-lg">
             Gerações rápidas, estilos variados e uma comunidade vibrante.
             Compartilhe suas criações e descubra novas ideias.
           </p>
           <div className="mt-6 flex gap-3">
-            <Link href="/generate" className="rounded-xl bg-orange-600 hover:bg-orange-500 px-5 py-3 font-medium">Começar agora</Link>
-            <Link href="/gallery" className="rounded-xl border border-zinc-700 hover:border-brand px-5 py-3">Explorar</Link>
+            <Link href="/generate" className="rounded-xl bg-orange-600 hover:bg-orange-500 px-5 py-3 font-medium shadow-lg shadow-orange-900/20 transition">Começar agora</Link>
+            <Link href="/gallery" className="rounded-xl border border-zinc-700 hover:border-brand px-5 py-3 bg-black/30 backdrop-blur">Explorar</Link>
           </div>
         </div>
       </header>
 
       {/* Public feed */}
       <main className="max-w-7xl mx-auto px-4 pb-16">
-        <h2 className="text-lg font-semibold">Criações públicas</h2>
+  <h2 className="text-lg font-semibold">Criações públicas</h2>
         {await PublicFeed()}
       </main>
+      
+      {/* Animations CSS */}
+      <PageAnimations />
     </div>
   )
 }

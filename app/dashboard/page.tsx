@@ -7,7 +7,9 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { publicAvatarUrl } from '@/lib/utils/avatar'
 import CreditsBadge from '@/app/_components/CreditsBadge'
+import SkeletonLoader from '@/components/SkeletonLoader'
 
 type TokenRow = {
   id: string
@@ -60,11 +62,10 @@ function AvatarDisplay({ nickname }: { nickname: string }) {
       if (!mounted) return
       const detail = e.detail as any
       const newUrl = detail?.url as string | undefined
+      const newPath = detail?.path as string | undefined
 
-      if (newUrl) {
-        setAvatarUrl(newUrl)
-        setTick(Date.now())
-      }
+      const computed = newUrl || (newPath ? publicAvatarUrl(newPath, { cb: Date.now() }) : null)
+      if (computed) { setAvatarUrl(computed); setTick(Date.now()) }
     }
     window.addEventListener('avatar:updated', handler as any)
 
@@ -75,15 +76,7 @@ function AvatarDisplay({ nickname }: { nickname: string }) {
   }, [])
 
   // Monta a URL do Supabase Storage se avatarUrl for relativo
-  let imageUrl = null;
-  if (avatarUrl) {
-    const isFullUrl = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const base = isFullUrl
-      ? avatarUrl
-  : `${supabaseUrl}/storage/v1/object/public/avatars/${avatarUrl}`;
-    imageUrl = `${base}${base.includes('?') ? '&' : '?'}cb=${tick}`;
-  }
+  let imageUrl = avatarUrl ? publicAvatarUrl(avatarUrl, { cb: tick }) : null
 
   console.log('AvatarDisplay - avatarUrl:', avatarUrl, 'imageUrl:', imageUrl)
 
@@ -250,41 +243,48 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="min-h-screen bg-background text-gray-200 relative">
-      {/* Hero BG */}
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute -top-1/3 left-1/2 -translate-x-1/2 w-[1200px] h-[1200px] rounded-full blur-3xl opacity-20"
-             style={{background: 'radial-gradient(closest-side, #ff7a18, transparent 70%)'}} />
+    <div className="min-h-screen relative bg-background text-gray-200 overflow-hidden">
+      {/* Gradiente animado de fundo */}
+      <div className="pointer-events-none absolute inset-0 -z-10 animate-gradient-move">
+        <div className="absolute -top-1/3 left-1/2 -translate-x-1/2 w-[1400px] h-[1400px] rounded-full blur-3xl opacity-20 animate-pulse"
+          style={{background: 'radial-gradient(ellipse at 60% 40%, #ff7a18 0%, #ffb347 40%, #ff7a18 70%, transparent 100%)'}} />
+        <div className="absolute top-1/4 left-1/4 w-[900px] h-[900px] rounded-full blur-2xl opacity-20 animate-spin-slow"
+          style={{background: 'radial-gradient(ellipse at 30% 70%, #34d399 0%, #2563eb 60%, transparent 100%)'}} />
+        <div className="absolute bottom-0 right-0 w-[700px] h-[700px] rounded-full blur-2xl opacity-20 animate-spin-reverse"
+          style={{background: 'radial-gradient(ellipse at 80% 80%, #f472b6 0%, #a21caf 60%, transparent 100%)'}} />
       </div>
-
-  <TopNav nickname={nickname} />
-
+      <TopNav nickname={nickname} />
       <main className="max-w-7xl mx-auto px-4 py-10 space-y-10">
         {/* Header row */}
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Bem-vindo, <span className="text-brand">{nickname}</span></h1>
-            <p className="text-zinc-400 mt-2">Acompanhe suas compras, consumo de tokens e últimas criações.</p>
+            <p className="text-zinc-300 mt-2">Acompanhe suas compras, consumo de tokens e últimas criações.</p>
           </div>
           <div className="hidden md:flex gap-3">
-            <Link href="/generate" className="rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-2 font-medium">Criar agora</Link>
-            <Link href="/planos" className="rounded-xl border border-zinc-700 hover:border-brand px-4 py-2">Adquirir Tokens</Link>
+            <Link href="/generate" className="rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-2 font-medium shadow-lg shadow-orange-900/20 transition">Criar agora</Link>
+            <Link href="/planos" className="rounded-xl border border-zinc-700 hover:border-brand px-4 py-2 bg-black/30 backdrop-blur">Adquirir Tokens</Link>
           </div>
         </header>
-
         {/* 3-column grid */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Compras */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02)]">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 shadow-lg shadow-amber-400/10 hover:scale-[1.025] transition-transform duration-300">
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
               <h2 className="font-semibold">Histórico de compras</h2>
               <div className="text-xs text-zinc-400">últimas 10</div>
             </div>
             <div className="p-4 space-y-3">
-              {loading && <div className="text-zinc-400 text-sm">Carregando…</div>}
+              {loading && (
+                <>
+                  <SkeletonLoader className="h-10 w-full mb-2" />
+                  <SkeletonLoader className="h-10 w-full mb-2" />
+                  <SkeletonLoader className="h-10 w-full mb-2" />
+                </>
+              )}
               {!loading && purchases.length === 0 && <div className="text-zinc-400 text-sm">Nenhuma compra encontrada.</div>}
               {purchases.map((p) => (
-                <div key={p.id} className="flex items-center justify-between text-sm bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2">
+                <div key={p.id} className="flex items-center justify-between text-sm bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2 hover:bg-zinc-900/60 transition-colors">
                   <div className="space-y-0.5">
                     <div className="text-gray-100">+{p.amount ?? 0} tokens</div>
                     <div className="text-zinc-500">{p.created_at ? new Date(p.created_at).toLocaleString() : '—'}</div>
@@ -294,18 +294,23 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
-
           {/* Gastos */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02)]">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 shadow-lg shadow-emerald-400/10 hover:scale-[1.025] transition-transform duration-300">
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
               <h2 className="font-semibold">Gastos de tokens</h2>
               <div className="text-xs text-zinc-400">últimos 10</div>
             </div>
             <div className="p-4 space-y-3">
-              {loading && <div className="text-zinc-400 text-sm">Carregando…</div>}
+              {loading && (
+                <>
+                  <SkeletonLoader className="h-10 w-full mb-2" />
+                  <SkeletonLoader className="h-10 w-full mb-2" />
+                  <SkeletonLoader className="h-10 w-full mb-2" />
+                </>
+              )}
               {!loading && usages.length === 0 && <div className="text-zinc-400 text-sm">Nenhum gasto encontrado.</div>}
               {usages.map((u) => (
-                <div key={u.id} className="flex items-center justify-between text-sm bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2">
+                <div key={u.id} className="flex items-center justify-between text-sm bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2 hover:bg-zinc-900/60 transition-colors">
                   <div className="space-y-0.5">
                     <div className="text-gray-100">-{Math.abs(u.amount ?? 0)} tokens</div>
                     <div className="text-zinc-500">{u.created_at ? new Date(u.created_at).toLocaleString() : '—'}</div>
@@ -315,23 +320,27 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
-
           {/* Últimas gerações */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.02)]">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 shadow-lg shadow-pink-400/10 hover:scale-[1.025] transition-transform duration-300">
             <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
               <h2 className="font-semibold">Últimas gerações</h2>
               <div className="text-xs text-zinc-400">4 mais recentes</div>
             </div>
             <div className="p-4 grid grid-cols-2 gap-3">
-              {loading && <div className="col-span-2 text-zinc-400 text-sm">Carregando…</div>}
+              {loading && (
+                <>
+                  <SkeletonLoader className="h-32 w-full mb-2 col-span-2" />
+                  <SkeletonLoader className="h-32 w-full mb-2 col-span-2" />
+                </>
+              )}
               {!loading && gens.length === 0 && <div className="col-span-2 text-zinc-400 text-sm">Nenhuma geração encontrado.</div>}
               {gens.map((g) => (
-                <div key={g.id} className="aspect-square relative rounded-xl overflow-hidden border border-zinc-800">
+                <div key={g.id} className="aspect-square relative rounded-xl overflow-hidden border border-zinc-800 group">
                   <Image
                     src={(g.thumb_url || g.image_url || '/gallery/1.jpg') as string}
                     alt={g.prompt || 'Geração'}
                     fill
-                    className="object-cover"
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
                     sizes="(max-width:768px) 50vw, (max-width:1200px) 33vw, 25vw"
                   />
                 </div>
@@ -340,6 +349,38 @@ export default function DashboardPage() {
           </div>
         </section>
       </main>
+      {/* Animations CSS */}
+      <style jsx global>{`
+        @keyframes gradient-move {
+          0% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-30px) scale(1.04); }
+          100% { transform: translateY(0) scale(1); }
+        }
+        .animate-gradient-move > div:first-child {
+          animation: gradient-move 8s ease-in-out infinite;
+        }
+        @keyframes spin-slow {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 24s linear infinite;
+        }
+        @keyframes spin-reverse {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(-360deg); }
+        }
+        .animate-spin-reverse {
+          animation: spin-reverse 32s linear infinite;
+        }
+        @keyframes text-glow {
+          0%, 100% { text-shadow: 0 0 8px #ff7a18, 0 0 24px #ffb347; }
+          50% { text-shadow: 0 0 24px #ffb347, 0 0 48px #ff7a18; }
+        }
+        .animate-text-glow {
+          animation: text-glow 2.5s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   )
 }

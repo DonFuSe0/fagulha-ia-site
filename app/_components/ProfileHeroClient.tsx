@@ -2,6 +2,7 @@
 'use client'
 
 import Image from 'next/image'
+import { publicAvatarUrl } from '@/lib/utils/avatar'
 import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
@@ -44,7 +45,7 @@ export default function ProfileHeroClient({ name, avatarUrl }: Props) {
   }, [])
 
   // Se nada disso acontecer, mas o server já mandou profiles.avatar_url com ?v=, mantemos.
-  const fallback = src || '/avatar-placeholder.png'
+  const fallback = publicAvatarUrl(src) || '/avatar-placeholder.png'
 
   return (
     <section className="w-full max-w-5xl mx-auto py-6 px-4 flex items-center gap-4">
