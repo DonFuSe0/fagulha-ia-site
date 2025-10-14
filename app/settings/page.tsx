@@ -143,7 +143,11 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
     || (profile?.avatar_url ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}` : null)
 
   return (
-    <div className="min-h-[60vh] w-full">
+    <div className="min-h-[60vh] w-full relative">
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute left-1/2 top-0 -translate-x-1/2 w-[900px] h-[900px] rounded-full blur-3xl opacity-20"
+             style={{background: 'radial-gradient(ellipse at center, #818cf8 0%, #0f172a 70%)'}} />
+      </div>
       <nav className="border-b border-white/10 bg-black/50 backdrop-blur">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-4">
           <Link href="/dashboard" className="text-sm text-zinc-300 hover:text-white">← Voltar</Link>

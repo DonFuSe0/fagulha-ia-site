@@ -43,13 +43,19 @@ export default async function Page() {
   return (
     <>
       <AppHeader />
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-semibold text-zinc-100">Minha Galeria</h1>
-          <a href="/dashboard" className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10">Voltar</a>
+      <div className="relative min-h-screen">
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <div className="absolute left-1/2 top-0 -translate-x-1/2 w-[900px] h-[900px] rounded-full blur-3xl opacity-25"
+               style={{background: 'radial-gradient(ellipse at center, #f472b6 0%, #0f172a 70%)'}} />
         </div>
-        <GalleryGrid items={items} />
-      </main>
+        <main className="max-w-6xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-xl font-semibold text-zinc-100">Minha Galeria</h1>
+            <a href="/dashboard" className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10">Voltar</a>
+          </div>
+          <GalleryGrid items={items} />
+        </main>
+      </div>
     </>
   )
 }
