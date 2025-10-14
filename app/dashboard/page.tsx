@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import CreditsBadge from '@/app/_components/CreditsBadge'
+import SkeletonLoader from '@/components/SkeletonLoader'
 
 type TokenRow = {
   id: string
@@ -282,7 +283,13 @@ export default function DashboardPage() {
               <div className="text-xs text-zinc-400">últimas 10</div>
             </div>
             <div className="p-4 space-y-3">
-              {loading && <div className="text-zinc-400 text-sm">Carregando…</div>}
+              {loading && (
+                <>
+                  <SkeletonLoader className="h-10 w-full mb-2" />
+                  <SkeletonLoader className="h-10 w-full mb-2" />
+                  <SkeletonLoader className="h-10 w-full mb-2" />
+                </>
+              )}
               {!loading && purchases.length === 0 && <div className="text-zinc-400 text-sm">Nenhuma compra encontrada.</div>}
               {purchases.map((p) => (
                 <div key={p.id} className="flex items-center justify-between text-sm bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2 hover:bg-zinc-900/60 transition-colors">
