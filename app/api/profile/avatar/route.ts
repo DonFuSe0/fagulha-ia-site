@@ -24,7 +24,15 @@ export async function POST(req: Request){
   const picked = (form.get('file') || form.get('avatar')) as File | null
   if(!picked) return NextResponse.json({ error: 'file_missing' }, { status: 400 })
 
-  const ext = (picked.name?.split('.').pop() || 'jpg').toLowerCase()
+  // Validação de tipo e tamanho
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/webp']
+  if (!allowedTypes.includes(picked.type)) {
+    return NextResponse.json({ error: 'invalid_type', details: 'Apenas PNG, JPG ou WEBP são aceitos.' }, { status: 400 })
+  }
+  if (picked.size > 3 * 1024 * 1024) {
+    return NextResponse.json({ error: 'too_large', details: 'Tamanho máximo: 3MB.' }, { status: 400 })
+  }
+  const ext = (picked.name?.split('.')?.pop() || 'jpg').toLowerCase()
   const objectPath = `${user.id}/avatar_${Date.now()}.${ext}`
   const bytes = new Uint8Array(await picked.arrayBuffer())
   const contentType = picked.type || (ext === 'png' ? 'image/png' : 'image/jpeg')

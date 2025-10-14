@@ -23,6 +23,11 @@ const nextConfig = {
         hostname: 'img.freepik.com',
         pathname: '/**',
       },
+        {
+          protocol: 'https',
+          hostname: process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/^https?:\/\//, '').replace(/\/$/, ''),
+          pathname: '/storage/v1/object/public/avatars/**',
+        },
     ],
   },
 
