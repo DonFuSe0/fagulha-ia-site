@@ -67,7 +67,7 @@ export default async function Home() {
       <header className="max-w-7xl mx-auto px-4 py-16 md:py-24 relative">
         <div className="max-w-3xl">
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight drop-shadow-[0_2px_16px_rgba(255,122,24,0.25)]">
-            Crie imagens incríveis com <span className="text-brand animate-text-glow">IA</span>.
+            Crie imagens incríveis com <span className="text-brand">IA</span>.
           </h1>
           <p className="text-zinc-300 mt-4 text-lg drop-shadow-[0_2px_8px_rgba(0,0,0,0.18)]">
             Gerações rápidas, estilos variados e uma comunidade vibrante.

@@ -18,13 +18,6 @@ export default function ExplorarAnimations() {
       .animate-spin-slow {
         animation: spin-slow 24s linear infinite;
       }
-      @keyframes text-glow {
-        0%, 100% { text-shadow: 0 0 8px #34d399, 0 0 24px #818cf8; }
-        50% { text-shadow: 0 0 24px #818cf8, 0 0 48px #34d399; }
-      }
-      .animate-text-glow {
-        animation: text-glow 2.5s ease-in-out infinite;
-      }
     `}</style>
   )
 }

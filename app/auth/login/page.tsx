@@ -31,7 +31,7 @@ export default function LoginPage() {
           style={{background: 'radial-gradient(ellipse at 80% 80%, #818cf8 0%, #0f172a 70%)'}} />
       </div>
       <div className="w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-6 animate-text-glow drop-shadow-[0_2px_16px_rgba(255,122,24,0.18)]">Entrar</h1>
+  <h1 className="text-3xl font-bold text-center mb-6 drop-shadow-[0_2px_16px_rgba(255,122,24,0.18)]">Entrar</h1>
         <form onSubmit={onSubmit} className="space-y-4 bg-zinc-900/70 p-6 rounded-2xl border border-zinc-800 shadow-xl shadow-black/30 backdrop-blur">
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm text-zinc-300">E-mail</label>
