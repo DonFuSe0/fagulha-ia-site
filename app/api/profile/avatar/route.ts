@@ -47,7 +47,7 @@ export async function POST(req: Request){
 
   // read previous path
   // Salva o path real do arquivo em avatar_url
-  const upsertResult = await supabase.from('profiles').upsert({ id: user.id, avatar_url: savedPath, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+  const upsertResult = await supabase.from('profiles').upsert({ id: user.id, avatar_url: savedPath }, { onConflict: 'id' })
   if (upsertResult.error) {
     console.error('Erro ao atualizar profile:', upsertResult.error)
     return NextResponse.json({ error: 'profile_update_failed', details: upsertResult.error.message }, { status: 500 })
