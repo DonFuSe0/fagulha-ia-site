@@ -1,9 +1,15 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
-import { usePathname } from 'next/navigation'
+import React from 'react'
+
+// Transição desativada temporariamente (remoção solicitada)
+// import { AnimatePresence, motion } from 'framer-motion'
+// import { usePathname } from 'next/navigation'
 
 export default function PageTransition({ children }: { children: React.ReactNode }) {
+  // Versão sem animação para evitar flicker / atraso.
+  return <>{children}</>
+  /* Código anterior preservado:
   const pathname = usePathname()
   return (
     <AnimatePresence>
@@ -19,4 +25,5 @@ export default function PageTransition({ children }: { children: React.ReactNode
       </motion.div>
     </AnimatePresence>
   )
+  */
 }
