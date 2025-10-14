@@ -11,7 +11,7 @@ export default function BemVindoPage() {
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full blur-2xl opacity-20 animate-spin-slow"
           style={{background: 'radial-gradient(ellipse at 80% 80%, #ff7a18 0%, #0f172a 70%)'}} />
       </div>
-         <h1 className="text-3xl font-bold text-white drop-shadow-[0_2px_16px_rgba(52,211,153,0.18)]">🎉 Conta confirmada!</h1>
+      <h1 className="text-3xl font-bold text-white">🎉 Conta confirmada!</h1>
       <p className="mt-3 text-gray-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.18)]">
         Sua conta foi confirmada e seus créditos de boas-vindas já foram liberados.
       </p>

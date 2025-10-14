@@ -66,10 +66,10 @@ export default async function Home() {
       {/* Hero */}
       <header className="max-w-7xl mx-auto px-4 py-16 md:py-24 relative">
         <div className="max-w-3xl">
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight drop-shadow-[0_2px_16px_rgba(255,122,24,0.25)]">
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight">
             Crie imagens incríveis com <span className="text-brand">IA</span>.
           </h1>
-          <p className="text-zinc-300 mt-4 text-lg drop-shadow-[0_2px_8px_rgba(0,0,0,0.18)]">
+          <p className="text-zinc-300 mt-4 text-lg">
             Gerações rápidas, estilos variados e uma comunidade vibrante.
             Compartilhe suas criações e descubra novas ideias.
           </p>
@@ -82,7 +82,7 @@ export default async function Home() {
 
       {/* Public feed */}
       <main className="max-w-7xl mx-auto px-4 pb-16">
-        <h2 className="text-lg font-semibold drop-shadow-[0_2px_8px_rgba(0,0,0,0.18)]">Criações públicas</h2>
+  <h2 className="text-lg font-semibold">Criações públicas</h2>
         {await PublicFeed()}
       </main>
       
