@@ -9,7 +9,7 @@ export const revalidate = 0
 export async function POST(req: Request) {
   const supabase = createRouteHandlerClient<any>({ cookies })
   await supabase.auth.signOut()
-  return NextResponse.redirect(new URL('/auth/login', req.url))
+  return NextResponse.redirect(new URL('/', req.url))
 }
 
 export async function GET() {
