@@ -24,7 +24,7 @@ export default function UserMenu({ isLogged, avatarSrc="/avatars/fire-1.png", ni
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(v => !v)} className="flex items-center gap-2 rounded-full pl-2 pr-2.5 py-1 hover:bg-white/10">
         <span className="relative h-8 w-8 overflow-hidden rounded-full ring-2 ring-white/15">
-          <Image src={avatarSrc} alt="avatar" fill className="object-cover" />
+          <Image src={resolvedAvatar} alt="avatar" fill className="object-cover" />
         </span>
         <span className="max-w-[140px] truncate text-sm text-white/90">{nickname}</span>
         {typeof credits === "number" && (
