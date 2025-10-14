@@ -47,7 +47,8 @@ export async function POST(req: Request){
     previousPath = profile?.avatar_path ?? null
   } catch {}
 
-  await supabase.from('profiles').upsert({ id: user.id, avatar_url: publicUrl, avatar_path: objectPath, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+  // Salva o path relativo do arquivo em avatar_url
+  await supabase.from('profiles').upsert({ id: user.id, avatar_url: objectPath, avatar_path: objectPath, updated_at: new Date().toISOString() }, { onConflict: 'id' })
   try { await supabase.auth.updateUser({ data: { avatar_url: publicUrl, avatar_path: objectPath, avatar_ver: ver } }) } catch {}
 
   // delete others synchronously
