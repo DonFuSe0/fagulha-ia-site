@@ -54,10 +54,10 @@ export default function GalleryGrid({ items }: Props) {
       for (const n of names) {
         const alt = (n.split('/').pop() || n)
         const row = map[n] || map[alt]
-        // 👇 regra: uma vez bloqueado, permanece bloqueado (nunca limpa por hidratação)
-        const wasLocked = !!prev[n]
-        const nowLocked = !!row?.public_revoked
-        next[n] = wasLocked || nowLocked
+        // Regra: se public_revoked for true, bloqueia permanentemente
+        if (row?.public_revoked) {
+          next[n] = true
+        }
       }
       return next
     })

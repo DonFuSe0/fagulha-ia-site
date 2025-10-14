@@ -1,61 +1,74 @@
 import { NextResponse } from 'next/server'
-import getRouteClient from '@/lib/supabase/routeClient'
+import { cookies } from 'next/headers'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { createClient as createSupabaseServerClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(req: Request) {
-  try {
-    const supabase = getRouteClient()
+function getAdmin(){
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if(!url || !key) return null
+  return createSupabaseServerClient(url, key, { auth: { persistSession: false } })
+}
 
-    const { data: { user }, error: userErr } = await supabase.auth.getUser()
-    if (userErr || !user) {
-      return NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
-    }
+export async function POST(req: Request){
+  const cookieStore = cookies()
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+  const admin = getAdmin()
 
-    const form = await req.formData()
-    const file = form.get('file') as File | null
-    if (!file) {
-      return NextResponse.json({ error: 'missing_file' }, { status: 400 })
-    }
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if(error || !user) return NextResponse.json({ error: 'not_authenticated' }, { status: 401 })
 
-    const arrayBuffer = await file.arrayBuffer()
-    const bytes = new Uint8Array(arrayBuffer)
+  const form = await req.formData()
+  const picked = (form.get('file') || form.get('avatar')) as File | null
+  if(!picked) return NextResponse.json({ error: 'file_missing' }, { status: 400 })
 
-    const filename = `avatar_${Date.now()}.jpg`
-    const path = `${user.id}/${filename}`
+  const ext = (picked.name?.split('.').pop() || 'jpg').toLowerCase()
+  const objectPath = `${user.id}/avatar_${Date.now()}.${ext}`
+  const bytes = new Uint8Array(await picked.arrayBuffer())
+  const contentType = picked.type || (ext === 'png' ? 'image/png' : 'image/jpeg')
 
-    const { error: upErr } = await supabase
-      .storage
-      .from('avatars')
-      .upload(path, bytes, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: 'image/jpeg',
-      })
 
-    if (upErr) {
-      return NextResponse.json({ error: 'upload_failed', details: upErr.message }, { status: 400 })
-    }
-
-    const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path)
-    const publicUrl = pub?.publicUrl
-
-    if (!publicUrl) {
-      return NextResponse.json({ error: 'public_url_failed' }, { status: 400 })
-    }
-
-    const { error: updErr } = await supabase
-      .from('profiles')
-      .update({ avatar_url: publicUrl })
-      .eq('id', user.id)
-      .limit(1)
-
-    if (updErr) {
-      return NextResponse.json({ error: 'profile_update_failed', details: updErr.message }, { status: 400 })
-    }
-
-    return NextResponse.json({ ok: true, avatar_url: publicUrl })
-  } catch (e: any) {
-    return NextResponse.json({ error: 'unexpected', details: e?.message ?? String(e) }, { status: 500 })
+  // Upload com tratamento de erro e path real
+  let uploadResult = await supabase.storage.from('avatars').upload(objectPath, bytes, { cacheControl:'0', upsert: true, contentType })
+  let upErr = uploadResult.error
+  let savedPath = uploadResult.data?.path || objectPath
+  if(upErr && admin){
+    const r2 = await admin.storage.from('avatars').upload(objectPath, bytes, { cacheControl:'0', upsert: true, contentType })
+    upErr = r2.error || undefined
+    savedPath = r2.data?.path || objectPath
   }
+  if(upErr) return NextResponse.json({ error: 'upload_failed', details: upErr.message }, { status: 500 })
+
+  const { data: pub } = supabase.storage.from('avatars').getPublicUrl(savedPath)
+  const ver = Date.now().toString()
+  const publicUrl = `${pub.publicUrl}?v=${ver}`
+
+  // read previous path
+  // Salva o path real do arquivo em avatar_url
+  const upsertResult = await (admin || supabase).from('profiles').upsert({ id: user.id, avatar_url: savedPath }, { onConflict: 'id' })
+  if (upsertResult.error) {
+    console.error('Erro ao atualizar profile:', upsertResult.error)
+    return NextResponse.json({ error: 'profile_update_failed', details: upsertResult.error.message }, { status: 500 })
+  }
+  // Salva o path real também no user_metadata
+  try { await supabase.auth.updateUser({ data: { avatar_url: savedPath, avatar_ver: ver } }) } catch {}
+
+  // delete others synchronously
+  try {
+    const client = admin || supabase
+    const { data: list } = await client.storage.from('avatars').list(user.id, { limit: 1000 })
+    const toDelete = (list || []).map(x => `${user.id}/${x.name}`).filter(p => p !== objectPath)
+    if (toDelete.length) await client.storage.from('avatars').remove(toDelete)
+  } catch {}
+
+  console.log('Avatar upload - publicUrl:', publicUrl)
+  return NextResponse.json({ ok: true, avatar_url: publicUrl, ver }, {
+    headers: {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    }
+  })
 }

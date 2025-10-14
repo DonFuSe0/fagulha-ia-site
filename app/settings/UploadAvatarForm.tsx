@@ -1,80 +1,66 @@
+// app/settings/UploadAvatarForm.tsx (patch: força refresh da UI pós-upload)
 'use client'
 
 import React, { useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-/**
- * UploadAvatarForm
- * - Pré-visualização com corte central em formato quadrado
- * - Slider de zoom (1x a 3x)
- * - No envio, gera uma imagem quadrada (512x512) via <canvas> respeitando o zoom escolhido
- * - Mantém o endpoint e a chave 'file' no FormData (não quebra o backend que já está funcionando)
- */
 export default function UploadAvatarForm() {
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
-  const [scale, setScale] = useState<number>(1) // 1x..3x
+  const [scale, setScale] = useState(1)
+  const router = useRouter()
+  const supabase = createClientComponentClient()
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const imgRef = useRef<HTMLImageElement | null>(null)
 
-  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
-
-  // Revoke preview URL para evitar memory leaks
-  React.useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-    }
-  }, [previewUrl])
-
-  function onPick(f: File | null) {
-    setError(null); setSuccess(null)
+  function onFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] || null
     setFile(f)
-    setScale(1)
+    setError(null)
+    setSuccess(null)
   }
 
   async function toCroppedBlob(original: File, zoom: number): Promise<Blob> {
-    // Lê a imagem original em um elemento <img> para obter dimensões
-    const dataUrl = await fileToDataURL(original)
-    const image = await loadImage(dataUrl)
-
-    // Define tamanho final do avatar
-    const OUT = 512 // px
+    const img = document.createElement('img')
+    const url = URL.createObjectURL(original)
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve()
+      img.onerror = reject
+      img.src = url
+    })
     const canvas = document.createElement('canvas')
-    canvas.width = OUT
-    canvas.height = OUT
-    const ctx = canvas.getContext('2d')
-    if (!ctx) throw new Error('Canvas indisponível')
+    const ctx = canvas.getContext('2d')!
+    const SIZE = 512
+    canvas.width = SIZE
+    canvas.height = SIZE
 
-    // Toma o menor lado como base para um recorte quadrado central
-    const minSide = Math.min(image.width, image.height)
-    // Quanto maior o zoom, menor a área de recorte (aproxima)
-    // Ex.: zoom=1 => recorte = minSide
-    //      zoom=2 => recorte = minSide/2 (aproxima 2x no centro)
-    const cropSize = Math.max(1, minSide / Math.max(1, zoom))
+    const iw = img.naturalWidth
+    const ih = img.naturalHeight
+    const baseScale = Math.min(iw, ih) / Math.max(iw, ih)
+    const s = baseScale * zoom
 
-    const sx = Math.max(0, (image.width - cropSize) / 2)
-    const sy = Math.max(0, (image.height - cropSize) / 2)
-    const sWidth = Math.min(cropSize, image.width - sx)
-    const sHeight = Math.min(cropSize, image.height - sy)
+    const drawW = iw * s
+    const drawH = ih * s
+    const dx = (SIZE - drawW) / 2
+    const dy = (SIZE - drawH) / 2
 
-    ctx.clearRect(0, 0, OUT, OUT)
-    ctx.imageSmoothingEnabled = true
-    ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(image, sx, sy, sWidth, sHeight, 0, 0, OUT, OUT)
+    ctx.fillStyle = '#000'
+    ctx.fillRect(0, 0, SIZE, SIZE)
+    ctx.drawImage(img, dx, dy, drawW, drawH)
 
-    // Usa PNG por padrão (sem perda); você pode trocar para 'image/jpeg' com quality se quiser
-    const type = 'image/png'
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((b) => {
-        if (b) resolve(b)
-        else reject(new Error('Falha ao gerar imagem do avatar'))
-      }, type, 0.95)
+    return new Promise<Blob>((resolve) => {
+      canvas.toBlob((b) => resolve(b as Blob), 'image/png', 0.92)
     })
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError(null); setSuccess(null)
+    setError(null)
+    setSuccess(null)
 
     if (!file) {
       setError('Selecione um arquivo.')
@@ -84,22 +70,15 @@ export default function UploadAvatarForm() {
     try {
       setSaving(true)
 
-      // Gera uma imagem quadrada 512x512 respeitando o zoom
       let blob: Blob
-      try {
-        blob = await toCroppedBlob(file, scale)
-      } catch (cropErr) {
-        // Fallback: se der algum erro no crop, envia o arquivo original para não quebrar a UX
-        blob = file
-      }
+      try { blob = await toCroppedBlob(file, scale) }
+      catch { blob = file }
 
-      // Constrói um File a partir do blob para manter nome/extensão
       const ext = (file.name.split('.').pop() || 'png').toLowerCase()
       const filename = `avatar.${ext === 'jpg' ? 'jpg' : ext}`
       const uploadFile = new File([blob], filename, { type: (blob as any).type || file.type || 'image/png' })
 
       const fd = new FormData()
-      // Nome do campo PRECISA permanecer 'file' para bater com o endpoint
       fd.append('file', uploadFile)
 
       const res = await fetch('/api/profile/avatar', {
@@ -107,13 +86,23 @@ export default function UploadAvatarForm() {
         body: fd,
         credentials: 'include',
       })
+      const data = await res.json().catch(() => ({} as any))
+      if (!res.ok) throw new Error(data?.details || data?.error || 'Falha ao enviar avatar.')
 
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        throw new Error(data?.details || data?.error || 'Falha ao enviar avatar.')
-      }
-
+      // sucesso
       setSuccess('Avatar atualizado com sucesso!')
+
+      // 1) força a sessão a refletir user_metadata.avatar_ver
+      try { await supabase.auth.refreshSession() } catch {}
+
+      // 2) força revalidação dos Server Components (ex.: ProfileHero)
+      router.refresh()
+
+      // 3) em último caso, pós-pequeno delay, dá um "ping" visual para re-render do Next/Image
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('avatar:updated', { detail: { url: data?.avatar_url, ver: data?.ver } }))
+      }, 300)
+
     } catch (err: any) {
       setError(err?.message || 'Falha ao enviar avatar.')
     } finally {
@@ -122,58 +111,13 @@ export default function UploadAvatarForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
-      <div className="space-y-2">
-        <label htmlFor="avatar" className="text-sm text-zinc-300">Selecione seu avatar</label>
-        <input
-          id="avatar"
-          name="avatar"
-          type="file"
-          accept="image/*"
-          onChange={(e) => onPick(e.target.files?.[0] || null)}
-          className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-orange-600 file:text-white hover:file:bg-orange-500"
-          required
-        />
-      </div>
+    <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <input type="file" accept="image/*" onChange={onFilePick} />
+      {/* slider de zoom */}
+      <label className="text-sm text-white/80">Zoom</label>
+      <input type="range" min={1} max={3} step={0.05} value={scale} onChange={e => setScale(parseFloat(e.target.value))} />
 
-      {/* Prévia com “corte” quadrado + zoom */}
-      {previewUrl && (
-        <div className="flex items-center gap-6">
-          <div className="relative w-40 h-40 rounded-full overflow-hidden border border-zinc-800 bg-zinc-900/40">
-            <img
-              ref={imgRef}
-              src={previewUrl}
-              alt="Preview do avatar"
-              className="w-full h-full object-cover transition-transform duration-150 ease-out"
-              style={{ transform: `scale(${scale})` }}
-            />
-            {/* máscara circular já dada pelo rounded-full + overflow-hidden */}
-          </div>
-
-          {/* Slider de zoom */}
-          <div className="flex-1 min-w-[220px]">
-            <label htmlFor="zoom" className="block text-sm text-zinc-300 mb-2">Zoom</label>
-            <input
-              id="zoom"
-              name="zoom"
-              type="range"
-              min={1}
-              max={3}
-              step={0.01}
-              value={scale}
-              onChange={(e) => setScale(parseFloat(e.target.value))}
-              className="w-full accent-orange-600"
-            />
-            <div className="text-xs text-zinc-400 mt-1">Zoom: {scale.toFixed(2)}x</div>
-          </div>
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={saving}
-        className="rounded-lg bg-orange-600 hover:bg-orange-500 px-4 py-2 font-medium disabled:opacity-60"
-      >
+      <button type="submit" disabled={saving} className="rounded-lg bg-orange-600 hover:bg-orange-500 px-4 py-2 font-medium disabled:opacity-60">
         {saving ? 'Salvando...' : 'Salvar avatar'}
       </button>
 
@@ -181,23 +125,4 @@ export default function UploadAvatarForm() {
       {success && <p className="text-sm text-emerald-400">{success}</p>}
     </form>
   )
-}
-
-/** Utils **/
-function fileToDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result))
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    img.src = src
-  })
 }

@@ -1,6 +1,7 @@
 // app/page.tsx — Landing com top menu + feed público (sem revalidate e sem @ts-expect-error)
 import Link from 'next/link'
 import Image from 'next/image'
+import HomeCtaSwitch from '@/app/_components/HomeCtaSwitch'
 import { createClient } from '@/lib/supabase/server'
 
 async function PublicFeed() {
@@ -50,7 +51,7 @@ export default async function Home() {
             <Link href="/" className="font-semibold text-lg tracking-tight">Fagulha<span className="text-brand">.</span></Link>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/auth/login" className="hover:text-brand">Entrar</Link>
+            <HomeCtaSwitch className="hover:text-brand" />
             <Link href="/explorar" className="hover:text-brand">Explorar</Link>
             <Link href="/planos" className="rounded-xl bg-orange-600 hover:bg-orange-500 px-4 py-2 font-medium">Adquirir Tokens</Link>
           </div>

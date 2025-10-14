@@ -30,6 +30,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         const res = await fetch('/api/profile/credits', { cache: 'no-store' })
         const data = await res.json()
         if (!isMounted) return
+        console.log('Settings - Profile data:', data)
         setProfile({ credits: data?.credits, nickname: data?.nickname, avatar_url: data?.avatar_url })
       } catch {
       } finally { if (isMounted) setLoadingProfile(false) }
@@ -106,12 +107,23 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         throw new Error(j?.error || 'Falha ao enviar avatar')
       }
       const j = await res.json()
+      const newAvatarUrl = j?.avatar_url
+      
       // Atualiza avatar atual imediatamente com o retornado pela API
-      setProfile(p => ({ ...p, avatar_url: j?.avatar_url ?? p?.avatar_url }))
+      setProfile(p => ({ ...p, avatar_url: newAvatarUrl ?? p?.avatar_url }))
+      
       // limpa estados locais
       setSelectedUrl(null)
       setCroppedBlob(null)
       setCroppedPreviewUrl(null)
+      
+      // Dispara evento customizado com delay para evitar conflitos
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('avatar:updated', { 
+          detail: { url: newAvatarUrl } 
+        }))
+      }, 100)
+      
       window.dispatchEvent(new CustomEvent('notify', { detail: { kind: 'success', message: 'Avatar atualizado com sucesso.' } }))
     } catch (e) {
       console.error(e)
@@ -125,7 +137,10 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
   // 1) se já existe recorte, usa-o;
   // 2) senão, se há arquivo selecionado, usa-o;
   // 3) senão, usa avatar atual do perfil;
-  const smallPreviewSrc = croppedPreviewUrl || selectedUrl || profile?.avatar_url || null
+  const smallPreviewSrc =
+    croppedPreviewUrl
+    || selectedUrl
+    || (profile?.avatar_url ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}` : null)
 
   return (
     <div className="min-h-[60vh] w-full">
@@ -181,13 +196,21 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
               <label className="block text-sm text-zinc-300">Avatar</label>
               <div className="flex items-center gap-4">
                 {smallPreviewSrc ? (
-                  <img src={smallPreviewSrc} alt="Prévia" className="h-16 w-16 rounded-full object-cover border border-white/10" />
+                  <img 
+                    key={`preview-${smallPreviewSrc}`}
+                    src={smallPreviewSrc} 
+                    alt="Prévia" 
+                    className="h-16 w-16 rounded-full object-cover border border-white/10" 
+                  />
                 ) : (
                   <div className="h-16 w-16 rounded-full bg-zinc-800 border border-white/10" />
                 )}
                 <input type="file" accept="image/*" onChange={onFileChange} className="text-sm text-zinc-300" />
               </div>
 
+
+              {/* Exibe o cropper com a imagem atual do avatar se não houver arquivo selecionado */}
+              {/* Exibe o cropper grande SOMENTE quando um novo arquivo é selecionado */}
               {selectedUrl && (
                 <AvatarCropper
                   src={selectedUrl}

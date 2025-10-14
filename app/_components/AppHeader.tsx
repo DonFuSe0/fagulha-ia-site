@@ -38,12 +38,19 @@ export default function AppHeader() {
 
   const onSelect = () => setOpen(false)
 
-  return (
-    <header className="flex items-center gap-4 p-4 border-b border-white/10">
-      <Link href="/" className="font-bold">Fagulha</Link>
+  // keep session in sync so Header reflects logged-in state immediately
+  useEffect(() => {
+    const { data: sub } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id ?? null)
+    })
+    return () => { try { sub.subscription.unsubscribe() } catch {} }
+  }, [])
 
-      <div className="ml-auto flex items-center gap-2">
-        <nav className="flex items-center gap-2">
+  return (
+    <header className="bg-black/60 backdrop-blur border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between relative">
+        <Link href="/" className="font-bold text-lg">Fagulha</Link>
+        <nav className="flex items-center gap-6 mx-auto">
           {userId
             ? <Link href="/dashboard" className="px-3 py-2 rounded-lg hover:bg-white/10">Perfil</Link>
             : <Link href="/auth/login" className="px-3 py-2 rounded-lg hover:bg-white/10">Entrar</Link>
@@ -51,7 +58,6 @@ export default function AppHeader() {
           <Link href="/explorar" className="px-3 py-2 rounded-lg hover:bg-white/10">Explorar</Link>
           <Link href="/planos" className="px-3 py-2 rounded-lg hover:bg-white/10">Planos</Link>
         </nav>
-
         {userId && (
           <div className="relative" ref={menuRef}>
             <button
@@ -62,7 +68,6 @@ export default function AppHeader() {
             >
               Menu
             </button>
-
             {open && (
               <div
                 role="menu"
@@ -72,7 +77,16 @@ export default function AppHeader() {
                 <Link href="/settings?tab=perfil" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Editar perfil</Link>
                 <Link href="/settings?tab=seguranca" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Alterar senha</Link>
                 <Link href="/planos" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Adquirir tokens</Link>
-                <Link href="/auth/logout" onClick={onSelect} role="menuitem" className="block px-3 py-2 rounded hover:bg-white/10">Sair</Link>
+                <button
+                  onClick={async () => {
+                    await supabaseBrowser.auth.signOut();
+                    window.location.href = '/';
+                  }}
+                  role="menuitem"
+                  className="block w-full text-left px-3 py-2 rounded hover:bg-white/10"
+                >
+                  Sair
+                </button>
               </div>
             )}
           </div>

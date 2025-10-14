@@ -1,58 +1,67 @@
+// app/_components/ProfileHero.tsx
+'use client'
 
-import Image from "next/image";
-import { cookies } from "next/headers";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import Image from 'next/image'
+import { useEffect, useMemo, useState } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export default function ProfileHero() {
+  const supabase = createClientComponentClient()
+  const [name, setName] = useState<string>('Meu perfil')
+  const [uid, setUid] = useState<string | null>(null)
+  const [tick, setTick] = useState<number>(Date.now())
 
-function fallbackAvatarFor(userId: string) {
-  let h = 0; for (let i = 0; i < userId.length; i++) h = ((h << 5) - h) + userId.charCodeAt(i) | 0;
-  const idx = Math.abs(h) % 4;
-  return `/avatars/fire-${idx + 1}.png`;
-}
+  // carrega nome e uid
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      const [{ data: { user } }, { data: profile }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from('profiles').select('full_name, username').maybeSingle(),
+      ])
+      if (!mounted) return
+      setUid(user?.id ?? null)
+      const display = profile?.full_name || profile?.username || user?.email?.split('@')[0] || 'Meu perfil'
+      setName(display || 'Meu perfil')
+    })()
 
-export default async function ProfileHero() {
-  const supabase = createServerComponentClient<any>({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+    // quando a sessão muda (updateUser com avatar_ver), força refresh do endpoint
+    const { data: sub } = supabase.auth.onAuthStateChange(() => {
+      setTick(Date.now())
+    })
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("avatar_url, nickname, credits")
-    .eq("id", user.id)
-    .maybeSingle();
+    // escuta o evento do upload e força atualização
+    const handler = () => setTick(Date.now())
+    window.addEventListener('avatar:updated', handler as any)
 
-  const metaNick = (user.user_metadata && typeof user.user_metadata.nickname === "string")
-    ? String(user.user_metadata.nickname) : null;
+    return () => {
+      sub.subscription.unsubscribe()
+      window.removeEventListener('avatar:updated', handler as any)
+      mounted = false
+    }
+  }, [supabase])
 
-  const nickname = (profile?.nickname && profile.nickname.length > 0)
-    ? profile.nickname
-    : (metaNick ?? (user.email?.split("@")[0] ?? "Usuário"));
-
-  const rawAvatar = profile?.avatar_url ?? null;
-  const avatarSrc = rawAvatar
-    ? `${rawAvatar}${rawAvatar.includes("?") ? "&" : "?"}v=${Date.now()}`
-    : fallbackAvatarFor(user.id);
-
-  const credits = profile?.credits ?? 0;
+  const src = useMemo(() => {
+    if (!uid) return '/avatar-placeholder.png'
+    // bate no endpoint que redireciona SEM cache para a URL atual do avatar
+    return `/api/profile/avatar-url?uid=${encodeURIComponent(uid)}&t=${tick}`
+  }, [uid, tick])
 
   return (
-    <section className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
-      <div className="flex items-center gap-4">
-        <span className="relative h-14 w-14 overflow-hidden rounded-full ring-2 ring-white/10">
-          <Image src={avatarSrc} alt="avatar" fill className="object-cover" />
-        </span>
-        <div className="flex flex-col">
-          <span className="text-base font-semibold text-white">{nickname}</span>
-        </div>
-      </div>
-      <div className="text-right">
-        <div className="text-xs text-white/60">Saldo</div>
-        <div className="text-2xl font-semibold text-white">
-          {credits} <span className="text-sm font-normal text-white/60">tokens</span>
-        </div>
+    <section className="w-full max-w-5xl mx-auto py-6 px-4 flex items-center gap-4">
+      <Image
+        key={src}
+        src={src}
+        alt="Avatar"
+        width={96}
+        height={96}
+        className="h-24 w-24 rounded-full object-cover ring-1 ring-white/10"
+        unoptimized
+      />
+      <div className="flex flex-col">
+        <h1 className="text-xl font-semibold text-white">{name}</h1>
+        <p className="text-sm text-white/60">Bem-vindo ao seu perfil</p>
       </div>
     </section>
-  );
+  )
 }

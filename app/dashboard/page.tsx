@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import CreditsBadge from '@/app/_components/CreditsBadge'
 
 type TokenRow = {
@@ -26,21 +27,110 @@ type GenerationRow = {
 
 function cx(...p: (string | null | undefined | false)[]) { return p.filter(Boolean).join(' ') }
 
-function AvatarMenu({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string | null }) {
+// Componente separado para gerenciar o avatar de forma independente
+function AvatarDisplay({ nickname }: { nickname: string }) {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [tick, setTick] = useState(Date.now())
+
+  useEffect(() => {
+    let mounted = true
+
+    // Carrega avatar do banco apenas uma vez
+    const loadAvatar = async () => {
+      try {
+        const supabaseClient = createClientComponentClient()
+        const { data: s } = await supabaseClient.auth.getSession()
+        const user = s?.session?.user
+        if (!user || !mounted) return
+
+        const { data: profile } = await supabaseClient.from('profiles').select('avatar_url').eq('id', user.id).maybeSingle()
+        if (mounted && profile?.avatar_url) {
+          setAvatarUrl(profile.avatar_url)
+          console.log('AvatarDisplay - Avatar loaded')
+        }
+      } catch (error) {
+        console.error('AvatarDisplay - Error loading avatar:', error)
+      }
+    }
+
+    loadAvatar()
+
+    // Escuta eventos de atualização
+    const handler = (e: CustomEvent) => {
+      if (!mounted) return
+      const detail = e.detail as any
+      const newUrl = detail?.url as string | undefined
+
+      if (newUrl) {
+        setAvatarUrl(newUrl)
+        setTick(Date.now())
+      }
+    }
+    window.addEventListener('avatar:updated', handler as any)
+
+    return () => {
+      mounted = false
+      window.removeEventListener('avatar:updated', handler as any)
+    }
+  }, [])
+
+  // Monta a URL do Supabase Storage se avatarUrl for relativo
+  let imageUrl = null;
+  if (avatarUrl) {
+    const isFullUrl = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const base = isFullUrl
+      ? avatarUrl
+  : `${supabaseUrl}/storage/v1/object/public/avatars/${avatarUrl}`;
+    imageUrl = `${base}${base.includes('?') ? '&' : '?'}cb=${tick}`;
+  }
+
+  console.log('AvatarDisplay - avatarUrl:', avatarUrl, 'imageUrl:', imageUrl)
+
+  const [imgError, setImgError] = useState(false);
+  // Atualiza fallback se avatarUrl mudar
+  useEffect(() => { setImgError(false); }, [avatarUrl, tick]);
+
+  function getInitials(name: string) {
+    return name
+      .split(' ')
+      .map((n) => n[0]?.toUpperCase())
+      .join('')
+      .slice(0, 2);
+  }
+
+  return (
+    <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center">
+      {imageUrl && !imgError ? (
+        <img
+          key={`avatar-${tick}`}
+          src={imageUrl}
+          alt={nickname}
+          width={32}
+          height={32}
+          className="object-cover w-full h-full"
+          onError={e => {
+            setImgError(true);
+            console.error('Erro ao carregar avatar:', imageUrl, e);
+          }}
+        />
+      ) : (
+        <span className="text-xs text-zinc-400 font-bold">{getInitials(nickname)}</span>
+      )}
+    </div>
+  )
+}
+
+function AvatarMenu({ nickname }: { nickname: string }) {
   const [open, setOpen] = useState(false)
+
   return (
     <div className="relative">
       <button
         onClick={() => setOpen(v => !v)}
         className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/70 px-2 py-1 hover:border-brand transition-colors"
       >
-        <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center">
-          {avatarUrl ? (
-            <Image src={avatarUrl} alt={nickname} width={32} height={32} />
-          ) : (
-            <span className="text-xs text-zinc-400">AV</span>
-          )}
-        </div>
+        <AvatarDisplay nickname={nickname} />
         
         
         <svg className={cx('w-4 h-4 text-zinc-400 transition-transform', open && 'rotate-180')} viewBox="0 0 20 20" fill="currentColor">
@@ -79,7 +169,7 @@ function TopNav({ nickname, avatarUrl }: { nickname: string; avatarUrl?: string 
         <div className="flex items-center gap-3">
           <CreditsBadge />
           <span className="text-sm text-zinc-200">{nickname || 'Seu perfil'}</span>
-          <AvatarMenu nickname={nickname} avatarUrl={avatarUrl ?? undefined} />
+          <AvatarMenu nickname={nickname} />
         </div>
       </div>
     </nav>
@@ -94,10 +184,12 @@ export default function DashboardPage() {
   const [usages, setUsages] = useState<TokenRow[]>([]) // amount < 0
   const [gens, setGens] = useState<GenerationRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [avatarLoaded, setAvatarLoaded] = useState(false)
 
+  // Carregamento inicial (executa apenas uma vez)
   useEffect(() => {
     let mounted = true
-    async function load() {
+    async function loadInitial() {
       try {
         const { data: s } = await supabase.auth.getSession()
         const user = s?.session?.user
@@ -107,7 +199,11 @@ export default function DashboardPage() {
         const nick = (profile?.nickname) || (user.user_metadata?.nickname) || (user.email?.split('@')[0] ?? 'Você')
         if (mounted) {
           setNickname(nick)
-          setAvatarUrl(profile?.avatar_url ?? user.user_metadata?.avatar_url ?? null)
+          if (profile?.avatar_url && !avatarLoaded) {
+            setAvatarUrl(profile.avatar_url)
+            setAvatarLoaded(true)
+            console.log('Dashboard - Avatar loaded:', profile.avatar_url)
+          }
         }
 
         const { data: tokens } = await supabase.from('tokens')
@@ -123,12 +219,35 @@ export default function DashboardPage() {
           .order('created_at', { ascending: false }).limit(4) as any
         if (mounted) setGens(g ?? [])
       } finally {
-        if (mounted) setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
-    load()
+
+    loadInitial()
+
     return () => { mounted = false }
   }, [router])
+
+  // Escuta eventos de atualização de avatar
+  useEffect(() => {
+    const handler = (e: CustomEvent) => {
+      const detail = e.detail as any
+      const newUrl = detail?.url as string | undefined
+
+      if (newUrl) {
+        setAvatarUrl(newUrl)
+        setAvatarLoaded(true)
+      }
+    }
+    window.addEventListener('avatar:updated', handler as any)
+
+    return () => {
+      window.removeEventListener('avatar:updated', handler as any)
+    }
+  }, [])
+
 
   return (
     <div className="min-h-screen bg-background text-gray-200 relative">
@@ -138,7 +257,7 @@ export default function DashboardPage() {
              style={{background: 'radial-gradient(closest-side, #ff7a18, transparent 70%)'}} />
       </div>
 
-      <TopNav nickname={nickname} avatarUrl={avatarUrl} />
+  <TopNav nickname={nickname} />
 
       <main className="max-w-7xl mx-auto px-4 py-10 space-y-10">
         {/* Header row */}

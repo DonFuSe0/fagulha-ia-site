@@ -14,7 +14,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('credits')
+      .select('credits, nickname, avatar_url')
       .eq('id', user.id)
       .single()
 
@@ -22,7 +22,11 @@ export async function GET() {
       return NextResponse.json({ error: 'profile_read_failed', details: error.message }, { status: 400 })
     }
 
-    return NextResponse.json({ credits: data?.credits ?? 0 })
+    return NextResponse.json({ 
+      credits: data?.credits ?? 0, 
+      nickname: data?.nickname ?? null, 
+      avatar_url: data?.avatar_url ?? null 
+    })
   } catch (e: any) {
     return NextResponse.json({ error: 'unexpected', details: e?.message ?? String(e) }, { status: 500 })
   }
