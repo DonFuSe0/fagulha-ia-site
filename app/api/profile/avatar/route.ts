@@ -29,14 +29,19 @@ export async function POST(req: Request){
   const bytes = new Uint8Array(await picked.arrayBuffer())
   const contentType = picked.type || (ext === 'png' ? 'image/png' : 'image/jpeg')
 
-  let upErr = (await supabase.storage.from('avatars').upload(objectPath, bytes, { cacheControl:'0', upsert: true, contentType })).error
+
+  // Upload com tratamento de erro e path real
+  let uploadResult = await supabase.storage.from('avatars').upload(objectPath, bytes, { cacheControl:'0', upsert: true, contentType })
+  let upErr = uploadResult.error
+  let savedPath = uploadResult.data?.path || objectPath
   if(upErr && admin){
     const r2 = await admin.storage.from('avatars').upload(objectPath, bytes, { cacheControl:'0', upsert: true, contentType })
     upErr = r2.error || undefined
+    savedPath = r2.data?.path || objectPath
   }
   if(upErr) return NextResponse.json({ error: 'upload_failed', details: upErr.message }, { status: 500 })
 
-  const { data: pub } = supabase.storage.from('avatars').getPublicUrl(objectPath)
+  const { data: pub } = supabase.storage.from('avatars').getPublicUrl(savedPath)
   const ver = Date.now().toString()
   const publicUrl = `${pub.publicUrl}?v=${ver}`
 
@@ -47,10 +52,14 @@ export async function POST(req: Request){
     previousPath = profile?.avatar_path ?? null
   } catch {}
 
-  // Salva o path relativo do arquivo em avatar_url
-  await supabase.from('profiles').upsert({ id: user.id, avatar_url: objectPath, avatar_path: objectPath, updated_at: new Date().toISOString() }, { onConflict: 'id' })
-  // Salva o path relativo também no user_metadata
-  try { await supabase.auth.updateUser({ data: { avatar_url: objectPath, avatar_path: objectPath, avatar_ver: ver } }) } catch {}
+  // Salva o path real do arquivo em avatar_url
+  const upsertResult = await supabase.from('profiles').upsert({ id: user.id, avatar_url: savedPath, avatar_path: savedPath, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+  if (upsertResult.error) {
+    console.error('Erro ao atualizar profile:', upsertResult.error)
+    return NextResponse.json({ error: 'profile_update_failed', details: upsertResult.error.message }, { status: 500 })
+  }
+  // Salva o path real também no user_metadata
+  try { await supabase.auth.updateUser({ data: { avatar_url: savedPath, avatar_path: savedPath, avatar_ver: ver } }) } catch {}
 
   // delete others synchronously
   try {
