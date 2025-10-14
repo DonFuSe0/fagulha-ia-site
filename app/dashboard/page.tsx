@@ -78,9 +78,21 @@ function AvatarDisplay({ nickname }: { nickname: string }) {
 
   console.log('AvatarDisplay - avatarUrl:', avatarUrl, 'imageUrl:', imageUrl)
 
+  const [imgError, setImgError] = useState(false);
+  // Atualiza fallback se avatarUrl mudar
+  useEffect(() => { setImgError(false); }, [avatarUrl, tick]);
+
+  function getInitials(name: string) {
+    return name
+      .split(' ')
+      .map((n) => n[0]?.toUpperCase())
+      .join('')
+      .slice(0, 2);
+  }
+
   return (
     <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-800 flex items-center justify-center">
-      {imageUrl ? (
+      {imageUrl && !imgError ? (
         <img
           key={`avatar-${tick}`}
           src={imageUrl}
@@ -88,9 +100,13 @@ function AvatarDisplay({ nickname }: { nickname: string }) {
           width={32}
           height={32}
           className="object-cover w-full h-full"
+          onError={e => {
+            setImgError(true);
+            console.error('Erro ao carregar avatar:', imageUrl, e);
+          }}
         />
       ) : (
-        <span className="text-xs text-zinc-400">AV</span>
+        <span className="text-xs text-zinc-400 font-bold">{getInitials(nickname)}</span>
       )}
     </div>
   )
