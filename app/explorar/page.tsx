@@ -3,6 +3,7 @@ export const revalidate = 0
 
 import { headers } from 'next/headers'
 import ExploreGrid from './ExploreGrid'
+import AppHeader from '../_components/AppHeader'
 
 type Item = {
   name?: string
@@ -47,13 +48,15 @@ export default async function Page() {
     : []
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-zinc-100">Explorar</h1>
-        <a href="/" className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10">Voltar</a>
-      </header>
-
-      <ExploreGrid items={items} />
-    </div>
+    <>
+      <AppHeader />
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <header className="mb-4 flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-zinc-100">Explorar</h1>
+          <a href="/" className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10">Voltar</a>
+        </header>
+        <ExploreGrid items={items} />
+      </div>
+    </>
   )
 }
