@@ -63,7 +63,7 @@ export default async function Page() {
         </div>
         <main className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-xl font-semibold text-zinc-100 animate-text-glow drop-shadow-[0_2px_16px_rgba(52,211,153,0.18)]">Explorar</h1>
+            <h1 className="text-xl font-semibold text-zinc-100 drop-shadow-[0_2px_16px_rgba(52,211,153,0.18)]">Explorar</h1>
             <a href="/" className="inline-flex items-center rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-zinc-200 hover:bg-white/10 shadow shadow-emerald-400/10 transition-transform hover:scale-105">Voltar</a>
           </div>
           {isLoading ? (

@@ -159,13 +159,13 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
           <div className="flex items-center gap-2 text-sm">
             <Link
               href="/settings?tab=perfil"
-              className={"px-3 py-1.5 rounded " + (tab === 'perfil' ? "bg-white/10 text-white animate-text-glow" : "text-zinc-300 hover:text-white")}
+              className={"px-3 py-1.5 rounded " + (tab === 'perfil' ? "bg-white/10 text-white" : "text-zinc-300 hover:text-white")}
             >
               Perfil
             </Link>
             <Link
               href="/settings?tab=seguranca"
-              className={"px-3 py-1.5 rounded " + (tab === 'seguranca' ? "bg-white/10 text-white animate-text-glow" : "text-zinc-300 hover:text-white")}
+              className={"px-3 py-1.5 rounded " + (tab === 'seguranca' ? "bg-white/10 text-white" : "text-zinc-300 hover:text-white")}
             >
               Segurança
             </Link>
@@ -176,7 +176,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
       <main className="max-w-5xl mx-auto px-4 py-6 space-y-8">
         {tab === 'perfil' && (
           <section className="space-y-6">
-            <h1 className="text-xl font-semibold animate-text-glow drop-shadow-[0_2px_16px_rgba(129,140,248,0.18)]">Editar Perfil</h1>
+            <h1 className="text-xl font-semibold drop-shadow-[0_2px_16px_rgba(129,140,248,0.18)]">Editar Perfil</h1>
             <div className="rounded-xl border border-white/10 bg-black/40 p-4 shadow-lg shadow-emerald-400/10">
               <label className="block text-sm text-zinc-300 mb-1">Apelido (nickname)</label>
               <div className="flex items-center gap-3">
@@ -248,7 +248,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
         )}
         {tab === 'seguranca' && (
           <section className="space-y-4">
-            <h1 className="text-xl font-semibold animate-text-glow drop-shadow-[0_2px_16px_rgba(129,140,248,0.18)]">Segurança</h1>
+            <h1 className="text-xl font-semibold drop-shadow-[0_2px_16px_rgba(129,140,248,0.18)]">Segurança</h1>
             <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-zinc-300 space-y-3 shadow-lg shadow-indigo-400/10">
               <form method="post" action="/api/profile/password" className="space-y-3">
                 <div className="grid gap-1.5">

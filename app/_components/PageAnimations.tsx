@@ -25,13 +25,6 @@ export default function PageAnimations() {
       .animate-spin-reverse {
         animation: spin-reverse 32s linear infinite;
       }
-      @keyframes text-glow {
-        0%, 100% { text-shadow: 0 0 8px #ff7a18, 0 0 24px #ffb347; }
-        50% { text-shadow: 0 0 24px #ffb347, 0 0 48px #ff7a18; }
-      }
-      .animate-text-glow {
-        animation: text-glow 2.5s ease-in-out infinite;
-      }
     `}</style>
   )
 }

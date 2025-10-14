@@ -18,13 +18,6 @@ export default function BemvindoAnimations() {
       .animate-spin-slow {
         animation: spin-slow 24s linear infinite;
       }
-      @keyframes text-glow {
-        0%, 100% { text-shadow: 0 0 8px #10b981, 0 0 24px #818cf8; }
-        50% { text-shadow: 0 0 24px #818cf8, 0 0 48px #10b981; }
-      }
-      .animate-text-glow {
-        animation: text-glow 2.5s ease-in-out infinite;
-      }
       @keyframes pulse-glow {
         0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
         50% { box-shadow: 0 0 40px rgba(16, 185, 129, 0.6); }

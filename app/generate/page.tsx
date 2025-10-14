@@ -25,7 +25,7 @@ export default async function GeneratePage() {
           style={{background: 'radial-gradient(ellipse at 80% 80%, #ff7a18 0%, #0f172a 70%)'}} />
       </div>
       <div className="w-full max-w-xl space-y-4 bg-zinc-900/70 p-8 rounded-2xl border border-zinc-800 shadow-xl shadow-black/30 backdrop-blur">
-        <h1 className="text-3xl font-bold text-white animate-text-glow drop-shadow-[0_2px_16px_rgba(129,140,248,0.18)]">Gerar Imagem</h1>
+  <h1 className="text-3xl font-bold text-white drop-shadow-[0_2px_16px_rgba(129,140,248,0.18)]">Gerar Imagem</h1>
         <p className="text-gray-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.18)]">
           Aqui futuramente você poderá gerar imagens com IA. Por enquanto,
           esta página é um espaço reservado para o recurso de geração.
