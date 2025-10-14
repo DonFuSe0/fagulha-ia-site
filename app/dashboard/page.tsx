@@ -78,7 +78,7 @@ function AvatarDisplay({ nickname }: { nickname: string }) {
   let imageUrl = null;
   if (avatarUrl) {
     const isFullUrl = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || (typeof window !== 'undefined' ? window.__env?.NEXT_PUBLIC_SUPABASE_URL : '');
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const base = isFullUrl
       ? avatarUrl
       : `${supabaseUrl}/storage/v1/object/public/${avatarUrl}`;
