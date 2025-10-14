@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import AvatarCropper from './AvatarCropper'
+import { publicAvatarUrl } from '@/lib/utils/avatar'
 
 import SettingsNotifier from './SettingsNotifier'
 type SettingsPageProps = {
@@ -141,11 +142,7 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
   const smallPreviewSrc =
     croppedPreviewUrl
     || selectedUrl
-    || (profile?.avatar_url
-      ? (/^https?:\/\//i.test(profile.avatar_url)
-        ? profile.avatar_url
-        : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}`)
-      : null)
+    || publicAvatarUrl(profile?.avatar_url)
 
   return (
     <div className="min-h-[60vh] w-full relative overflow-hidden">
