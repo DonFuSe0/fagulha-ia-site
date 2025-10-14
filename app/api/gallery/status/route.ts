@@ -38,8 +38,13 @@ export async function POST(req: Request) {
       const { data: list, error } = await supabase.storage.from('gen-public').list('', { search: fileName, limit: 1 })
       if (!error && Array.isArray(list)) {
         const exists = list.some(obj => obj.name === fileName)
-        if (!map[fileName]) map[fileName] = { is_public: exists, public_revoked: false }
-        else map[fileName].is_public = exists
+        // Se já existe info no map, preserva public_revoked do banco
+        if (!map[fileName]) {
+          // Se não existe no banco, mas já foi removido do público, bloqueia permanentemente
+          map[fileName] = { is_public: exists, public_revoked: !exists }
+        } else {
+          map[fileName].is_public = exists
+        }
       }
     }
 
