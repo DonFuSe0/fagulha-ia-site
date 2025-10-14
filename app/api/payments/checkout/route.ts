@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import getRouteClient from '@/lib/supabase/routeClient'
 import { createPreference, generateExternalReference } from '@/lib/payments/mercadopago'
+import logger, { inc } from '@/lib/observability/logger'
 
 // Rate limit simples em memória (não persiste em múltiplas instâncias / serverless) - pode evoluir depois
 const rlMap = new Map<string, { count: number; ts: number }>()
@@ -10,12 +11,18 @@ const MAX_REQ = 5
 export async function POST(req: Request) {
   const supabase = getRouteClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  if (!user){
+    inc('checkout.unauth')
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
 
   let body: any
   try { body = await req.json() } catch { return NextResponse.json({ error: 'invalid_json' }, { status: 400 }) }
   const plan_code = body?.plan_code
-  if (!plan_code) return NextResponse.json({ error: 'plan_code_required' }, { status: 400 })
+  if (!plan_code){
+    inc('checkout.bad_request')
+    return NextResponse.json({ error: 'plan_code_required' }, { status: 400 })
+  }
 
   // Rate limit por usuário
   const now = Date.now()
@@ -23,7 +30,10 @@ export async function POST(req: Request) {
   if (!r || now - r.ts > WINDOW_MS) {
     rlMap.set(user.id, { count: 1, ts: now })
   } else {
-    if (r.count >= MAX_REQ) return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+    if (r.count >= MAX_REQ){
+      inc('checkout.rate_limited')
+      return NextResponse.json({ error: 'rate_limited' }, { status: 429 })
+    }
     r.count++
   }
 
@@ -34,7 +44,10 @@ export async function POST(req: Request) {
     .eq('code', plan_code)
     .eq('active', true)
     .single()
-  if (error || !plan) return NextResponse.json({ error: 'plan_not_found' }, { status: 404 })
+  if (error || !plan){
+    inc('checkout.plan_not_found')
+    return NextResponse.json({ error: 'plan_not_found' }, { status: 404 })
+  }
 
   const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
 
@@ -51,7 +64,8 @@ export async function POST(req: Request) {
       external_reference
     })
     if (perr) {
-      console.error('purchase_insert_error', perr)
+      logger.error('purchase_insert_error', { msg: perr.message, code: perr.code })
+      inc('checkout.purchase_insert_error')
       return NextResponse.json({ error: 'purchase_init_failed' }, { status: 500 })
     }
 
@@ -66,10 +80,12 @@ export async function POST(req: Request) {
 
     // (opcional) poderíamos atualizar purchase com preference_id
     await supabase.from('purchases').update({ preference_id: pref.preference_id }).eq('external_reference', external_reference)
-
+    inc('checkout.success')
+    logger.info('checkout_created', { plan: plan.code, user: user.id, external_reference })
     return NextResponse.json({ url: pref.init_point, external_reference, preference_id: pref.preference_id })
   } catch (e: any) {
-    console.error('checkout_error', e)
+    logger.error('checkout_error', { error: e?.message })
+    inc('checkout.error')
     return NextResponse.json({ error: 'checkout_failed' }, { status: 500 })
   }
 }
