@@ -62,11 +62,10 @@ function AvatarDisplay({ nickname }: { nickname: string }) {
       if (!mounted) return
       const detail = e.detail as any
       const newUrl = detail?.url as string | undefined
+      const newPath = detail?.path as string | undefined
 
-      if (newUrl) {
-        setAvatarUrl(newUrl)
-        setTick(Date.now())
-      }
+      const computed = newUrl || (newPath ? publicAvatarUrl(newPath, { cb: Date.now() }) : null)
+      if (computed) { setAvatarUrl(computed); setTick(Date.now()) }
     }
     window.addEventListener('avatar:updated', handler as any)
 
