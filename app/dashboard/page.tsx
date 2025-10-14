@@ -74,7 +74,16 @@ function AvatarDisplay({ nickname }: { nickname: string }) {
     }
   }, [])
 
-  const imageUrl = avatarUrl ? `${avatarUrl}${avatarUrl.includes('?') ? '&' : '?'}cb=${tick}` : null
+  // Monta a URL do Supabase Storage se avatarUrl for relativo
+  let imageUrl = null;
+  if (avatarUrl) {
+    const isFullUrl = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const base = isFullUrl
+      ? avatarUrl
+      : `${supabaseUrl}/storage/v1/object/public/${avatarUrl}`;
+    imageUrl = `${base}${base.includes('?') ? '&' : '?'}cb=${tick}`;
+  }
 
   console.log('AvatarDisplay - avatarUrl:', avatarUrl, 'imageUrl:', imageUrl)
 
