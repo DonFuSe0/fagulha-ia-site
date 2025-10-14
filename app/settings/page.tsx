@@ -205,9 +205,11 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
                 <input type="file" accept="image/*" onChange={onFileChange} className="text-sm text-zinc-300" />
               </div>
 
-              {selectedUrl && (
+
+              {/* Exibe o cropper com a imagem atual do avatar se não houver arquivo selecionado */}
+              {(selectedUrl || profile?.avatar_url) && (
                 <AvatarCropper
-                  src={selectedUrl}
+                  src={selectedUrl || (profile?.avatar_url ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}` : null)}
                   onCropped={onCropped}
                   size={384}
                   className="mt-2"
