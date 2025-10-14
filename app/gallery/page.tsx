@@ -3,6 +3,7 @@ export const revalidate = 0
 
 import GalleryGrid from './GalleryGrid'
 import AppHeader from '../_components/AppHeader'
+import GalleryAnimations from './GalleryAnimations'
 import { headers } from 'next/headers'
 import SkeletonLoader from '@/components/SkeletonLoader'
 
