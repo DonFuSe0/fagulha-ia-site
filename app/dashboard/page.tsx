@@ -309,7 +309,13 @@ export default function DashboardPage() {
               <div className="text-xs text-zinc-400">últimos 10</div>
             </div>
             <div className="p-4 space-y-3">
-              {loading && <div className="text-zinc-400 text-sm">Carregando…</div>}
+              {loading && (
+                <>
+                  <SkeletonLoader className="h-10 w-full mb-2" />
+                  <SkeletonLoader className="h-10 w-full mb-2" />
+                  <SkeletonLoader className="h-10 w-full mb-2" />
+                </>
+              )}
               {!loading && usages.length === 0 && <div className="text-zinc-400 text-sm">Nenhum gasto encontrado.</div>}
               {usages.map((u) => (
                 <div key={u.id} className="flex items-center justify-between text-sm bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2 hover:bg-zinc-900/60 transition-colors">
@@ -329,7 +335,12 @@ export default function DashboardPage() {
               <div className="text-xs text-zinc-400">4 mais recentes</div>
             </div>
             <div className="p-4 grid grid-cols-2 gap-3">
-              {loading && <div className="col-span-2 text-zinc-400 text-sm">Carregando…</div>}
+              {loading && (
+                <>
+                  <SkeletonLoader className="h-32 w-full mb-2 col-span-2" />
+                  <SkeletonLoader className="h-32 w-full mb-2 col-span-2" />
+                </>
+              )}
               {!loading && gens.length === 0 && <div className="col-span-2 text-zinc-400 text-sm">Nenhuma geração encontrado.</div>}
               {gens.map((g) => (
                 <div key={g.id} className="aspect-square relative rounded-xl overflow-hidden border border-zinc-800 group">
