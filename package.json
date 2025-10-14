@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "ci-guard": "bash scripts/ci-guard.sh"
+    "ci-guard": "bash scripts/ci-guard.sh",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   
   "dependencies": {
@@ -37,6 +39,8 @@
     "@types/node": "20.11.30",
     "@types/react": "18.2.66",
     "@types/react-dom": "18.2.22",
-    "typescript": "5.4.5"
+    "typescript": "5.4.5",
+    "vitest": "1.5.3",
+    "@vitest/ui": "1.5.3"
   }
 }
