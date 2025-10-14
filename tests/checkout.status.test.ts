@@ -49,7 +49,7 @@ async function simulateCheckout(supabase: any, planCode: string){
 }
 
 describe('checkout + status simulation', () => {
-  beforeEach(()=> vi.restoreAllMocks())
+  beforeEach(() => { vi.restoreAllMocks(); })
 
   it('cria purchase pending e anexa preference id', async () => {
     const plan = { code:'basic', name:'Basic', tokens:100, price_cents:1000, currency:'BRL', active:true }
