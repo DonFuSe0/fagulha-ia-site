@@ -137,7 +137,10 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
   // 1) se já existe recorte, usa-o;
   // 2) senão, se há arquivo selecionado, usa-o;
   // 3) senão, usa avatar atual do perfil;
-  const smallPreviewSrc = croppedPreviewUrl || selectedUrl || profile?.avatar_url || null
+  const smallPreviewSrc =
+    croppedPreviewUrl
+    || selectedUrl
+    || (profile?.avatar_url ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}` : null)
 
   return (
     <div className="min-h-[60vh] w-full">
@@ -207,9 +210,10 @@ export default function SettingsPage({ searchParams }: SettingsPageProps) {
 
 
               {/* Exibe o cropper com a imagem atual do avatar se não houver arquivo selecionado */}
-              {(selectedUrl || profile?.avatar_url) && (
+              {/* Exibe o cropper grande SOMENTE quando um novo arquivo é selecionado */}
+              {selectedUrl && (
                 <AvatarCropper
-                  src={selectedUrl || (profile?.avatar_url ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${profile.avatar_url}` : null)}
+                  src={selectedUrl}
                   onCropped={onCropped}
                   size={384}
                   className="mt-2"
