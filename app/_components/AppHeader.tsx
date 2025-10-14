@@ -47,11 +47,10 @@ export default function AppHeader() {
   }, [])
 
   return (
-    <header className="flex items-center gap-4 p-4 border-b border-white/10">
-      <Link href="/" className="font-bold">Fagulha</Link>
-
-      <div className="ml-auto flex items-center gap-2">
-        <nav className="flex items-center gap-2">
+    <header className="bg-black/60 backdrop-blur border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-center relative">
+        <Link href="/" className="font-bold absolute left-4">Fagulha</Link>
+        <nav className="flex items-center gap-6">
           {userId
             ? <Link href="/dashboard" className="px-3 py-2 rounded-lg hover:bg-white/10">Perfil</Link>
             : <Link href="/auth/login" className="px-3 py-2 rounded-lg hover:bg-white/10">Entrar</Link>
@@ -59,9 +58,8 @@ export default function AppHeader() {
           <Link href="/explorar" className="px-3 py-2 rounded-lg hover:bg-white/10">Explorar</Link>
           <Link href="/planos" className="px-3 py-2 rounded-lg hover:bg-white/10">Planos</Link>
         </nav>
-
         {userId && (
-          <div className="relative" ref={menuRef}>
+          <div className="relative ml-auto" ref={menuRef}>
             <button
               aria-expanded={open}
               aria-haspopup="menu"
@@ -70,7 +68,6 @@ export default function AppHeader() {
             >
               Menu
             </button>
-
             {open && (
               <div
                 role="menu"
