@@ -16,32 +16,31 @@ export async function GET(req: Request) {
   try {
     const info = await getPaymentInfo(paymentId)
 
-    // Tenta achar purchase existente
-    const { data: existing } = await supabase
+    // Localiza purchase: primeiro por gateway_payment_id, senão por external_reference
+    let { data: existing } = await supabase
       .from('purchases')
       .select('*')
       .eq('gateway_payment_id', info.gateway_payment_id)
       .maybeSingle()
 
     if (!existing) {
-      // Buscar o plano por external_reference (temos plan_code em metadata no MP, mas aqui dependemos do external_reference -> plan_code embed?)
-      // Nesta fase inicial assumimos external_reference = prefix_planCode_timestamp_random
-      const parts = info.external_reference?.split('_') || []
-      const plan_code = parts.length >= 2 ? parts[1] : null
-      if (!plan_code) return NextResponse.json({ ignored: 'no_plan_code', ref: info.external_reference })
-
-      // Carrega plano
-      const { data: plan } = await supabase
-        .from('plans')
+      const { data: byRef } = await supabase
+        .from('purchases')
         .select('*')
-        .eq('code', plan_code)
-        .single()
-      if (!plan) return NextResponse.json({ ignored: 'plan_not_found' })
-
-      // Carrega user via metadata? Falta user_id - no fluxo ideal usaríamos server-to-server. Necessário fallback:
-      // Sem metadata acessível via getPaymentInfo se não configurado; para robustez, poderíamos mapear external_reference->user_id em cache/DB na criação do checkout (TODO).
-      // Por agora: aborta se não encontramos purchase pré-criada (futuro: criar purchase ao criar preference no checkout endpoint e armazenar external_reference).
-      return NextResponse.json({ ignored: 'no_precreated_purchase' })
+        .eq('external_reference', info.external_reference)
+        .maybeSingle()
+      if (!byRef) {
+        return NextResponse.json({ ignored: 'purchase_not_found', ref: info.external_reference })
+      }
+      existing = byRef
+      // Preencher gateway_payment_id se ainda vazio
+      if (!existing.gateway_payment_id) {
+        await supabase
+          .from('purchases')
+          .update({ gateway_payment_id: info.gateway_payment_id })
+          .eq('id', existing.id)
+        existing.gateway_payment_id = info.gateway_payment_id
+      }
     }
 
     // Atualiza status se mudou
