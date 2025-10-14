@@ -2,6 +2,7 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
+import { publicAvatarUrl } from '@/lib/utils/avatar'
 import { useEffect, useRef, useState } from "react";
 
 type Props = { isLogged: boolean; avatarSrc?: string; nickname?: string; credits?: number; };
@@ -10,6 +11,7 @@ export default function UserMenu({ isLogged, avatarSrc="/avatars/fire-1.png", ni
   if (!isLogged) return <Link href="/auth/login" className="text-white/80 hover:text-white text-sm">Entrar</Link>;
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const resolvedAvatar = publicAvatarUrl(avatarSrc) || avatarSrc
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (!ref.current) return;
