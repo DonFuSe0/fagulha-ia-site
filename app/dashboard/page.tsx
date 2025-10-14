@@ -145,7 +145,7 @@ function TopNav({ nickname, avatarUrl }: TopNavProps) {
         <div className="flex items-center gap-3">
           <CreditsBadge />
           <span className="text-sm text-zinc-200">{nickname || 'Seu perfil'}</span>
-          <AvatarMenu nickname={nickname} avatarUrl={avatarUrl ?? undefined} />
+          <AvatarMenu nickname={nickname} />
         </div>
       </div>
     </nav>
@@ -233,7 +233,7 @@ export default function DashboardPage() {
              style={{background: 'radial-gradient(closest-side, #ff7a18, transparent 70%)'}} />
       </div>
 
-      <TopNav nickname={nickname} avatarUrl={avatarUrl} />
+  <TopNav nickname={nickname} />
 
       <main className="max-w-7xl mx-auto px-4 py-10 space-y-10">
         {/* Header row */}
